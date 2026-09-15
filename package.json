@@ -1,0 +1,67 @@
+{
+  "name": "ferit9",
+  "productName": "Ferit-9",
+  "version": "0.1.0",
+  "description": "Ferit-9 — falling-sand mining and smelting sim",
+  "author": "Bohdan Fedorov",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "electron . --dev",
+    "build:app": "node tools/build-app.js",
+    "fonts": "node tools/fetch-fonts.js",
+    "lint": "biome check . && node tools/no-comments.js",
+    "lint:fix": "biome check --write .",
+    "start": "npm run build:app && electron .",
+    "dist:win": "npm run build:app && electron-builder --win --x64",
+    "dist:linux": "npm run build:app && electron-builder --linux --x64",
+    "dist": "npm run build:app && electron-builder --win --linux --x64"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "javascript-obfuscator": "^4.1.1",
+    "terser": "^5.36.0"
+  },
+  "build": {
+    "appId": "com.ferit9.game",
+    "productName": "Ferit-9",
+    "asar": true,
+    "compression": "maximum",
+    "files": [
+      "electron/**/*",
+      "app/**/*"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "dir", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "dir", "arch": ["x64"] },
+        { "target": "tar.gz", "arch": ["x64"] },
+        { "target": "AppImage", "arch": ["x64"] }
+      ],
+      "category": "Game",
+      "synopsis": "Falling-sand mining and smelting sim",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ferit-dev",
+      "runtimeExecutable": "C:/Users/Bohdan/AppData/Local/Temp/claude/C--Users-Bohdan-Desktop-sundusttryV2/14d8cffc-4159-490a-877e-eb8c4fa2c6b5/scratchpad/devserve/devserve.exe",
+      "runtimeArgs": [],
+      "port": 8777
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+node_modules/
+app/
+release/
+dist/
+*.syso
+fonts/*.woff2
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ферит-9</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=Unbounded:wght@700;800&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+
+  <div class="left-stack">
+    <!-- Позивний і стан модуля -->
+    <section class="panel idplate">
+      <h2 class="eyebrow"><span data-i18n="ui.module">Модуль</span>
+        <span class="hint" data-i18n="ui.parcel">посилка</span></h2>
+      <p class="callsign" id="callsign">sol_1.01</p>
+
+      <div class="vitals">
+        <div class="vital" id="vital-hp">
+          <span class="vt-name" data-i18n="ui.hp">Цілість</span>
+          <span class="vt-num mono" id="hp-num">100</span>
+          <div class="vt-bar"><div class="vt-fill" id="hp-fill"></div></div>
+        </div>
+        <div class="vital" id="vital-fuel">
+          <span class="vt-name" data-i18n="ui.fuel">Паливо</span>
+          <span class="vt-num mono" id="fuel-num">100</span>
+          <div class="vt-bar"><div class="vt-fill fuel" id="fuel-fill"></div></div>
+        </div>
+      </div>
+
+      <dl class="idstats">
+        <button class="util-btn" id="btn-settings">
+          <span class="ub-key" data-bind="settings">O</span><span class="ub-label" data-i18n="ui.settings">налаштування</span>
+        </button>
+        <button class="util-btn" id="btn-help">
+          <span class="ub-key" data-bind="help">H</span><span class="ub-label" data-i18n="ui.help">довідка</span>
+        </button>
+        <div><dt data-i18n="ui.losses">втрат</dt><dd class="mono" id="stat-losses">0</dd></div>
+        <div><dt data-i18n="ui.explored">розвідано</dt><dd class="mono" id="stat-explored">0%</dd></div>
+      </dl>
+    </section>
+
+    <!-- Шкала температур — лише в режимі теплової карти -->
+    <section class="panel heat-legend hidden" id="heat-legend">
+      <h2 class="eyebrow" data-i18n="ui.heatLegend">температура, °C</h2>
+      <div class="scale"><div class="scale-mark" id="probe-mark"></div></div>
+      <p class="scale-legend"><span>20</span><span>700</span><span>1400</span></p>
+    </section>
+  </div>
+
+  <!-- Термощуп біля курсора -->
+  <div class="probe-chip hidden" id="probe-chip">
+    <span class="pc-mat" id="probe-mat">—</span>
+    <span class="pc-temp"><span id="probe-t">22</span> °C</span>
+  </div>
+
+  <!-- Живлення + ціль -->
+  <div class="right-stack">
+    <section class="panel grid-panel hidden" id="grid-panel">
+      <h2 class="eyebrow"><span data-i18n="ui.grid">Мережа</span>
+        <span class="stat" id="net-stat">норма</span></h2>
+      <div class="meter"><div class="meter-fill" id="pw-fill"></div></div>
+      <p class="readout"><span id="pw-use">0</span> / <span id="pw-cap">15</span>
+        <span data-i18n="ui.kw">кВт</span></p>
+    </section>
+
+    <section class="panel goal-panel">
+      <h2 class="eyebrow"><span data-i18n="ui.cargo">Вантаж на орбіту</span></h2>
+      <!-- рядки будуються з квестової дороги, див. js/quest.js -->
+      <ul class="goal-list" id="goal-list"></ul>
+      <button id="launch" class="launch" disabled data-i18n="ui.launch">Спорядити шатл</button>
+    </section>
+  </div>
+
+  <!-- Канал зв'язку з ЦУПом -->
+  <aside class="comms hidden" id="comms">
+    <p class="comms-from" id="comms-from">ЦУП · КАНАЛ 7</p>
+    <p class="comms-text" id="comms-text"></p>
+  </aside>
+
+  <!-- Підказка -->
+  <div class="tipbar"><span id="tip"></span></div>
+
+  <!-- Панель будівництва -->
+  <nav class="buildbar" id="buildbar">
+    <button class="slot active" data-tool="drill">
+      <span class="srow"><kbd>1</kbd><span class="sname" data-i18n="tool.drill">Бур</span></span>
+      <span class="scost" data-i18n="tool.drill.cost">твердість породи</span>
+    </button>
+    <button class="slot" data-tool="hand">
+      <span class="srow"><kbd>2</kbd><span class="sname" data-i18n="tool.hand">Рука</span></span>
+      <span class="scost" data-i18n="tool.hand.cost">носити пухке</span>
+    </button>
+    <button class="slot" data-tool="ignite">
+      <span class="srow"><kbd>3</kbd><span class="sname" data-i18n="tool.ignite">Запал</span></span>
+      <span class="scost" data-i18n="tool.ignite.cost">підпалити</span>
+    </button>
+    <button class="slot locked" id="slot-belt" data-tool="belt">
+      <span class="srow"><kbd>4</kbd><span class="sname" data-i18n="tool.belt">Стрічка</span></span>
+      <span class="scost" data-i18n="tool.belt.cost">каркас під залізо</span>
+    </button>
+  </nav>
+
+  <!-- Термінал збирання модуля -->
+  <div class="screen boot hidden" id="boot">
+    <div class="term">
+      <header class="term-bar">
+        <span class="term-title" id="term-title" data-i18n="term.title">ЦУП «Сол» · термінал збирання</span>
+        <span class="term-id mono" id="boot-id">sol_1.01</span>
+      </header>
+      <div class="term-log" id="boot-log"></div>
+      <footer class="term-foot">
+        <span class="term-hint" id="boot-hint">…</span>
+        <button class="term-skip" id="boot-skip" data-i18n="term.skip">пропустити · ESC</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Стартовий екран -->
+  <div class="screen" id="intro">
+    <div class="screen-card">
+      <div class="lang-switch card-lang"></div>
+      <p class="kicker" data-i18n="intro.kicker">Глибинна копальня · зміна 41</p>
+      <h1>Ферит&#8209;9</h1>
+      <p class="lede" data-i18n-html="intro.lede"></p>
+      <div class="keys">
+        <div><kbd data-bind="up,left,down,right">W A S D</kbd><span data-i18n="intro.keyMove">рух, ранець на підйомі</span></div>
+        <div><kbd data-i18n="key.lmb">ЛКМ</kbd><span data-i18n="intro.keyTool">інструмент</span></div>
+        <div><kbd data-i18n="key.rmb">ПКМ</kbd><span data-i18n="intro.keyHook">захват і підтяг</span></div>
+        <div><kbd data-bind="slot1,slot2,slot3,slot4">1 2 3 4</kbd><span data-i18n="intro.keySlots">вибір інструмента</span></div>
+        <div><kbd data-bind="heat">T</kbd><span data-i18n="intro.keyHeat">теплова карта</span></div>
+        <div><kbd data-bind="help">H</kbd><span data-i18n="intro.keyHelp">довідка · пауза</span></div>
+        <div><kbd data-bind="settings">O</kbd><span data-i18n="intro.keySettings">налаштування</span></div>
+      </div>
+      <button class="cta" id="start" data-i18n="intro.cta">Спуститись у шахту</button>
+      <button class="ghost-btn room-btn" id="start-room" type="button" data-i18n="intro.room">Полігон</button>
+      <p class="foot" data-i18n="intro.foot"></p>
+    </div>
+  </div>
+
+  <!-- Довідка -->
+  <div class="screen hidden" id="help">
+    <div class="screen-card">
+      <div class="lang-switch card-lang"></div>
+      <p class="kicker" data-i18n="help.kicker">Довідка</p>
+      <h1 data-i18n="help.title">Як плавити залізо</h1>
+      <ol class="steps">
+        <li data-i18n-html="help.s1"></li>
+        <li data-i18n-html="help.s2"></li>
+        <li data-i18n-html="help.s3"></li>
+        <li data-i18n-html="help.s4"></li>
+        <li data-i18n-html="help.s5"></li>
+        <li data-i18n-html="help.s6"></li>
+        <li data-i18n-html="help.s7"></li>
+        <li data-i18n-html="help.s8"></li>
+      </ol>
+      <button class="cta" id="resume" data-i18n="help.cta">Повернутись</button>
+    </div>
+  </div>
+
+  <!-- Налаштування -->
+  <div class="screen hidden" id="settings">
+    <div class="screen-card">
+      <p class="kicker" data-i18n="set.kicker">Налаштування</p>
+      <h1 data-i18n="set.title">Пульт модуля</h1>
+
+      <section class="set-group">
+        <h2 class="set-head" data-i18n="set.lang">Мова</h2>
+        <div class="lang-switch set-lang"></div>
+      </section>
+
+      <section class="set-group">
+        <h2 class="set-head" data-i18n="set.sound">Звук</h2>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.mute">Без звуку</span>
+          <input type="checkbox" id="set-mute" class="set-check">
+        </label>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.volume">Гучність</span>
+          <input type="range" id="set-volume" class="set-range" min="0" max="100" step="5">
+          <b class="mono set-val" id="set-volume-val">100</b>
+        </label>
+      </section>
+
+      <section class="set-group">
+        <h2 class="set-head" data-i18n="set.grab">Захват</h2>
+        <label class="set-row">
+          <span class="set-label" data-i18n="set.grabSize">Розмір захвату</span>
+          <input type="range" id="set-grab" class="set-range" min="1" max="4" step="1">
+          <b class="mono set-val" id="set-grab-val">2×2</b>
+        </label>
+        <p class="set-note" id="set-grab-note"></p>
+      </section>
+
+      <section class="set-group">
+        <h2 class="set-head" data-i18n="set.vision">Кольорова схема</h2>
+        <div class="vision-grid" id="set-vision"></div>
+        <p class="set-note" data-i18n="set.visionNote"></p>
+      </section>
+
+      <section class="set-group">
+        <h2 class="set-head" data-i18n="set.world">Світ</h2>
+        <div class="set-row">
+          <span class="set-label" data-i18n="set.worldNow">Поточний</span>
+          <b class="mono set-val" id="set-world">шахта</b>
+        </div>
+        <button class="ghost-btn" id="set-world-swap" type="button" data-i18n="set.worldSwap">Перезапустити в іншому</button>
+        <p class="set-note" data-i18n="set.worldNote"></p>
+      </section>
+
+      <section class="set-group">
+        <h2 class="set-head" data-i18n="set.keys">Клавіші</h2>
+        <div class="keybinds" id="set-keys"></div>
+        <button class="ghost-btn" id="set-keys-reset" type="button" data-i18n="set.keysReset">Стандартні</button>
+      </section>
+
+      <button class="cta" id="set-close" data-i18n="set.cta">Повернутись</button>
+    </div>
+  </div>
+
+  <!-- Перемога -->
+  <div class="screen hidden" id="win">
+    <div class="screen-card">
+      <p class="kicker" data-i18n="win.kicker">Вантаж прийнято</p>
+      <h1 data-i18n="win.title">Шатл пішов</h1>
+      <p class="lede" id="win-text"></p>
+      <dl class="scoreboard">
+        <div><dt data-i18n="win.time">Час зміни</dt><dd class="mono" id="w-time">—</dd></div>
+        <div><dt data-i18n="win.parts">Частинок перероблено</dt><dd class="mono" id="w-parts">—</dd></div>
+        <div><dt data-i18n="win.mach">Машин зведено</dt><dd class="mono" id="w-mach">—</dd></div>
+        <div><dt data-i18n="win.lost">Посилок списано</dt><dd class="mono" id="w-lost">—</dd></div>
+      </dl>
+      <button class="cta" id="keep" data-i18n="win.cta">Лишитись у шахті</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/i18n.js"></script>
+<script src="js/lang/uk.js"></script>
+<script src="js/lang/en.js"></script>
+<script src="js/lang/pl.js"></script>
+<script src="js/materials.data.js"></script>
+<script src="js/materials.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/quest.js"></script>
+<script src="js/lore.js"></script>
+<script src="js/world.js"></script>
+<script src="js/objects.js"></script>
+<script src="js/build.js"></script>
+<script src="js/machines.js"></script>
+<script src="js/sandbox.js"></script>
+<script src="js/player.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
