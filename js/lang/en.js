@@ -64,6 +64,7 @@ regLang('en', {
   'mat.machine': 'machine',
   'mat.pipe': 'pipe',
   'mat.belt': 'belt',
+  'mat.wall': 'wall',
 
   /* ---------- tools ---------- */
   'tool.drill': 'Drill',
@@ -83,8 +84,8 @@ regLang('en', {
   'tool.generator.cost': '90 st · 12 gl',
   'tool.hand': 'Hand',
   'tool.hand.cost': 'carry loose material',
-  'tool.belt': 'Belt',
-  'tool.belt.cost': '1 iron per 4 cells',
+  'tool.belt': 'Builder',
+  'tool.belt.cost': 'free',
   'tool.dismantle': 'Dismantle',
   'tool.dismantle.cost': 'refunds 50%',
 
@@ -94,9 +95,13 @@ regLang('en', {
   'tip.dump': 'LMB — pour "{mat}" · click the stock list to choose another',
   'tip.ignite': 'LMB on coal — set it alight · embers hold 1500 °C',
   'tip.hand': 'Hold LMB on loose material to scoop a handful of it alone · let go and it settles back into the ground',
-  'tip.belt': 'Hold LMB and drag to lay out a belt, level or at 45° · click a finished one to strip it',
+  'tip.belt': 'Hold LMB and drag to place a belt or wall, free of charge · click a finished one to strip it · R — shape',
   'tip.dismantle': 'LMB on a machine or pipe — dismantle, half the cost back',
   'tip.build': 'LMB — place "{tool}" · RMB — grapple',
+
+  'shape.belt': 'belt',
+  'shape.wallLine': 'wall · line',
+  'shape.wallRect': 'wall · block',
 
   'msg.tooFar': 'Out of reach — fly closer',
   'msg.noRock': 'Out of stone',
@@ -106,13 +111,13 @@ regLang('en', {
   'msg.noRes': 'Not enough: {cost}',
   'msg.blocked': 'No room here — rock or another machine is in the way',
   'msg.nothingToGrab': 'Bare hands will not take packed rock — break it with the drill first',
-  'msg.beltLocked': 'The belt is not unlocked yet — close the quota first',
+  'msg.beltLocked': 'The builder is not unlocked yet — close the quota first',
   'msg.beltShort': 'That is a stub, not a line — drag further',
-  'msg.beltRoom': 'No room: the run must be clear, with no rock above it',
-  'msg.beltFrame': 'Frame set · iron needed: {n}',
-  'msg.beltCancel': 'Frame removed · iron back: {n}',
-  'msg.beltStrip': 'Belt stripped · iron back: {n}',
-  'msg.beltDone': 'Belt assembled — the load rides on its own now',
+  'msg.beltRoom': 'No room here — the spot is taken',
+  'msg.beltDone': 'Belt placed — the load rides on its own now',
+  'msg.wallDone': 'Wall placed',
+  'msg.structRemoved': 'Structure removed',
+  'msg.buildShape': 'Shape: {shape}',
   'msg.grabOnly': 'In hand, this only: {mat}',
   'msg.noIgnite': 'Nothing to light — pour some coal first',
   'msg.fueled': 'Loaded {n} coal into the generator',
@@ -184,7 +189,7 @@ regLang('en', {
   'set.key.slot1': 'Slot 1 · drill',
   'set.key.slot2': 'Slot 2 · hand',
   'set.key.slot3': 'Slot 3 · igniter',
-  'set.key.slot4': 'Slot 4 · belt',
+  'set.key.slot4': 'Slot 4 · builder',
   'set.key.heat': 'Heat map',
   'set.key.fuel': 'Feed the generator',
   'set.key.mute': 'Sound',
@@ -377,7 +382,7 @@ regLang('en', {
   'event.goal_ready': 'Cargo is complete. {sol}, hit "Load the shuttle" before something caves in.',
 
   'comms.from': 'CONTROL · CHANNEL 7',
-  'comms.beltGift': 'Quota closed. Belt schematics released. You have proven you can carry things by hand — now lay a line and feed it iron.',
+  'comms.beltGift': 'Quota closed. Builder unlocked. Drag a line — place a belt or a wall, free of charge.',
 
   'baseline': [
     { q: 'System. Rock.', a: 'Rock.' },

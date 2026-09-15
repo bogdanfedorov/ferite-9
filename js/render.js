@@ -366,11 +366,27 @@ function drawGrabHint(wx, wy) {
   }
 }
 
-/* Готова стрічка: по настилу біжить насічка, тож напрям видно без підписів. */
+function drawFlowArrow(cx, cy, dx, dy, color) {
+  var z = view.zoom;
+  var n = Math.sqrt(dx * dx + dy * dy) || 1;
+  var ndx = dx / n, ndy = dy / n;
+  var px = sx(cx), py = sy(cy);
+  var len = z * 0.36, wing = z * 0.24;
+  var tx = px + ndx * len, ty = py + ndy * len;
+  var bx = px - ndx * len * 0.5, by = py - ndy * len * 0.5;
+  var wx = -ndy * wing, wy = ndx * wing;
+  ctx.beginPath();
+  ctx.moveTo(tx, ty);
+  ctx.lineTo(bx + wx, by + wy);
+  ctx.lineTo(bx - wx, by - wy);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
 function drawBelts() {
   var z = view.zoom;
   if (z < 2) return;
-  var phase = (simFrame / BELT_TICK) % 4;
   for (var b = 0; b < belts.length; b++) {
     var belt = belts[b];
     var cs = belt.cells;
@@ -379,36 +395,13 @@ function drawBelts() {
       if (!GRIPS[mat[c.y * W + c.x]]) continue;
       var px = sx(c.x), py = sy(c.y);
       if (px + z < 0 || py + z < 0 || px > cv.width || py > cv.height) continue;
-      var lit = ((k - (belt.dx > 0 ? phase : -phase)) % 4 + 4) % 4 < 1.4;
-      ctx.fillStyle = lit ? uiRgba('sandLit', 0.55) : 'rgba(30,26,22,0.35)';
-      ctx.fillRect(px, py, z, Math.max(1, z * 0.28));
+      ctx.fillStyle = uiRgba('sandLit', 0.55);
+      ctx.fillRect(px, py, z, 3);
+      drawFlowArrow(c.x + 0.5, c.y + 0.5, belt.dx, belt.dy, uiRgba('sand', 0.9));
     }
   }
 }
 
-/* Каркас стрічки: порожні клітинки, які чекають на залізо.
-   Перша ненакрита клітинка світиться — саме туди піде наступна ноша. */
-function drawBlueprints() {
-  var z = view.zoom, b, k;
-  for (b = 0; b < blueprints.length; b++) {
-    var bp = blueprints[b];
-    for (k = bp.built; k < bp.cells.length; k++) {
-      var c = bp.cells[k];
-      var px = sx(c.x), py = sy(c.y);
-      if (px + z < 0 || py + z < 0 || px > cv.width || py > cv.height) continue;
-      var next = k === bp.built;
-      ctx.fillStyle = next
-        ? uiRgba('sand', (0.22 + Math.sin(simFrame * 0.09) * 0.1))
-        : uiRgba('sand', 0.10);
-      ctx.fillRect(px, py, z, z);
-      ctx.strokeStyle = uiRgba('sand', 0.45);
-      ctx.lineWidth = 1;
-      ctx.strokeRect(px + 0.5, py + 0.5, z - 1, z - 1);
-    }
-  }
-}
-
-/* Лінія, яку гравець саме тягне мишею: вже прив'язана до кроку стрічки. */
 function drawBeltPreview(from, to) {
   if (!from || !to) return;
   var shape = snapBelt(from[0], from[1], to[0], to[1]);
@@ -421,17 +414,26 @@ function drawBeltPreview(from, to) {
   for (var k = 0; k < shape.cells.length; k++) {
     var c = shape.cells[k];
     ctx.fillRect(sx(c.x), sy(c.y), z, z);
+    drawFlowArrow(c.x + 0.5, c.y + 0.5, shape.dx, shape.dy,
+      ok ? uiRgba('sand', 0.9) : uiRgba('dangerSoft', 0.9));
   }
-  // стрілка на кінці: видно, куди саме повезе
-  var last = shape.cells[shape.cells.length - 1];
-  var ex = sx(last.x + 0.5 + shape.dx), ey = sy(last.y + 0.5 + shape.dy);
-  ctx.beginPath();
-  ctx.moveTo(sx(last.x + 0.5), sy(last.y + 0.5));
-  ctx.lineTo(ex, ey);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(ex, ey, Math.max(2, z * 0.3), 0, Math.PI * 2);
-  ctx.stroke();
+}
+
+function drawWallPreview(from, to, shape) {
+  if (!from || !to) return;
+  var s = shape === 'wallRect' ? snapWallRect(from[0], from[1], to[0], to[1])
+    : snapWallLine(from[0], from[1], to[0], to[1]);
+  if (!s) return;
+  var ok = wallFits(s);
+  var z = view.zoom;
+  ctx.fillStyle = ok ? uiRgba('sand', 0.22) : uiRgba('dangerSoft', 0.22);
+  ctx.strokeStyle = ok ? uiRgba('sand', 0.85) : uiRgba('dangerSoft', 0.85);
+  ctx.lineWidth = 1;
+  for (var k = 0; k < s.cells.length; k++) {
+    var c = s.cells[k];
+    ctx.fillRect(sx(c.x), sy(c.y), z, z);
+    ctx.strokeRect(sx(c.x) + 0.5, sy(c.y) + 0.5, z - 1, z - 1);
+  }
 }
 
 /* Трос захвата. */
@@ -615,13 +617,15 @@ function render(tool, mouseWorld, affordable) {
   drawDamage();
   drawCargoPad();
   drawBelts();
-  drawBlueprints();
   drawPipes();
   drawMachines();
   drawObjects();
   drawHook();
   drawPlayer();
-  if (tool === 'belt') drawBeltPreview(beltFrom, beltTo);
+  if (tool === 'belt') {
+    if (buildShape === 'belt') drawBeltPreview(buildFrom, buildTo);
+    else drawWallPreview(buildFrom, buildTo, buildShape);
+  }
   if (tool === 'hand') drawGrabHint(mouseWorld[0], mouseWorld[1]);
   if (sandbox.on) drawRoomBins(mouseWorld);
   if (!roomButtonAt(mouseWorld[0], mouseWorld[1])) {

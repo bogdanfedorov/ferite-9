@@ -336,5 +336,15 @@ var MATERIAL_DATA = [
     thermalConductivity: 4,
     heatCapacity: 1000,
     hardness: -1
+  },
+  {
+    name: 'wall',
+    state: 'structure',
+    color: [108, 102, 94],
+    grain: 6,
+    density: 2400,
+    thermalConductivity: 10,
+    heatCapacity: 800,
+    hardness: -1
   }
 ];

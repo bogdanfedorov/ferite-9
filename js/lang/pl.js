@@ -65,6 +65,7 @@ regLang('pl', {
   'mat.machine': 'maszyna',
   'mat.pipe': 'rura',
   'mat.belt': 'taśma',
+  'mat.wall': 'ściana',
 
   /* ---------- narzędzia ---------- */
   'tool.drill': 'Wiertło',
@@ -84,8 +85,8 @@ regLang('pl', {
   'tool.generator.cost': '90 kam · 12 szkła',
   'tool.hand': 'Ręka',
   'tool.hand.cost': 'nosić sypkie',
-  'tool.belt': 'Taśma',
-  'tool.belt.cost': '1 żelazo na 4 pola',
+  'tool.belt': 'Budowniczy',
+  'tool.belt.cost': 'za darmo',
   'tool.dismantle': 'Demontaż',
   'tool.dismantle.cost': 'zwraca 50%',
 
@@ -95,9 +96,13 @@ regLang('pl', {
   'tip.dump': 'LPM — sypać „{mat}" · kliknij magazyn, aby wybrać inny surowiec',
   'tip.ignite': 'LPM na węgiel — podpalić · żar trzyma 1500 °C',
   'tip.hand': 'Przytrzymaj LPM na sypkim — w garści tylko to, na co celujesz · puść, a od razu wsypie się w podłoże',
-  'tip.belt': 'Przytrzymaj LPM i prowadź — wytyczysz taśmę poziomo lub pod 45° · kliknięcie gotowej ją rozbiera',
+  'tip.belt': 'Przytrzymaj LPM i prowadź — postaw taśmę lub ścianę, za darmo · kliknięcie gotowej ją rozbiera · R — kształt',
   'tip.dismantle': 'LPM na maszynę lub rurę — demontaż ze zwrotem połowy',
   'tip.build': 'LPM — postawić „{tool}" · PPM — hak',
+
+  'shape.belt': 'taśma',
+  'shape.wallLine': 'ściana · linia',
+  'shape.wallRect': 'ściana · blok',
 
   'msg.tooFar': 'Za daleko — podleć bliżej',
   'msg.noRock': 'Skończył się kamień',
@@ -107,13 +112,13 @@ regLang('pl', {
   'msg.noRes': 'Brakuje surowców: {cost}',
   'msg.blocked': 'Tu się nie zmieści — przeszkadza skała albo inna maszyna',
   'msg.nothingToGrab': 'Gołymi rękami skały nie weźmiesz — najpierw pokrusz ją wiertłem',
-  'msg.beltLocked': 'Taśma jeszcze niedostępna — najpierw zamknij limit',
+  'msg.beltLocked': 'Budowniczy jeszcze niedostępny — najpierw zamknij limit',
   'msg.beltShort': 'To nie linia, tylko kikut — prowadź dalej',
-  'msg.beltRoom': 'Tu się nie da: trasa musi być pusta, a nad nią nie może być skały',
-  'msg.beltFrame': 'Szkielet postawiony · potrzeba żelaza: {n}',
-  'msg.beltCancel': 'Szkielet zdjęty · zwrot żelaza: {n}',
-  'msg.beltStrip': 'Taśma rozebrana · zwrot żelaza: {n}',
-  'msg.beltDone': 'Taśma złożona — ładunek jedzie już sam',
+  'msg.beltRoom': 'Tu się nie da postawić — miejsce zajęte',
+  'msg.beltDone': 'Taśma postawiona — ładunek jedzie już sam',
+  'msg.wallDone': 'Ściana postawiona',
+  'msg.structRemoved': 'Strukturę zdjęto',
+  'msg.buildShape': 'Kształt: {shape}',
   'msg.grabOnly': 'W garści tylko to: {mat}',
   'msg.noIgnite': 'Nie ma czego podpalić — wysyp najpierw węgiel',
   'msg.fueled': 'Załadowano {n} węgla do generatora',
@@ -185,7 +190,7 @@ regLang('pl', {
   'set.key.slot1': 'Slot 1 · wiertło',
   'set.key.slot2': 'Slot 2 · ręka',
   'set.key.slot3': 'Slot 3 · zapalnik',
-  'set.key.slot4': 'Slot 4 · taśma',
+  'set.key.slot4': 'Slot 4 · budowniczy',
   'set.key.heat': 'Mapa ciepła',
   'set.key.fuel': 'Zasypać generator',
   'set.key.mute': 'Dźwięk',
@@ -378,7 +383,7 @@ regLang('pl', {
   'event.goal_ready': 'Ładunek zebrany. {sol}, wciśnij „Załadować wahadłowiec", zanim coś się zawali.',
 
   'comms.from': 'CENTRUM · KANAŁ 7',
-  'comms.beltGift': 'Limit zamknięty. Odblokowano plany taśmy. Udowodniłeś, że umiesz nosić rękami — teraz wytycz linię i nakarm ją żelazem.',
+  'comms.beltGift': 'Limit zamknięty. Odblokowano budowniczego. Prowadź linię — postaw taśmę albo ścianę, za darmo.',
 
   'baseline': [
     { q: 'System. Skała.', a: 'Skała.' },

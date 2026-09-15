@@ -170,7 +170,10 @@
     }
   }
 
-  function tipFor(tool) { return t('tip.' + tool); }
+  function tipFor(tool) {
+    if (tool === 'belt') return t('tip.belt') + ' · ' + t('shape.' + buildShape) + ' (R)';
+    return t('tip.' + tool);
+  }
 
   function say(text) { msg = text; msgT = 150; }
 
@@ -178,7 +181,7 @@
   function selectTool(name) {
     if (name === 'belt' && !beltUnlocked) { say(t('msg.beltLocked')); return; }
     tool = name;
-    beltFrom = null; beltTo = null;
+    buildFrom = null; buildTo = null;
     var slots = el['buildbar'].children;
     for (var i = 0; i < slots.length; i++) {
       slots[i].classList.toggle('active', slots[i].dataset.tool === name);
@@ -200,40 +203,14 @@
     } else say(t('msg.nothingToGrab'));
   }
 
-  /* ---------- стрічка ---------- */
-
-  /* Протяжка скінчилась. Коротка — це не лінія, а клік: розібрати те,
-     що під курсором. Довга — ставимо порожній каркас під залізо. */
-  function finishBelt(a, b) {
-    var shape = snapBelt(a[0], a[1], b[0], b[1]);
-    if (!shape || shape.cells.length < BELT_MIN) {
-      var cx = Math.round(a[0]), cy = Math.round(a[1]);
-      var bp = ghostAt(cx, cy);
-      if (bp) {
-        say(tf('msg.beltCancel', { n: cancelBlueprint(bp) }));
-        beep(220, 0.08, 'square', 0.025);
-        return;
-      }
-      var built = beltUnder(cx, cy);
-      if (built) {
-        say(tf('msg.beltStrip', { n: dismantleBelt(built) }));
-        beep(220, 0.1, 'square', 0.03);
-        return;
-      }
-      say(t('msg.beltShort'));
-      return;
-    }
-    if (!beltFits(shape)) {
-      say(t('msg.beltRoom'));
-      beep(150, 0.12, 'sawtooth', 0.03);
-      return;
-    }
-    var made = placeBlueprint(shape);
-    say(tf('msg.beltFrame', { n: made.need }));
+  function reportBuild(outcome) {
+    if (outcome === 'removed') { say(t('msg.structRemoved')); beep(220, 0.08, 'square', 0.025); return; }
+    if (outcome === 'short') { say(t('msg.beltShort')); return; }
+    if (outcome === 'room') { say(t('msg.beltRoom')); beep(150, 0.12, 'sawtooth', 0.03); return; }
+    say(t(buildShape === 'belt' ? 'msg.beltDone' : 'msg.wallDone'));
     beep(560, 0.07, 'triangle', 0.03);
   }
 
-  /* Квота закрита — ЦУП відкриває модулю стрічку. */
   function unlockBelt(quiet) {
     if (beltUnlocked) return;
     beltUnlocked = true;
@@ -242,12 +219,6 @@
     transmit(t('comms.from'), t('comms.beltGift'), { hold: 5600 });
     beep(680, 0.16, 'triangle', 0.04);
   }
-
-  function onBeltDone() {
-    say(t('msg.beltDone'));
-    beep(720, 0.12, 'triangle', 0.035);
-  }
-  window.onBeltDone = onBeltDone;
 
   function tryUse(wx, wy) {
     var dx = wx - player.x, dy = wy - player.y;
@@ -294,13 +265,11 @@
       }
       mouse.pressed = false;
     } else if (tool === 'belt') {
-      // стрічку намічають протяжкою: звідки — туди вона потім і повезе
-      var bg = clampToReach(wpt[0], wpt[1]);
-      if (mouse.left && mouse.pressed) { beltFrom = bg; beltTo = bg; }
-      else if (mouse.left && beltFrom) beltTo = bg;
-      else if (!mouse.left && beltFrom) {
-        finishBelt(beltFrom, beltTo);
-        beltFrom = null; beltTo = null;
+      if (mouse.left && mouse.pressed) startBuildDrag(wpt[0], wpt[1]);
+      else if (mouse.left && buildFrom) buildTo = wpt;
+      else if (!mouse.left && buildFrom) {
+        reportBuild(finishBuild(buildFrom, buildTo));
+        buildFrom = null; buildTo = null;
       }
       mouse.pressed = false;
     } else if (mouse.left && tool === 'hand') {
@@ -390,6 +359,11 @@
         var n = manualFuel(player.x, player.y);
         if (n) { say(tf('msg.fueled', { n: n })); beep(480, 0.1, 'triangle', 0.035); }
         else say(t('msg.noFuel'));
+      }
+      if (c === 'KeyR' && tool === 'belt') {
+        cycleBuildShape();
+        say(tf('msg.buildShape', { shape: t('shape.' + buildShape) }));
+        beep(500, 0.05, 'square', 0.02);
       }
       if (act === 'mute') toggleMute();
       if (act === 'help') toggleScreen('help');

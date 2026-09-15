@@ -272,10 +272,11 @@ function updatePlayer(keys, reeling) {
   return null;
 }
 
-function clampToReach(tx, ty) {
-  var dx = tx - player.x, dy = ty - player.y;
+function clampToReach(tx, ty, anchor) {
+  var ax = anchor ? anchor.x : player.x, ay = anchor ? anchor.y : player.y;
+  var dx = tx - ax, dy = ty - ay;
   var d = Math.sqrt(dx * dx + dy * dy);
-  if (d > REACH) return [player.x + dx / d * REACH, player.y + dy / d * REACH];
+  if (d > REACH) return [ax + dx / d * REACH, ay + dy / d * REACH];
   return [tx, ty];
 }
 

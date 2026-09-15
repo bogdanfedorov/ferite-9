@@ -1,39 +1,49 @@
-/* Конвеєр: перша річ, яку модуль будує не з породи, а з власного заліза.
-
-   Порядок такий: гравець намічає каркас — горизонтальний або рівно під 45° —
-   і той висить у повітрі порожній. Далі носить у нього залізо руками.
-   Кожна принесена клітинка заліза вкладає кілька клітинок настилу, тож
-   стрічка росте на очах від початку до кінця й починає тягнути ще недобудована. */
-
 var BELT_MIN = 3;
-var BELT_DECK = matId('belt');
-var BELT_FEED = 'iron';
-var BELT_REFUND = matId('iron_scrap');
 var BELT_MAX = 48;
-var BELT_PER_IRON = 4;     // клітинок настилу з однієї клітинки заліза
-var BELT_TICK = 3;         // стрічка сіпається раз на стільки кадрів
+var WALL_MAX = 48;
+var BELT_TICK = 3;
+var BELT_DECK = matId('belt');
+var WALL_ID = matId('wall');
 
-var blueprints = [];       // недобудоване: {cells, dx, dy, need, have, built, credit, belt}
-var belts = [];            // те, що вже везе: {cells, dx, dy, paid}
+var BUILD_SHAPES = ['belt', 'wallLine', 'wallRect'];
+var buildShape = 'belt';
+
+var belts = [];
 var beltUnlocked = false;
 
-var beltFrom = null;       // кінці лінії, яку гравець саме тягне мишею
-var beltTo = null;
+var buildFrom = null;
+var buildTo = null;
+var buildAnchor = null;
 
 function resetBuild() {
-  blueprints.length = 0;
   belts.length = 0;
   beltUnlocked = false;
-  beltFrom = null;
-  beltTo = null;
+  buildFrom = null;
+  buildTo = null;
+  buildAnchor = null;
+  buildShape = 'belt';
 }
 
-/* ---------- намітка ---------- */
+function cycleBuildShape() {
+  var i = BUILD_SHAPES.indexOf(buildShape);
+  buildShape = BUILD_SHAPES[(i + 1) % BUILD_SHAPES.length];
+  return buildShape;
+}
 
-/* Стрічка вміє тільки два нахили: рівно або 45°. Куди тягнули — туди й повезе. */
+function startBuildDrag(wx, wy) {
+  buildAnchor = { x: player.x, y: player.y };
+  buildFrom = [wx, wy];
+  buildTo = buildFrom;
+}
+
+function clampBuildPoint(x, y) {
+  var p = clampToReach(x, y, buildAnchor);
+  return [Math.round(p[0]), Math.round(p[1])];
+}
+
 function snapBelt(ax, ay, bx, by) {
-  ax = Math.round(ax); ay = Math.round(ay);
-  bx = Math.round(bx); by = Math.round(by);
+  var pa = clampBuildPoint(ax, ay), pb = clampBuildPoint(bx, by);
+  ax = pa[0]; ay = pa[1]; bx = pb[0]; by = pb[1];
   var ddx = bx - ax, ddy = by - ay;
   var len = Math.abs(ddx);
   if (Math.abs(ddy) > len) len = Math.abs(ddy);
@@ -43,82 +53,97 @@ function snapBelt(ax, ay, bx, by) {
   var sx = ddx === 0 ? 0 : (ddx > 0 ? 1 : -1);
   var sy = 0;
   if (Math.abs(ddy) > Math.abs(ddx) * 0.45) sy = ddy > 0 ? 1 : -1;
-  if (sx === 0) return null;                 // вертикально стрічка не ходить
+  if (sx === 0) return null;
 
   var cells = [];
   for (var k = 0; k <= len; k++) cells.push({ x: ax + sx * k, y: ay + sy * k });
   return { cells: cells, dx: sx, dy: sy };
 }
 
+function snapWallLine(ax, ay, bx, by) {
+  var pa = clampBuildPoint(ax, ay), pb = clampBuildPoint(bx, by);
+  var x0 = pa[0], y0 = pa[1], x1 = pb[0], y1 = pb[1];
+  var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+  var sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  var err = dx + dy, x = x0, y = y0;
+  var cells = [];
+  while (cells.length <= WALL_MAX) {
+    cells.push({ x: x, y: y });
+    if (x === x1 && y === y1) break;
+    var e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+  return { cells: cells };
+}
+
+function snapWallRect(ax, ay, bx, by) {
+  var pa = clampBuildPoint(ax, ay), pb = clampBuildPoint(bx, by);
+  var x0 = Math.min(pa[0], pb[0]), x1 = Math.max(pa[0], pb[0]);
+  var y0 = Math.min(pa[1], pb[1]), y1 = Math.max(pa[1], pb[1]);
+  if (x1 - x0 > WALL_MAX) x1 = x0 + WALL_MAX;
+  if (y1 - y0 > WALL_MAX) y1 = y0 + WALL_MAX;
+  var cells = [];
+  for (var y = y0; y <= y1; y++) {
+    for (var x = x0; x <= x1; x++) cells.push({ x: x, y: y });
+  }
+  return { cells: cells };
+}
+
 function beltCellAt(x, y) {
   return inBounds(x, y) && GRIPS[mat[y * W + x]] === 1;
 }
 
-function ghostAt(x, y) {
-  for (var b = 0; b < blueprints.length; b++) {
-    var bp = blueprints[b];
-    for (var k = bp.built; k < bp.cells.length; k++) {
-      if (bp.cells[k].x === x && bp.cells[k].y === y) return bp;
-    }
-  }
-  return null;
-}
-
-/* Чи стане каркас: сама доріжка має бути вільна, а над нею — не камінь,
-   бо возити нічого буде. */
 function beltFits(shape) {
   for (var k = 0; k < shape.cells.length; k++) {
     var c = shape.cells[k];
     if (!inBounds(c.x, c.y) || !inBounds(c.x, c.y - 1)) return false;
     if (!OPEN[mat[c.y * W + c.x]]) return false;
     if (RIGID[mat[(c.y - 1) * W + c.x]]) return false;
-    if (ghostAt(c.x, c.y)) return false;
   }
   return true;
 }
 
-function beltCost(shape) {
-  return Math.max(1, Math.ceil(shape.cells.length / BELT_PER_IRON));
-}
-
-function placeBlueprint(shape) {
-  blueprints.push({
-    cells: shape.cells, dx: shape.dx, dy: shape.dy,
-    need: beltCost(shape), have: 0, built: 0, credit: 0, belt: null
-  });
-  return blueprints[blueprints.length - 1];
-}
-
-/* Знімає намітку. Те залізо, що вже лягло настилом, лишається в стрічці —
-   назад повертається лише невитрачене. */
-function cancelBlueprint(bp) {
-  var idx = blueprints.indexOf(bp);
-  if (idx < 0) return 0;
-  blueprints.splice(idx, 1);
-  var back = Math.floor(bp.credit / BELT_PER_IRON);
-  if (bp.belt) bp.belt.paid = bp.have - back;
-  for (var n = 0; n < back; n++) {
-    var c = bp.cells[Math.min(bp.cells.length - 1, bp.built + n * BELT_PER_IRON)];
-    placeCell(c.x, c.y - 1, BELT_REFUND, 22);
+function wallFits(shape) {
+  for (var k = 0; k < shape.cells.length; k++) {
+    var c = shape.cells[k];
+    if (!inBounds(c.x, c.y) || FIXED[mat[c.y * W + c.x]]) return false;
   }
-  return back;
+  return true;
 }
 
-/* Розбирає готову стрічку назад у брухт — рівно стільки, скільки коштувала. */
+function placeBelt(shape) {
+  var belt = { cells: shape.cells, dx: shape.dx, dy: shape.dy };
+  for (var k = 0; k < shape.cells.length; k++) {
+    var c = shape.cells[k];
+    setCell(c.x, c.y, BELT_DECK);
+  }
+  belts.push(belt);
+  return belt;
+}
+
+function placeWall(shape) {
+  for (var k = 0; k < shape.cells.length; k++) {
+    var c = shape.cells[k];
+    setCell(c.x, c.y, WALL_ID);
+  }
+}
+
 function dismantleBelt(belt) {
   var idx = belts.indexOf(belt);
-  if (idx < 0) return 0;
+  if (idx < 0) return false;
   belts.splice(idx, 1);
-  var k;
-  for (k = 0; k < belt.cells.length; k++) {
+  for (var k = 0; k < belt.cells.length; k++) {
     var c = belt.cells[k];
     if (beltCellAt(c.x, c.y)) setCell(c.x, c.y, VOID_ID);
   }
-  for (k = 0; k < belt.paid; k++) {
-    var p = belt.cells[Math.min(belt.cells.length - 1, k * BELT_PER_IRON)];
-    placeCell(p.x, p.y, BELT_REFUND, 22);
-  }
-  return belt.paid;
+  return true;
+}
+
+function dismantleWallAt(x, y) {
+  if (!inBounds(x, y) || mat[y * W + x] !== WALL_ID) return false;
+  setCell(x, y, VOID_ID);
+  return true;
 }
 
 function beltUnder(x, y) {
@@ -129,64 +154,33 @@ function beltUnder(x, y) {
   return null;
 }
 
-/* ---------- будівництво ---------- */
-
-/* Кладе одну клітинку настилу. Якщо місце встигло замулити — відсуває.
-   Не вийшло взагалі — чекаємо, залізо не пропадає. */
-function layBeltCell(bp, c) {
-  if (!inBounds(c.x, c.y)) return false;
-  var at = mat[c.y * W + c.x];
-  if (!OPEN[at]) {
-    if (!MOVABLE[at]) return false;
-    if (!shoveCell(c.x, c.y, bp.dx, bp.dy)) return false;
-  }
-  setCell(c.x, c.y, BELT_DECK);
-  if (!bp.belt) {
-    bp.belt = { cells: [], dx: bp.dx, dy: bp.dy, paid: 0 };
-    belts.push(bp.belt);
-  }
-  bp.belt.cells.push(c);
-  return true;
+function removeStructureAt(x, y) {
+  var built = beltUnder(x, y);
+  if (built) { dismantleBelt(built); return true; }
+  return dismantleWallAt(x, y);
 }
 
-/* Приймає залізо, покладене в намітку, і перетворює його на настил. */
-function tickBlueprints() {
-  for (var b = blueprints.length - 1; b >= 0; b--) {
-    var bp = blueprints[b];
-    var k, c, i, m;
-
-    // збираємо все залізне, що лежить у каркасі або просто на ньому
-    for (k = bp.built; k < bp.cells.length; k++) {
-      c = bp.cells[k];
-      for (var up = 0; up <= 1; up++) {
-        if (!inBounds(c.x, c.y - up)) continue;
-        i = (c.y - up) * W + c.x;
-        m = mat[i];
-        if (CARGO[m] !== BELT_FEED) continue;
-        setCell(c.x, c.y - up, VOID_ID);
-        bp.have++;
-        bp.credit += BELT_PER_IRON;
-      }
-    }
-
-    while (bp.credit > 0 && bp.built < bp.cells.length) {
-      if (!layBeltCell(bp, bp.cells[bp.built])) break;
-      bp.built++;
-      bp.credit--;
-    }
-    if (bp.belt) bp.belt.paid = bp.have;
-
-    if (bp.built >= bp.cells.length) {
-      blueprints.splice(b, 1);
-      if (typeof onBeltDone === 'function') onBeltDone(bp.belt);
-    }
+function finishBuild(a, b) {
+  var pa = clampBuildPoint(a[0], a[1]), pb = clampBuildPoint(b[0], b[1]);
+  if (pa[0] === pb[0] && pa[1] === pb[1]) {
+    buildAnchor = null;
+    return removeStructureAt(pa[0], pa[1]) ? 'removed' : 'short';
   }
+
+  var shape = buildShape === 'belt' ? snapBelt(a[0], a[1], b[0], b[1])
+    : buildShape === 'wallLine' ? snapWallLine(a[0], a[1], b[0], b[1])
+      : snapWallRect(a[0], a[1], b[0], b[1]);
+  buildAnchor = null;
+  var minCells = buildShape === 'belt' ? BELT_MIN : 2;
+  if (!shape || shape.cells.length < minCells) return 'short';
+
+  var fits = buildShape === 'belt' ? beltFits(shape) : wallFits(shape);
+  if (!fits) return 'room';
+
+  if (buildShape === 'belt') placeBelt(shape); else placeWall(shape);
+  return 'built';
 }
 
-/* ---------- хід стрічки ---------- */
-
-/* Вантаж їде поверх настилу. Йдемо проти руху, щоб клітинка не проскочила
-   всю стрічку за один тік. */
 function tickBelts() {
   for (var b = 0; b < belts.length; b++) {
     var belt = belts[b];
@@ -198,7 +192,7 @@ function tickBelts() {
 
     for (; k !== end; k += st) {
       var c = cs[k];
-      if (!beltCellAt(c.x, c.y)) continue;        // настил зняли або переплавили
+      if (!beltCellAt(c.x, c.y)) continue;
       var sx = c.x, sy = c.y - 1;
       if (!inBounds(sx, sy)) continue;
       var i = sy * W + sx;
@@ -220,6 +214,5 @@ function tickBelts() {
 }
 
 function tickBuild(frame) {
-  if (blueprints.length) tickBlueprints();
   if (belts.length && frame % BELT_TICK === 0) tickBelts();
 }
