@@ -89,24 +89,31 @@
   <div class="tipbar"><span id="tip"></span></div>
 
   <!-- Панель будівництва -->
-  <nav class="buildbar" id="buildbar">
-    <button class="slot active" data-tool="drill">
-      <span class="srow"><kbd>1</kbd><span class="sname" data-i18n="tool.drill">Бур</span></span>
-      <span class="scost" data-i18n="tool.drill.cost">твердість породи</span>
-    </button>
-    <button class="slot" data-tool="hand">
-      <span class="srow"><kbd>2</kbd><span class="sname" data-i18n="tool.hand">Рука</span></span>
-      <span class="scost" data-i18n="tool.hand.cost">носити пухке</span>
-    </button>
-    <button class="slot" data-tool="ignite">
-      <span class="srow"><kbd>3</kbd><span class="sname" data-i18n="tool.ignite">Запал</span></span>
-      <span class="scost" data-i18n="tool.ignite.cost">підпалити</span>
-    </button>
-    <button class="slot locked" id="slot-belt" data-tool="belt">
-      <span class="srow"><kbd>4</kbd><span class="sname" data-i18n="tool.belt">Будівник</span></span>
-      <span class="scost" data-i18n="tool.belt.cost">без ресурсів</span>
-    </button>
-  </nav>
+  <div class="buildwrap">
+    <nav class="shapebar hidden" id="shapebar">
+      <button class="shape active" data-shape="belt" data-i18n="shape.belt">стрічка</button>
+      <button class="shape" data-shape="wallLine" data-i18n="shape.wallLine">стіна · лінія</button>
+      <button class="shape" data-shape="wallRect" data-i18n="shape.wallRect">стіна · квадрат</button>
+    </nav>
+    <nav class="buildbar" id="buildbar">
+      <button class="slot active" data-tool="drill">
+        <span class="srow"><kbd>1</kbd><span class="sname" data-i18n="tool.drill">Бур</span></span>
+        <span class="scost" data-i18n="tool.drill.cost">твердість породи</span>
+      </button>
+      <button class="slot" data-tool="hand">
+        <span class="srow"><kbd>2</kbd><span class="sname" data-i18n="tool.hand">Рука</span></span>
+        <span class="scost" data-i18n="tool.hand.cost">носити пухке</span>
+      </button>
+      <button class="slot" data-tool="ignite">
+        <span class="srow"><kbd>3</kbd><span class="sname" data-i18n="tool.ignite">Запал</span></span>
+        <span class="scost" data-i18n="tool.ignite.cost">підпалити</span>
+      </button>
+      <button class="slot locked" id="slot-belt" data-tool="belt">
+        <span class="srow"><kbd>4</kbd><span class="sname" data-i18n="tool.belt">Будівник</span></span>
+        <span class="scost" data-i18n="tool.belt.cost">без ресурсів</span>
+      </button>
+    </nav>
+  </div>
 
   <!-- Термінал збирання модуля -->
   <div class="screen boot hidden" id="boot">

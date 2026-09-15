@@ -33,7 +33,7 @@
   var el = {};
   function grab() {
     ['pw-fill', 'pw-use', 'pw-cap', 'net-stat',
-      'goal-list', 'launch', 'tip', 'intro', 'help', 'settings', 'win', 'buildbar', 'grid-panel',
+      'goal-list', 'launch', 'tip', 'intro', 'help', 'settings', 'win', 'buildbar', 'shapebar', 'grid-panel',
       'probe-chip', 'probe-mat', 'probe-t', 'probe-mark', 'heat-legend',
       'hp-num', 'hp-fill', 'fuel-num', 'fuel-fill', 'vital-hp', 'vital-fuel',
       'w-time', 'w-parts', 'w-mach', 'w-lost', 'slot-belt'].forEach(function (id) {
@@ -186,7 +186,16 @@
     for (var i = 0; i < slots.length; i++) {
       slots[i].classList.toggle('active', slots[i].dataset.tool === name);
     }
+    el['shapebar'].classList.toggle('hidden', name !== 'belt');
+    if (name === 'belt') refreshShapeButtons();
     beep(name === 'drill' ? 420 : 620, 0.05, 'square', 0.025);
+  }
+
+  function refreshShapeButtons() {
+    var btns = el['shapebar'].children;
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('active', btns[i].dataset.shape === buildShape);
+    }
   }
 
   /* Захват бере лише той матеріал, на який наведено: у перемішаному
@@ -362,6 +371,7 @@
       }
       if (c === 'KeyR' && tool === 'belt') {
         cycleBuildShape();
+        refreshShapeButtons();
         say(tf('msg.buildShape', { shape: t('shape.' + buildShape) }));
         beep(500, 0.05, 'square', 0.02);
       }
@@ -419,6 +429,17 @@
     var slots = el['buildbar'].children;
     for (var i = 0; i < slots.length; i++) {
       (function (b) { b.addEventListener('click', function () { selectTool(b.dataset.tool); }); })(slots[i]);
+    }
+
+    var shapes = el['shapebar'].children;
+    for (var s = 0; s < shapes.length; s++) {
+      (function (b) {
+        b.addEventListener('click', function () {
+          setBuildShape(b.dataset.shape);
+          refreshShapeButtons();
+          beep(500, 0.05, 'square', 0.02);
+        });
+      })(shapes[s]);
     }
 
     document.getElementById('btn-help').addEventListener('click', function () {

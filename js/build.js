@@ -30,6 +30,11 @@ function cycleBuildShape() {
   return buildShape;
 }
 
+function setBuildShape(shape) {
+  if (BUILD_SHAPES.indexOf(shape) < 0) return;
+  buildShape = shape;
+}
+
 function startBuildDrag(wx, wy) {
   buildAnchor = { x: player.x, y: player.y };
   buildFrom = [wx, wy];
@@ -160,11 +165,14 @@ function removeStructureAt(x, y) {
   return dismantleWallAt(x, y);
 }
 
+var CLICK_TOL = 0.85;
+
 function finishBuild(a, b) {
-  var pa = clampBuildPoint(a[0], a[1]), pb = clampBuildPoint(b[0], b[1]);
-  if (pa[0] === pb[0] && pa[1] === pb[1]) {
+  var ddx = b[0] - a[0], ddy = b[1] - a[1];
+  if (ddx * ddx + ddy * ddy < CLICK_TOL * CLICK_TOL) {
+    var p = clampBuildPoint(a[0], a[1]);
     buildAnchor = null;
-    return removeStructureAt(pa[0], pa[1]) ? 'removed' : 'short';
+    return removeStructureAt(p[0], p[1]) ? 'removed' : 'short';
   }
 
   var shape = buildShape === 'belt' ? snapBelt(a[0], a[1], b[0], b[1])

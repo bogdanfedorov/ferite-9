@@ -422,9 +422,32 @@ body{
 
 /* ---------- панель будівництва ---------- */
 
-.buildbar{
+.buildwrap{
   grid-column:1/-1;grid-row:3;
   justify-self:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+.shapebar{
+  pointer-events:auto;
+  display:flex;
+  gap:1px;
+}
+.shape{
+  appearance:none;
+  border:1px solid var(--edge);
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));
+  color:var(--muted);
+  font-family:var(--f-mono);
+  font-size:11px;
+  padding:5px 12px;
+  cursor:pointer;
+}
+.shape:hover{background:var(--panel-2);color:var(--text)}
+.shape.active{background:linear-gradient(180deg,#26211a,#1b1710);color:var(--sand);border-color:#5a4526}
+.buildbar{
   pointer-events:auto;
   display:flex;
   gap:1px;
