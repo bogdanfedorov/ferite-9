@@ -430,7 +430,7 @@ body{
   align-items:center;
   gap:6px;
 }
-.shapebar{
+.pickbar{
   pointer-events:auto;
   display:flex;
   gap:1px;

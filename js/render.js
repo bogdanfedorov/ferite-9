@@ -384,6 +384,15 @@ function drawFlowArrow(cx, cy, dx, dy, color) {
   ctx.fill();
 }
 
+var ARROW_EVERY = 3;
+
+function drawBeltArrows(cells, dx, dy, color) {
+  for (var k = 1; k < cells.length; k += ARROW_EVERY) {
+    var c = cells[k];
+    drawFlowArrow(c.x + 0.5, c.y + BELT_THICK / 2, dx, dy, color);
+  }
+}
+
 function drawBelts() {
   var z = view.zoom;
   if (z < 2) return;
@@ -396,44 +405,38 @@ function drawBelts() {
       var px = sx(c.x), py = sy(c.y);
       if (px + z < 0 || py + z < 0 || px > cv.width || py > cv.height) continue;
       ctx.fillStyle = uiRgba('sandLit', 0.55);
-      ctx.fillRect(px, py, z, 3);
-      drawFlowArrow(c.x + 0.5, c.y + 0.5, belt.dx, belt.dy, uiRgba('sand', 0.9));
+      ctx.fillRect(px, py, z, Math.max(1, z * 0.3));
     }
+    drawBeltArrows(cs, belt.dx, belt.dy, uiRgba('sand', 0.9));
   }
 }
 
-function drawBeltPreview(from, to) {
-  if (!from || !to) return;
-  var shape = snapBelt(from[0], from[1], to[0], to[1]);
-  if (!shape) return;
-  var ok = beltFits(shape) && shape.cells.length >= BELT_MIN;
-  var z = view.zoom;
-  ctx.fillStyle = ok ? uiRgba('sand', 0.20) : uiRgba('dangerSoft', 0.22);
-  ctx.strokeStyle = ok ? uiRgba('sand', 0.8) : uiRgba('dangerSoft', 0.8);
-  ctx.lineWidth = 1;
-  for (var k = 0; k < shape.cells.length; k++) {
-    var c = shape.cells[k];
-    ctx.fillRect(sx(c.x), sy(c.y), z, z);
-    drawFlowArrow(c.x + 0.5, c.y + 0.5, shape.dx, shape.dy,
-      ok ? uiRgba('sand', 0.9) : uiRgba('dangerSoft', 0.9));
-  }
-}
+function drawBuildPreview() {
+  if (!buildFrom || !buildTo) return;
+  var cells = buildCells(buildFrom, buildTo);
+  if (!cells.length) return;
 
-function drawWallPreview(from, to, shape) {
-  if (!from || !to) return;
-  var s = shape === 'wallRect' ? snapWallRect(from[0], from[1], to[0], to[1])
-    : snapWallLine(from[0], from[1], to[0], to[1]);
-  if (!s) return;
-  var ok = wallFits(s);
+  var erasing = buildBody === 'erase';
+  var ok = erasing ? true
+    : buildBody === 'belt' ? (cells.length >= BELT_MIN && beltFits(cells))
+      : wallFits(cells);
+
+  var tint = erasing ? 'rust' : (ok ? 'sand' : 'dangerSoft');
   var z = view.zoom;
-  ctx.fillStyle = ok ? uiRgba('sand', 0.22) : uiRgba('dangerSoft', 0.22);
-  ctx.strokeStyle = ok ? uiRgba('sand', 0.85) : uiRgba('dangerSoft', 0.85);
+  ctx.fillStyle = uiRgba(tint, 0.22);
+  ctx.strokeStyle = uiRgba(tint, 0.85);
   ctx.lineWidth = 1;
-  for (var k = 0; k < s.cells.length; k++) {
-    var c = s.cells[k];
+
+  var painted = bodyCells(cells);
+  for (var k = 0; k < painted.length; k++) {
+    var c = painted[k];
     ctx.fillRect(sx(c.x), sy(c.y), z, z);
     ctx.strokeRect(sx(c.x) + 0.5, sy(c.y) + 0.5, z - 1, z - 1);
   }
+
+  if (buildBody !== 'belt' || cells.length < 2) return;
+  var first = cells[0], last = cells[cells.length - 1];
+  drawBeltArrows(cells, stepOf(last.x - first.x), stepOf(last.y - first.y), uiRgba(tint, 0.9));
 }
 
 /* Трос захвата. */
@@ -622,10 +625,7 @@ function render(tool, mouseWorld, affordable) {
   drawObjects();
   drawHook();
   drawPlayer();
-  if (tool === 'belt') {
-    if (buildShape === 'belt') drawBeltPreview(buildFrom, buildTo);
-    else drawWallPreview(buildFrom, buildTo, buildShape);
-  }
+  if (tool === 'belt') drawBuildPreview();
   if (tool === 'hand') drawGrabHint(mouseWorld[0], mouseWorld[1]);
   if (sandbox.on) drawRoomBins(mouseWorld);
   if (!roomButtonAt(mouseWorld[0], mouseWorld[1])) {

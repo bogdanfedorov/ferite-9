@@ -90,10 +90,16 @@
 
   <!-- Панель будівництва -->
   <div class="buildwrap">
-    <nav class="shapebar hidden" id="shapebar">
-      <button class="shape active" data-shape="belt" data-i18n="shape.belt">стрічка</button>
-      <button class="shape" data-shape="wallLine" data-i18n="shape.wallLine">стіна · лінія</button>
-      <button class="shape" data-shape="wallRect" data-i18n="shape.wallRect">стіна · квадрат</button>
+    <nav class="pickbar hidden" id="bodybar">
+      <button class="shape active" data-body="belt" data-i18n="body.belt">стрічка</button>
+      <button class="shape" data-body="wall" data-i18n="body.wall">стіна</button>
+      <button class="shape" data-body="erase" data-i18n="body.erase">знести</button>
+    </nav>
+    <nav class="pickbar hidden" id="shapebar">
+      <button class="shape" data-shape="point" data-i18n="shape.point">піксель</button>
+      <button class="shape active" data-shape="line" data-i18n="shape.line">лінія</button>
+      <button class="shape" data-shape="angled" data-i18n="shape.angled">під кутом</button>
+      <button class="shape" data-shape="rect" data-i18n="shape.rect">прямокутник</button>
     </nav>
     <nav class="buildbar" id="buildbar">
       <button class="slot active" data-tool="drill">

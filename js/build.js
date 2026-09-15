@@ -1,12 +1,21 @@
+var SHAPE_MAX = 48;
 var BELT_MIN = 3;
-var BELT_MAX = 48;
-var WALL_MAX = 48;
 var BELT_TICK = 3;
+var BELT_THICK = 3;
+var WALL_THICK = 1;
+
 var BELT_DECK = matId('belt');
 var WALL_ID = matId('wall');
 
-var BUILD_SHAPES = ['belt', 'wallLine', 'wallRect'];
-var buildShape = 'belt';
+var BODY_SHAPES = {
+  belt: ['line', 'angled'],
+  wall: ['point', 'line', 'angled', 'rect'],
+  erase: ['point', 'line', 'rect']
+};
+
+var buildBody = 'belt';
+var buildShape = 'line';
+var buildEven = false;
 
 var belts = [];
 var beltUnlocked = false;
@@ -18,21 +27,29 @@ var buildAnchor = null;
 function resetBuild() {
   belts.length = 0;
   beltUnlocked = false;
-  buildFrom = null;
-  buildTo = null;
-  buildAnchor = null;
-  buildShape = 'belt';
+  buildEven = false;
+  buildBody = 'belt';
+  buildShape = 'line';
+  endBuildDrag();
 }
 
-function cycleBuildShape() {
-  var i = BUILD_SHAPES.indexOf(buildShape);
-  buildShape = BUILD_SHAPES[(i + 1) % BUILD_SHAPES.length];
-  return buildShape;
+function shapesOfBody() { return BODY_SHAPES[buildBody]; }
+
+function setBuildBody(body) {
+  if (!BODY_SHAPES[body]) return;
+  buildBody = body;
+  if (shapesOfBody().indexOf(buildShape) < 0) buildShape = shapesOfBody()[0];
 }
 
 function setBuildShape(shape) {
-  if (BUILD_SHAPES.indexOf(shape) < 0) return;
+  if (shapesOfBody().indexOf(shape) < 0) return;
   buildShape = shape;
+}
+
+function cycleBuildShape() {
+  var allowed = shapesOfBody();
+  buildShape = allowed[(allowed.indexOf(buildShape) + 1) % allowed.length];
+  return buildShape;
 }
 
 function startBuildDrag(wx, wy) {
@@ -41,151 +58,191 @@ function startBuildDrag(wx, wy) {
   buildTo = buildFrom;
 }
 
-function clampBuildPoint(x, y) {
-  var p = clampToReach(x, y, buildAnchor);
-  return [Math.round(p[0]), Math.round(p[1])];
+function endBuildDrag() {
+  buildFrom = null;
+  buildTo = null;
+  buildAnchor = null;
 }
 
-function snapBelt(ax, ay, bx, by) {
-  var pa = clampBuildPoint(ax, ay), pb = clampBuildPoint(bx, by);
-  ax = pa[0]; ay = pa[1]; bx = pb[0]; by = pb[1];
-  var ddx = bx - ax, ddy = by - ay;
-  var len = Math.abs(ddx);
-  if (Math.abs(ddy) > len) len = Math.abs(ddy);
-  if (len < 1) return null;
-  if (len > BELT_MAX) len = BELT_MAX;
-
-  var sx = ddx === 0 ? 0 : (ddx > 0 ? 1 : -1);
-  var sy = 0;
-  if (Math.abs(ddy) > Math.abs(ddx) * 0.45) sy = ddy > 0 ? 1 : -1;
-  if (sx === 0) return null;
-
-  var cells = [];
-  for (var k = 0; k <= len; k++) cells.push({ x: ax + sx * k, y: ay + sy * k });
-  return { cells: cells, dx: sx, dy: sy };
+function stepOf(n) {
+  if (n === 0) return 0;
+  return n > 0 ? 1 : -1;
 }
 
-function snapWallLine(ax, ay, bx, by) {
-  var pa = clampBuildPoint(ax, ay), pb = clampBuildPoint(bx, by);
-  var x0 = pa[0], y0 = pa[1], x1 = pb[0], y1 = pb[1];
-  var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
-  var sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
-  var err = dx + dy, x = x0, y = y0;
+function gridPoint(wx, wy) {
+  var p = clampToReach(wx, wy, buildAnchor);
+  return { x: Math.round(p[0]), y: Math.round(p[1]) };
+}
+
+function cappedPoint(from, to) {
+  var dx = to.x - from.x, dy = to.y - from.y;
+  var reach = Math.max(Math.abs(dx), Math.abs(dy));
+  if (reach <= SHAPE_MAX) return to;
+  var scale = SHAPE_MAX / reach;
+  return { x: from.x + Math.round(dx * scale), y: from.y + Math.round(dy * scale) };
+}
+
+function levelPoint(from, to) {
+  if (Math.abs(to.x - from.x) >= Math.abs(to.y - from.y)) return { x: to.x, y: from.y };
+  return { x: from.x, y: to.y };
+}
+
+function evenPoint(from, to) {
+  var side = Math.min(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
+  return {
+    x: from.x + stepOf(to.x - from.x) * side,
+    y: from.y + stepOf(to.y - from.y) * side
+  };
+}
+
+function lineBetween(from, to) {
+  var dx = to.x - from.x, dy = to.y - from.y;
+  var steps = Math.max(Math.abs(dx), Math.abs(dy));
   var cells = [];
-  while (cells.length <= WALL_MAX) {
-    cells.push({ x: x, y: y });
-    if (x === x1 && y === y1) break;
-    var e2 = 2 * err;
-    if (e2 >= dy) { err += dy; x += sx; }
-    if (e2 <= dx) { err += dx; y += sy; }
+  for (var k = 0; k <= steps; k++) {
+    var along = steps === 0 ? 0 : k / steps;
+    cells.push({ x: from.x + Math.round(dx * along), y: from.y + Math.round(dy * along) });
   }
-  return { cells: cells };
+  return cells;
 }
 
-function snapWallRect(ax, ay, bx, by) {
-  var pa = clampBuildPoint(ax, ay), pb = clampBuildPoint(bx, by);
-  var x0 = Math.min(pa[0], pb[0]), x1 = Math.max(pa[0], pb[0]);
-  var y0 = Math.min(pa[1], pb[1]), y1 = Math.max(pa[1], pb[1]);
-  if (x1 - x0 > WALL_MAX) x1 = x0 + WALL_MAX;
-  if (y1 - y0 > WALL_MAX) y1 = y0 + WALL_MAX;
+function rectBetween(from, to) {
+  var x0 = Math.min(from.x, to.x), x1 = Math.max(from.x, to.x);
+  var y0 = Math.min(from.y, to.y), y1 = Math.max(from.y, to.y);
   var cells = [];
   for (var y = y0; y <= y1; y++) {
     for (var x = x0; x <= x1; x++) cells.push({ x: x, y: y });
   }
-  return { cells: cells };
+  return cells;
+}
+
+function shapeCells(shape, from, to, even) {
+  if (shape === 'point') return [{ x: to.x, y: to.y }];
+  if (shape === 'line') return lineBetween(from, levelPoint(from, to));
+  if (shape === 'angled') return lineBetween(from, even ? evenPoint(from, to) : to);
+  return rectBetween(from, even ? evenPoint(from, to) : to);
+}
+
+function beltAim(from, to) {
+  if (buildShape === 'angled') return evenPoint(from, to);
+  return { x: to.x, y: from.y };
+}
+
+function buildCells(fromWorld, toWorld) {
+  var from = gridPoint(fromWorld[0], fromWorld[1]);
+  var to = cappedPoint(from, gridPoint(toWorld[0], toWorld[1]));
+  if (buildBody === 'belt') return lineBetween(from, beltAim(from, to));
+  return shapeCells(buildShape, from, to, buildEven);
+}
+
+function thicken(cells, thickness) {
+  if (thickness === 1) return cells;
+  var out = [];
+  for (var k = 0; k < cells.length; k++) {
+    for (var down = 0; down < thickness; down++) {
+      out.push({ x: cells[k].x, y: cells[k].y + down });
+    }
+  }
+  return out;
+}
+
+function bodyCells(cells) {
+  return thicken(cells, buildBody === 'belt' ? BELT_THICK : WALL_THICK);
 }
 
 function beltCellAt(x, y) {
   return inBounds(x, y) && GRIPS[mat[y * W + x]] === 1;
 }
 
-function beltFits(shape) {
-  for (var k = 0; k < shape.cells.length; k++) {
-    var c = shape.cells[k];
-    if (!inBounds(c.x, c.y) || !inBounds(c.x, c.y - 1)) return false;
-    if (!OPEN[mat[c.y * W + c.x]]) return false;
-    if (RIGID[mat[(c.y - 1) * W + c.x]]) return false;
+function beltFits(surface) {
+  var body = thicken(surface, BELT_THICK);
+  var k, c;
+  for (k = 0; k < body.length; k++) {
+    c = body[k];
+    if (!inBounds(c.x, c.y) || !OPEN[mat[c.y * W + c.x]]) return false;
+  }
+  for (k = 0; k < surface.length; k++) {
+    c = surface[k];
+    if (!inBounds(c.x, c.y - 1) || RIGID[mat[(c.y - 1) * W + c.x]]) return false;
   }
   return true;
 }
 
-function wallFits(shape) {
-  for (var k = 0; k < shape.cells.length; k++) {
-    var c = shape.cells[k];
+function wallFits(cells) {
+  for (var k = 0; k < cells.length; k++) {
+    var c = cells[k];
     if (!inBounds(c.x, c.y) || FIXED[mat[c.y * W + c.x]]) return false;
   }
   return true;
 }
 
-function placeBelt(shape) {
-  var belt = { cells: shape.cells, dx: shape.dx, dy: shape.dy };
-  for (var k = 0; k < shape.cells.length; k++) {
-    var c = shape.cells[k];
-    setCell(c.x, c.y, BELT_DECK);
-  }
+function placeBelt(surface) {
+  var body = thicken(surface, BELT_THICK);
+  for (var k = 0; k < body.length; k++) setCell(body[k].x, body[k].y, BELT_DECK);
+  var first = surface[0], last = surface[surface.length - 1];
+  var belt = { cells: surface, dx: stepOf(last.x - first.x), dy: stepOf(last.y - first.y) };
   belts.push(belt);
   return belt;
 }
 
-function placeWall(shape) {
-  for (var k = 0; k < shape.cells.length; k++) {
-    var c = shape.cells[k];
-    setCell(c.x, c.y, WALL_ID);
-  }
+function placeWall(cells) {
+  for (var k = 0; k < cells.length; k++) setCell(cells[k].x, cells[k].y, WALL_ID);
 }
 
-function dismantleBelt(belt) {
+function beltAt(x, y) {
+  for (var b = 0; b < belts.length; b++) {
+    var cs = belts[b].cells;
+    for (var k = 0; k < cs.length; k++) {
+      if (cs[k].x === x && y >= cs[k].y && y < cs[k].y + BELT_THICK) return belts[b];
+    }
+  }
+  return null;
+}
+
+function removeBelt(belt) {
   var idx = belts.indexOf(belt);
   if (idx < 0) return false;
   belts.splice(idx, 1);
-  for (var k = 0; k < belt.cells.length; k++) {
-    var c = belt.cells[k];
+  var body = thicken(belt.cells, BELT_THICK);
+  for (var k = 0; k < body.length; k++) {
+    var c = body[k];
     if (beltCellAt(c.x, c.y)) setCell(c.x, c.y, VOID_ID);
   }
   return true;
 }
 
-function dismantleWallAt(x, y) {
+function removeWallCell(x, y) {
   if (!inBounds(x, y) || mat[y * W + x] !== WALL_ID) return false;
   setCell(x, y, VOID_ID);
   return true;
 }
 
-function beltUnder(x, y) {
-  for (var b = 0; b < belts.length; b++) {
-    var cs = belts[b].cells;
-    for (var k = 0; k < cs.length; k++) if (cs[k].x === x && cs[k].y === y) return belts[b];
+function eraseCells(cells) {
+  var gone = 0;
+  for (var k = 0; k < cells.length; k++) {
+    var c = cells[k];
+    var belt = beltAt(c.x, c.y);
+    if (belt) { removeBelt(belt); gone++; continue; }
+    if (removeWallCell(c.x, c.y)) gone++;
   }
-  return null;
+  return gone;
 }
 
-function removeStructureAt(x, y) {
-  var built = beltUnder(x, y);
-  if (built) { dismantleBelt(built); return true; }
-  return dismantleWallAt(x, y);
-}
-
-var CLICK_TOL = 0.85;
-
-function finishBuild(a, b) {
-  var ddx = b[0] - a[0], ddy = b[1] - a[1];
-  if (ddx * ddx + ddy * ddy < CLICK_TOL * CLICK_TOL) {
-    var p = clampBuildPoint(a[0], a[1]);
-    buildAnchor = null;
-    return removeStructureAt(p[0], p[1]) ? 'removed' : 'short';
-  }
-
-  var shape = buildShape === 'belt' ? snapBelt(a[0], a[1], b[0], b[1])
-    : buildShape === 'wallLine' ? snapWallLine(a[0], a[1], b[0], b[1])
-      : snapWallRect(a[0], a[1], b[0], b[1]);
+function finishBuild(fromWorld, toWorld) {
+  var cells = buildCells(fromWorld, toWorld);
   buildAnchor = null;
-  var minCells = buildShape === 'belt' ? BELT_MIN : 2;
-  if (!shape || shape.cells.length < minCells) return 'short';
 
-  var fits = buildShape === 'belt' ? beltFits(shape) : wallFits(shape);
-  if (!fits) return 'room';
+  if (buildBody === 'erase') return eraseCells(cells) ? 'removed' : 'nothing';
 
-  if (buildShape === 'belt') placeBelt(shape); else placeWall(shape);
+  if (buildBody === 'belt') {
+    if (cells.length < BELT_MIN) return 'short';
+    if (!beltFits(cells)) return 'room';
+    placeBelt(cells);
+    return 'built';
+  }
+
+  if (!wallFits(cells)) return 'room';
+  placeWall(cells);
   return 'built';
 }
 

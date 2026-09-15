@@ -1,7 +1,7 @@
 /* Цикл гри, керування, HUD. */
 
 (function () {
-  var keys = { up: false, down: false, left: false, right: false };
+  var keys = { up: false, down: false, left: false, right: false, shift: false };
   var mouse = {
     x: 0, y: 0, left: false, right: false,
     pressed: false, clickReq: false
@@ -33,7 +33,7 @@
   var el = {};
   function grab() {
     ['pw-fill', 'pw-use', 'pw-cap', 'net-stat',
-      'goal-list', 'launch', 'tip', 'intro', 'help', 'settings', 'win', 'buildbar', 'shapebar', 'grid-panel',
+      'goal-list', 'launch', 'tip', 'intro', 'help', 'settings', 'win', 'buildbar', 'bodybar', 'shapebar', 'grid-panel',
       'probe-chip', 'probe-mat', 'probe-t', 'probe-mark', 'heat-legend',
       'hp-num', 'hp-fill', 'fuel-num', 'fuel-fill', 'vital-hp', 'vital-fuel',
       'w-time', 'w-parts', 'w-mach', 'w-lost', 'slot-belt'].forEach(function (id) {
@@ -171,7 +171,7 @@
   }
 
   function tipFor(tool) {
-    if (tool === 'belt') return t('tip.belt') + ' · ' + t('shape.' + buildShape) + ' (R)';
+    if (tool === 'belt') return t('tip.belt');
     return t('tip.' + tool);
   }
 
@@ -181,20 +181,28 @@
   function selectTool(name) {
     if (name === 'belt' && !beltUnlocked) { say(t('msg.beltLocked')); return; }
     tool = name;
-    buildFrom = null; buildTo = null;
+    endBuildDrag();
     var slots = el['buildbar'].children;
     for (var i = 0; i < slots.length; i++) {
       slots[i].classList.toggle('active', slots[i].dataset.tool === name);
     }
+    el['bodybar'].classList.toggle('hidden', name !== 'belt');
     el['shapebar'].classList.toggle('hidden', name !== 'belt');
-    if (name === 'belt') refreshShapeButtons();
+    if (name === 'belt') refreshBuildBars();
     beep(name === 'drill' ? 420 : 620, 0.05, 'square', 0.025);
   }
 
-  function refreshShapeButtons() {
-    var btns = el['shapebar'].children;
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].classList.toggle('active', btns[i].dataset.shape === buildShape);
+  function refreshBuildBars() {
+    var bodies = el['bodybar'].children;
+    for (var i = 0; i < bodies.length; i++) {
+      bodies[i].classList.toggle('active', bodies[i].dataset.body === buildBody);
+    }
+    var allowed = shapesOfBody();
+    var shapes = el['shapebar'].children;
+    for (var k = 0; k < shapes.length; k++) {
+      var name = shapes[k].dataset.shape;
+      shapes[k].classList.toggle('hidden', allowed.indexOf(name) < 0);
+      shapes[k].classList.toggle('active', name === buildShape);
     }
   }
 
@@ -214,9 +222,10 @@
 
   function reportBuild(outcome) {
     if (outcome === 'removed') { say(t('msg.structRemoved')); beep(220, 0.08, 'square', 0.025); return; }
+    if (outcome === 'nothing') { say(t('msg.nothingToRemove')); return; }
     if (outcome === 'short') { say(t('msg.beltShort')); return; }
     if (outcome === 'room') { say(t('msg.beltRoom')); beep(150, 0.12, 'sawtooth', 0.03); return; }
-    say(t(buildShape === 'belt' ? 'msg.beltDone' : 'msg.wallDone'));
+    say(t(buildBody === 'belt' ? 'msg.beltDone' : 'msg.wallDone'));
     beep(560, 0.07, 'triangle', 0.03);
   }
 
@@ -274,11 +283,12 @@
       }
       mouse.pressed = false;
     } else if (tool === 'belt') {
+      buildEven = keys.shift;
       if (mouse.left && mouse.pressed) startBuildDrag(wpt[0], wpt[1]);
       else if (mouse.left && buildFrom) buildTo = wpt;
       else if (!mouse.left && buildFrom) {
         reportBuild(finishBuild(buildFrom, buildTo));
-        buildFrom = null; buildTo = null;
+        endBuildDrag();
       }
       mouse.pressed = false;
     } else if (mouse.left && tool === 'hand') {
@@ -337,6 +347,7 @@
 
     window.addEventListener('keydown', function (e) {
       var c = e.code;
+      keys.shift = e.shiftKey;
       if (boot.active) {
         // поки триває збирання, клавіші належать терміналу
         if (c === 'Space' || c === 'Enter') e.preventDefault();
@@ -371,7 +382,7 @@
       }
       if (c === 'KeyR' && tool === 'belt') {
         cycleBuildShape();
-        refreshShapeButtons();
+        refreshBuildBars();
         say(tf('msg.buildShape', { shape: t('shape.' + buildShape) }));
         beep(500, 0.05, 'square', 0.02);
       }
@@ -387,6 +398,7 @@
     window.addEventListener('keyup', function (e) {
       var c = e.code;
       var act = keyAction(c);
+      keys.shift = e.shiftKey;
       if (act === 'up') keys.up = false;
       if (act === 'down') keys.down = false;
       if (act === 'left') keys.left = false;
@@ -398,6 +410,7 @@
       mouse.x = e.clientX - r.left;
       mouse.y = e.clientY - r.top;
       mouse.over = true;
+      keys.shift = e.shiftKey;
     }
 
     canvas.addEventListener('mousemove', trackMouse);
@@ -431,12 +444,24 @@
       (function (b) { b.addEventListener('click', function () { selectTool(b.dataset.tool); }); })(slots[i]);
     }
 
+    var bodies = el['bodybar'].children;
+    for (var d = 0; d < bodies.length; d++) {
+      (function (b) {
+        b.addEventListener('click', function () {
+          setBuildBody(b.dataset.body);
+          refreshBuildBars();
+          say(tf('msg.buildBody', { body: t('body.' + buildBody) }));
+          beep(520, 0.05, 'square', 0.02);
+        });
+      })(bodies[d]);
+    }
+
     var shapes = el['shapebar'].children;
     for (var s = 0; s < shapes.length; s++) {
       (function (b) {
         b.addEventListener('click', function () {
           setBuildShape(b.dataset.shape);
-          refreshShapeButtons();
+          refreshBuildBars();
           beep(500, 0.05, 'square', 0.02);
         });
       })(shapes[s]);
