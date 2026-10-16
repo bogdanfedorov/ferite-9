@@ -22,6 +22,9 @@ const FILES = [
   'js/sandbox.js',
   'js/player.js',
   'js/render.js',
+  'js/sound.js',
+  'js/hud.js',
+  'js/input.js',
   'js/game.js'
 ];
 

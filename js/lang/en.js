@@ -68,7 +68,7 @@ regLang('en', {
 
   'msg.tooFar': 'Out of reach — fly closer',
   'msg.nothingToGrab': 'Bare hands will not take packed rock — break it with the drill first',
-  'msg.beltLocked': 'The builder is not unlocked yet — close the quota first',
+  'msg.builderLocked': 'The builder is not unlocked yet — close the quota first',
   'msg.beltShort': 'That is a stub, not a line — drag further',
   'msg.beltRoom': 'No room here — the spot is taken',
   'msg.beltDone': 'Belt placed — the load rides on its own now',
@@ -146,6 +146,7 @@ regLang('en', {
   'set.key.slot2': 'Slot 2 · hand',
   'set.key.slot3': 'Slot 3 · igniter',
   'set.key.slot4': 'Slot 4 · builder',
+  'set.key.shape': 'Shape · builder',
   'set.key.heat': 'Heat map',
   'set.key.mute': 'Sound',
   'set.key.help': 'Help',

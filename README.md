@@ -197,7 +197,7 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
 - Mission Control lines are plain arrays in `js/lore.js`.
 - Key bindings are a plain list in `KEY_BINDS` (`js/settings.js`): an id, the
   default codes, and a `set.key.<id>` dictionary entry. Adding an entry puts a
-  row in the settings panel on its own; `keyAction(e.code)` is what `js/game.js`
+  row in the settings panel on its own; `keyAction(e.code)` is what `js/input.js`
   reads instead of comparing codes.
 
 ## Settings
@@ -240,7 +240,10 @@ the only place material colours reach `palR/palG/palB`.
 | `js/sandbox.js` | the test room: flat world, a bin per material, restocking |
 | `js/player.js` | driller physics, timed drilling, grapple |
 | `js/render.js` | world raster, heat map, glow, vector overlays |
-| `js/game.js` | loop, controls, HUD |
+| `js/sound.js` | `SOUNDS` table of named tones, `play(name)` |
+| `js/hud.js` | DOM cache, meters, goal panel, probe chip, tip line and `say` |
+| `js/input.js` | keyboard and mouse state, key actions, toolbar clicks |
+| `js/game.js` | `game` state, `TOOLS` table, milestones, step and frame loop, screens |
 | `main.go` · `Makefile` | Go launcher: game inside the exe, own window, no cgo |
 | `electron/main.js` | main process of the Electron build |
 | `tools/build-app.js` | concat, minify and obfuscate into `app/bundle.js` |

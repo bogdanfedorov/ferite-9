@@ -68,7 +68,7 @@ regLang('pl', {
 
   'msg.tooFar': 'Za daleko — podleć bliżej',
   'msg.nothingToGrab': 'Gołymi rękami skały nie weźmiesz — najpierw pokrusz ją wiertłem',
-  'msg.beltLocked': 'Budowniczy jeszcze niedostępny — najpierw zamknij limit',
+  'msg.builderLocked': 'Budowniczy jeszcze niedostępny — najpierw zamknij limit',
   'msg.beltShort': 'To nie linia, tylko kikut — prowadź dalej',
   'msg.beltRoom': 'Tu się nie da postawić — miejsce zajęte',
   'msg.beltDone': 'Taśma postawiona — ładunek jedzie już sam',
@@ -146,6 +146,7 @@ regLang('pl', {
   'set.key.slot2': 'Slot 2 · ręka',
   'set.key.slot3': 'Slot 3 · zapalnik',
   'set.key.slot4': 'Slot 4 · budowniczy',
+  'set.key.shape': 'Kształt · budowniczy',
   'set.key.heat': 'Mapa ciepła',
   'set.key.mute': 'Dźwięk',
   'set.key.help': 'Pomoc',
