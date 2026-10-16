@@ -488,11 +488,11 @@ function layerAt(wy, surf, sandD, panD) {
   return ROCK_ID;
 }
 
-function generateChunk(seed, cx, cy) {
+function generateChunk(seed, cx, cy, nearBlobs) {
   const S = CHUNK_SIZE;
   const chunk_mat = new Uint8Array(CHUNK_AREA).fill(VOID_ID);
   const chunk_shade = new Uint8Array(CHUNK_AREA);
-  const blobs = blobsNear(seed, cx, cy);
+  const blobs = nearBlobs || blobsNear(seed, cx, cy);
   const x0 = cx * S,
     y0 = cy * S;
   for (let x = 0; x < S; x++) {
@@ -511,13 +511,12 @@ function generateChunk(seed, cx, cy) {
   return { mat: chunk_mat, shade: chunk_shade };
 }
 
-function applyCaveFloor(seed, ch, cx, cy) {
+function applyCaveFloor(seed, ch, cx, cy, blobs) {
   const S = CHUNK_SIZE;
   const x0 = cx * S,
     y0 = cy * S;
   const floorTop = H - CAVE_FLOOR_MARGIN + 1;
   if (y0 + S <= floorTop) return;
-  const blobs = blobsNear(seed, cx, cy);
   for (let wy = Math.max(y0, floorTop); wy < Math.min(y0 + S, H); wy++) {
     for (let x = 0; x < S; x++) {
       const wx = x0 + x;
@@ -537,8 +536,9 @@ function applyBottomEdge(ch, cy) {
 }
 
 function buildChunk(seed, cx, cy) {
-  const ch = generateChunk(seed, cx, cy);
-  applyCaveFloor(seed, ch, cx, cy);
+  const blobs = blobsNear(seed, cx, cy);
+  const ch = generateChunk(seed, cx, cy, blobs);
+  applyCaveFloor(seed, ch, cx, cy, blobs);
   applyBottomEdge(ch, cy);
   ch.life = new Uint8Array(CHUNK_AREA);
   ch.temp = new Float32Array(CHUNK_AREA);

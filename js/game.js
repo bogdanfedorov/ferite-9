@@ -87,6 +87,9 @@ function clickRoomButton(bin) {
 }
 
 function respawn() {
+  followWindow(localX(player.spawnX), Infinity);
+  clearAirlock();
+  moveToSpawn();
   releaseObject();
   moduleDeath(player.deathCause, { drop: player.fallDrop, temp: player.lastTemp });
   play('death');
@@ -111,8 +114,8 @@ function checkMilestones() {
   }
 }
 
-function followWindow() {
-  const dc = windowShiftFor(player.x);
+function followWindow(lx, maxChunks) {
+  const dc = Math.max(-maxChunks, Math.min(maxChunks, windowShiftFor(lx)));
   if (!dc) return;
   const dx = dc * CHUNK_SIZE;
   shiftWindow(dc);
@@ -126,7 +129,7 @@ function followWindow() {
 function step() {
   const mouse = input.mouse;
   if (updatePlayer(input.keys) === 'respawn') respawn();
-  followWindow();
+  followWindow(player.x, 1);
   checkMilestones();
 
   const wpt = screenToWorld(mouse.x, mouse.y);
