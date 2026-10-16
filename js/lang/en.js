@@ -1,5 +1,4 @@
 regLang('en', {
-  /* ---------- interface ---------- */
   'ui.module': 'Unit',
   'ui.parcel': 'parcel',
   'ui.stock': 'Stock',
@@ -37,7 +36,6 @@ regLang('en', {
   'unit.cell': ['cell', 'cells'],
   'unit.module': ['unit', 'units'],
 
-  /* ---------- materials ---------- */
   'mat.empty': 'air',
   'mat.bedrock': 'bedrock',
   'mat.rock': 'stone',
@@ -59,7 +57,6 @@ regLang('en', {
   'mat.belt': 'belt',
   'mat.wall': 'wall',
 
-  /* ---------- tools ---------- */
   'tool.drill': 'Drill',
   'tool.drill.cost': 'by rock hardness',
   'tool.ignite': 'Igniter',
@@ -69,7 +66,6 @@ regLang('en', {
   'tool.build': 'Builder',
   'tool.build.cost': 'free',
 
-  /* ---------- tips and messages ---------- */
   'tip.drill': 'LMB — break rock: it spills loose right there · RMB — grapple',
   'tip.wall': 'LMB — lay stone · hold and drag to wall up a furnace',
   'tip.ignite': 'LMB on coal — set it alight · embers hold 1500 °C',
@@ -110,7 +106,6 @@ regLang('en', {
   'msg.soundOn': 'Sound on',
   'msg.soundOff': 'Sound off',
 
-  /* ---------- screens ---------- */
   'intro.kicker': 'Deep mine · shift 41',
   'intro.lede': 'You are research unit <b>sol_1.01</b>, the next parcel Mission Control dropped into this shaft. You have no stock: rock crumbles loose right where you break it, and everything travels in your hands. Hollow a furnace out of the rock, carry coal and ore into it, set it alight — and watch ferrite run out as molten iron. Every unit lost costs Control a new parcel, and costs you another round of remarks from orbit.',
   'intro.keyMove': 'move, the pack fires on up',
@@ -185,7 +180,6 @@ regLang('en', {
   'win.lost': 'Parcels written off',
   'win.cta': 'Stay in the shaft',
 
-  /* ---------- terminal ---------- */
   'term.title': 'Control "Sol" · assembly terminal',
   'term.hintInit': 'initialising…',
   'term.hintAnswer': 'ENTER — respond',
@@ -267,7 +261,6 @@ regLang('en', {
   'term.baselineOk': 'BASELINE CONFIRMED · {sol} cleared for descent',
   'term.baselineCut': 'TEST CUT SHORT · {sol} descends as is',
 
-  /* ---------- lore ---------- */
   'cause.lava': 'melted down',
   'cause.heat': 'overheated',
   'cause.fall': 'impact',

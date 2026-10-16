@@ -36,4 +36,5 @@ You answer with `ENTER` or a click; `ESC` skips.
 From the fourth death the test gets shorter, and after that the module starts
 slipping: on the 5th it adds "It was hot" to the correct answer, on the 9th
 "I've said this already. Nine times", and on the 15th Mission Control cuts the
-test short.
+test short. Each slip is tied to a line position in the call and response, not
+to a line count, so it still lands when the test is shortened.

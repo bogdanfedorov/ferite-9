@@ -1,6 +1,3 @@
-/* Лор і діалоги: ЦУП «Сол» на зв'язку з дослідницьким модулем.
-   Увесь текст живе в js/lang/*.js — тут лише логіка. */
-
 var SOL = {
   version: 1, parcel: 1, deaths: 0, causes: {}, history: [],
   lastCause: '', lastDrop: 0, lastTemp: 0, lastQuota: null
@@ -12,10 +9,6 @@ function solName() {
   return 'sol_' + SOL.version + '.' + (SOL.parcel < 10 ? '0' : '') + SOL.parcel;
 }
 
-/* ---------- термінал збирання ---------- */
-
-/* Відхилення від базової лінії: модуль відповідає правильно, а тоді додає зайве.
-   `pos` — номер переклички, тож працює і в скороченому тесті. */
 var DEVIATIONS = [
   { at: 5, pos: 1, add: 'dev.add1', warn: 'dev.warn1' },
   { at: 9, pos: 2, add: 'dev.add2', warn: 'dev.warn2' },
@@ -37,7 +30,6 @@ function stamp(i) {
 
 function pick(arr) { return arr[(Math.random() * arr.length) | 0]; }
 
-/* Найчастіша причина списання — для порад і докорів. */
 function topCause() {
   var best = '', n = 0;
   for (var i = 0; i < CAUSES.length; i++) {
@@ -66,7 +58,6 @@ function buildBootSteps() {
 
   s.push({ k: 'log', t: tPick('term.headers') });
 
-  // звіт про втрату — тут, із підписом оператора
   if (boot.reportDeath && !first) {
     s.push({ k: 'head', t: tf('term.lossHead', { cause: t('cause.' + cause).toUpperCase() }) });
     s.push({ k: 'log', t: deathTelemetry(cause), cls: 'bl-off' });
@@ -115,7 +106,6 @@ function buildBootSteps() {
     }
   }
 
-  // завдання зміни: помічаємо, чи змінився прогрес від минулої посилки
   var want = questDeliver();
   var now = [], parts = [], got = 0, need = 0, qi;
   for (qi = 0; qi < want.length; qi++) {
@@ -256,7 +246,6 @@ function tickBoot() {
   bootNext();
 }
 
-/* ENTER — відповісти, ESC — пропустити. */
 function bootKey(code) {
   if (!boot.active) return;
   if (code === 'Escape') { boot.skips++; finishBoot(); return; }
@@ -275,8 +264,6 @@ function bootKey(code) {
   boot.hint.textContent = '…';
   boot.wait = 180;
 }
-
-/* ---------- канал зв'язку ---------- */
 
 var comms = {
   queue: [], from: '', full: '', shown: 0, hold: 0, alarm: false,
@@ -379,8 +366,6 @@ function updatePlate(bump) {
   }
 }
 
-/* ---------- події ---------- */
-
 var loreSeen = {};
 
 function loreEvent(key, opts) {
@@ -397,7 +382,6 @@ function pickLine(cause, n) {
   return pick(t('death.' + cause + '.pool'));
 }
 
-/* Виклик на кожну втрату модуля. */
 function moduleDeath(cause, detail) {
   detail = detail || {};
   SOL.deaths++;
@@ -408,7 +392,6 @@ function moduleDeath(cause, detail) {
   SOL.lastTemp = detail.temp || 0;
   var n = (SOL.causes[cause] = (SOL.causes[cause] || 0) + 1);
 
-  // звіт піде в термінал збирання, а не в бічний канал
   boot.reportDeath = true;
   boot.reportLine = fillVars(pickLine(cause, n));
 

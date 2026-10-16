@@ -1,5 +1,4 @@
 regLang('pl', {
-  /* ---------- interfejs ---------- */
   'ui.module': 'Moduł',
   'ui.parcel': 'przesyłka',
   'ui.stock': 'Magazyn',
@@ -16,7 +15,6 @@ regLang('pl', {
   'ui.heatLegend': 'temperatura, °C',
   'ui.settings': 'ustawienia',
 
-  /* dopełniacz: «60 żelaza», «260 kamienia» */
   'matGen.rock': 'kamienia',
   'matGen.sand': 'piasku',
   'matGen.coal': 'węgla',
@@ -38,7 +36,6 @@ regLang('pl', {
   'unit.cell': ['komórka', 'komórki', 'komórek'],
   'unit.module': ['moduł', 'moduły', 'modułów'],
 
-  /* ---------- materiały ---------- */
   'mat.empty': 'powietrze',
   'mat.bedrock': 'skała macierzysta',
   'mat.rock': 'kamień',
@@ -60,7 +57,6 @@ regLang('pl', {
   'mat.belt': 'taśma',
   'mat.wall': 'ściana',
 
-  /* ---------- narzędzia ---------- */
   'tool.drill': 'Wiertło',
   'tool.drill.cost': 'wedle twardości',
   'tool.ignite': 'Zapalnik',
@@ -70,7 +66,6 @@ regLang('pl', {
   'tool.build': 'Budowniczy',
   'tool.build.cost': 'za darmo',
 
-  /* ---------- podpowiedzi i komunikaty ---------- */
   'tip.drill': 'LPM — krusz skałę: rozsypie się sypka na miejscu · PPM — hak',
   'tip.wall': 'LPM — kłaść kamień · przytrzymaj i prowadź, aby wymurować piec',
   'tip.ignite': 'LPM na węgiel — podpalić · żar trzyma 1500 °C',
@@ -111,7 +106,6 @@ regLang('pl', {
   'msg.soundOn': 'Dźwięk włączony',
   'msg.soundOff': 'Dźwięk wyłączony',
 
-  /* ---------- ekrany ---------- */
   'intro.kicker': 'Kopalnia głębinowa · zmiana 41',
   'intro.lede': 'Jesteś modułem badawczym <b>sol_1.01</b>, kolejną przesyłką Centrum do tego szybu. Magazynu nie masz: skała pod wiertłem rozsypuje się na miejscu, a wszystko nosisz w rękach. Wykuj piec w skale, wnieś do niego węgiel i rudę, podpal — i patrz, jak ferryt spływa ciekłym żelazem. Każda strata modułu kosztuje Centrum nową przesyłkę, a ciebie — kolejną porcję komentarzy z orbity.',
   'intro.keyMove': 'ruch, plecak przy wznoszeniu',
@@ -186,7 +180,6 @@ regLang('pl', {
   'win.lost': 'Przesyłek spisanych',
   'win.cta': 'Zostać w szybie',
 
-  /* ---------- terminal ---------- */
   'term.title': 'Centrum „Sol" · terminal montażu',
   'term.hintInit': 'inicjalizacja…',
   'term.hintAnswer': 'ENTER — odpowiedzieć',
@@ -268,7 +261,6 @@ regLang('pl', {
   'term.baselineOk': 'LINIA BAZOWA POTWIERDZONA · {sol} gotowy do zjazdu',
   'term.baselineCut': 'TEST PRZERWANY · {sol} zjeżdża jak jest',
 
-  /* ---------- fabuła ---------- */
   'cause.lava': 'stopienie',
   'cause.heat': 'przegrzanie',
   'cause.fall': 'upadek',

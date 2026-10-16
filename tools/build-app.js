@@ -1,6 +1,3 @@
-/* Збирає гру в app/: один мініфікований і заплутаний bundle.js замість 11 файлів.
-   Порядок склейки мусить збігатися з порядком <script> в index.html. */
-
 const fs = require('fs');
 const path = require('path');
 const { minify } = require('terser');
@@ -28,8 +25,6 @@ const FILES = [
   'js/game.js'
 ];
 
-/* Заплутування навмисно легке: контрольний потік і мертвий код
-   коштували б кадрів у симуляції на 153 600 клітинок. */
 const OBFUSCATOR_OPTIONS = {
   compact: true,
   controlFlowFlattening: false,
@@ -60,7 +55,6 @@ async function build() {
   rmrf(OUT);
   fs.mkdirSync(OUT, { recursive: true });
 
-  // 1. склейка
   let raw = '';
   for (const f of FILES) {
     const p = path.join(ROOT, f);
@@ -69,7 +63,6 @@ async function build() {
   }
   const rawSize = Buffer.byteLength(raw);
 
-  // 2. мініфікація (верхній рівень теж, бо все вже в одному файлі)
   const min = await minify(raw, {
     ecma: 2018,
     compress: { passes: 2, toplevel: true, drop_console: true },
@@ -78,16 +71,13 @@ async function build() {
   });
   if (min.error) throw min.error;
 
-  // 3. заплутування
   const obf = Obfuscator.obfuscate(min.code, OBFUSCATOR_OPTIONS).getObfuscatedCode();
   fs.writeFileSync(path.join(OUT, 'bundle.js'), obf, 'utf8');
 
-  // 4. index.html з одним скриптом
   let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   html = html.replace(/\n?<script src="js\/[^"]+"><\/script>/g, '');
   html = html.replace('</body>', '<script src="bundle.js"></script>\n</body>');
 
-  // 5. локальні шрифти замість Google Fonts, якщо в fonts/ реально лежать .woff2
   const fontsDir = path.join(ROOT, 'fonts');
   const hasFonts = fs.existsSync(path.join(fontsDir, 'fonts.css')) &&
     fs.readdirSync(fontsDir).some((f) => f.toLowerCase().endsWith('.woff2'));
@@ -105,7 +95,6 @@ async function build() {
 
   fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 
-  // 6. стилі та іконка вікна
   fs.copyFileSync(path.join(ROOT, 'style.css'), path.join(OUT, 'style.css'));
   fs.copyFileSync(path.join(ROOT, 'icon.png'), path.join(OUT, 'icon.png'));
 

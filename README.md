@@ -73,6 +73,24 @@ a line to `LANG_LIST` in `js/i18n.js` and a `<script>` tag in `index.html`.
 
 ## Simulation
 
+**The grid** is a set of parallel typed arrays in `js/world.js`, one entry per
+cell at `y * W + x`:
+
+| Array | Holds |
+|---|---|
+| `mat` | material id |
+| `shade` | per-pixel colour noise |
+| `life` | remaining lifetime of gases and embers |
+| `clk` | frame stamp, so a cell moves at most once per step |
+| `flow` | the direction a liquid is spreading |
+| `temp` | temperature, °C |
+| `temp2` | diffusion scratch buffer |
+| `dmg` | drill work accumulated on the cell |
+| `dmgT` | when the cell was last drilled |
+
+Fog of war keeps `seen` (8×8 chunk explored flags) and `fogVal` (the smoothed
+0..1 visibility the renderer samples bilinearly).
+
 **Thermodynamics.** Every cell carries a temperature. Materials are described in
 SI units — density in kg/m³, thermal conductivity in W/(m·K), heat capacity in
 J/(kg·K), latent heat in kJ/kg — and the simulation coefficients are derived

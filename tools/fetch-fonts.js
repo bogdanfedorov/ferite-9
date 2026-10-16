@@ -1,24 +1,17 @@
-/* Викачує шрифти з Google Fonts у fonts/ і пише локальний fonts.css.
-   Запускається один раз перед релізом: node tools/fetch-fonts.js
-   Після цього збірка не потребує інтернету. */
-
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
 const OUT = path.join(__dirname, '..', 'fonts');
 
-/* Родини й накреслення рівно ті, що використовує гра. */
 const FAMILIES = [
   'IBM+Plex+Sans:wght@400;600',
   'IBM+Plex+Mono:wght@400;600',
   'Unbounded:wght@700;800'
 ];
 
-/* Латиниця, кирилиця й польські діакритики. */
 const SUBSETS = 'latin,latin-ext,cyrillic,cyrillic-ext';
 
-// UA сучасного браузера — інакше Google віддасть ttf замість woff2
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -53,7 +46,7 @@ async function run() {
       fs.writeFileSync(file, await get(link, true));
       saved++;
     }
-    css = css.split(link).join(name);          // посилання → локальний файл
+    css = css.split(link).join(name);
   }
 
   fs.writeFileSync(path.join(OUT, 'fonts.css'), css, 'utf8');

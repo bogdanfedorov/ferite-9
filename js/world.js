@@ -2,15 +2,15 @@ var WORLD_W = 480, WORLD_H = 320;
 
 var W = WORLD_W, H = WORLD_H, LEN = W * H;
 
-var mat;      // речовина
-var shade;    // піксельний шум
-var life;     // ресурс газів і жару
-var clk;      // мітка кадру
-var flow;     // напрямок розтікання рідини
-var temp;     // температура, °C
-var temp2;    // буфер дифузії
-var dmg;      // накопичена робота бура
-var dmgT;     // коли востаннє били
+var mat;
+var shade;
+var life;
+var clk;
+var flow;
+var temp;
+var temp2;
+var dmg;
+var dmgT;
 var dmgList = [];
 
 var simFrame = 0;
@@ -22,12 +22,9 @@ var geothermalGradient;
 function producedOf(name) { return produced[matId(name)]; }
 function nearHotOf(name) { return nearHot[matId(name)]; }
 
-/* Теплові чанки 16x16: дифузію рахуємо лише там, де є перепад. */
-/* Туман війни: нерозвідані ділянки не симулюються взагалі.
-   Щойно гравець їх відкрив — вони живуть назавжди, навіть коли він пішов. */
 var FCS = 8, FSHIFT = 3, FCW, FCH;
 var seen;
-var fogVal;   // згладжена видимість 0..1
+var fogVal;
 var seenCount = 0;
 
 function isSeen(x, y) { return seen[(y >> FSHIFT) * FCW + (x >> FSHIFT)] === 1; }
@@ -38,13 +35,11 @@ function revealChunk(cx, cy) {
   if (seen[i]) return;
   seen[i] = 1;
   seenCount++;
-  markHot(cx << FSHIFT, cy << FSHIFT);      // теплове поле тут має ожити
+  markHot(cx << FSHIFT, cy << FSHIFT);
 }
 
 function revealAt(x, y) { revealChunk(x >> FSHIFT, y >> FSHIFT); }
 
-/* Радіальні промені від модуля: порода зупиняє погляд, але сама стає видимою.
-   Промені йдуть по клітинках, тож пролазять і в штрек завтовшки в одну. */
 var RAYS = 220;
 var raySin = new Float32Array(RAYS), rayCos = new Float32Array(RAYS);
 (function () {
@@ -73,7 +68,6 @@ function revealAround(px, py, R) {
   }
 }
 
-/* М'яка межа туману: значення підтягуються до 0/1 і згладжуються при рендері. */
 function updateFog() {
   for (var i = 0; i < fogVal.length; i++) {
     var target = seen[i] ? 1 : 0;
@@ -117,8 +111,6 @@ function resizeGrid(w, h) {
 }
 
 resizeGrid(WORLD_W, WORLD_H);
-
-/* ---------- випадковість ---------- */
 
 var _seed = 0x9e3779b9;
 function srand(s) { _seed = s >>> 0; }

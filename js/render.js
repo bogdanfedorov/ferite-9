@@ -1,5 +1,3 @@
-/* Малювання: растр світу, світіння, векторні накладки машин і гравця. */
-
 var cv, ctx, bmp, bctx, bimg, bpix;
 var glowCv, glowCtx, glowImg, glowPix;
 var view = { zoom: 5, camX: 0, camY: 0, vw: 0, vh: 0, ox: 0, oy: 0 };
@@ -72,7 +70,6 @@ function drawWorldBitmap() {
     var wy = oy + y;
     var rowBase = wy * W;
     var dst = y * vw;
-    // білінійна вибірка туману: м'яка межа розвіданого
     var syf = (wy - 4) * 0.125;
     if (syf < 0) syf = 0;
     var fy0 = syf | 0;
@@ -80,7 +77,6 @@ function drawWorldBitmap() {
     var fty = syf - fy0;
     var fRowA = fy0 * FCW;
     var fRowB = (fy0 + 1 < FCH ? fy0 + 1 : fy0) * FCW;
-    // фонове небо / печерна темрява
     var skyT = wy < surfaceTop ? 1 - wy / Math.max(1, surfaceTop) : 0;
     var bgR, bgG, bgB;
     if (wy < surfaceTop) {
@@ -108,7 +104,6 @@ function drawWorldBitmap() {
       var vis = (vA + (vB - vA) * ftx) * (1 - fty) + (vC + (vD - vC) * ftx) * fty;
 
       if (vis < 0.02) {
-        // нерозвідане: суцільна темрява з ледь помітним зерном
         var nn = (shade[i] & 5);
         bpix[dst + x] = 0xff000000 | ((11 + nn) << 16) | ((8 + nn) << 8) | (6 + nn);
         continue;
@@ -148,7 +143,6 @@ function drawWorldBitmap() {
         r += tex; g += tex; b += tex;
       }
       if (vis < 0.995) {
-        // напівтемрява на межі розвіданого
         r = 9 + (r - 9) * vis;
         g = 7 + (g - 7) * vis;
         b = 6 + (b - 6) * vis;
@@ -176,7 +170,6 @@ function drawWorldBitmap() {
   ctx.restore();
 }
 
-/* Тріщини на клітинках, які зараз гризе бур. */
 function drawDamage() {
   var z = view.zoom;
   for (var n = 0; n < dmgList.length; n++) {
@@ -198,7 +191,6 @@ function drawDamage() {
   }
 }
 
-/* Вантажний майданчик біля шлюзу: сюди модуль носить залізо й скло. */
 function drawCargoPad() {
   var z = view.zoom;
   var px = sx(cargoPad.x), py = sy(cargoPad.y);
@@ -214,12 +206,10 @@ function drawCargoPad() {
   ctx.setLineDash([]);
   ctx.restore();
 
-  // смуга на підлозі майданчика
   ctx.fillStyle = uiRgba('sand', 0.22);
   ctx.fillRect(px, py + ph - Math.max(2, z * 0.25), pw, Math.max(2, z * 0.25));
 }
 
-/* Переносні предмети: шматки породи в руці, в польоті або на землі. */
 function drawObjects() {
   var z = view.zoom;
   for (var n = 0; n < objects.length; n++) {
@@ -231,7 +221,7 @@ function drawObjects() {
 
     for (var k = 0; k < o.cells.length; k++) {
       var c = o.cells[k];
-      var lift = o.held ? 18 : 0;               // в руці шматок трохи світліший
+      var lift = o.held ? 18 : 0;
       ctx.fillStyle = 'rgb(' + Math.min(255, palR[c.mat] + lift) + ',' +
         Math.min(255, palG[c.mat] + lift) + ',' + Math.min(255, palB[c.mat] + lift) + ')';
       ctx.fillRect(sx(o.x + c.dx), sy(o.y + c.dy), z + 1, z + 1);
@@ -246,7 +236,6 @@ function drawObjects() {
       ctx.fillRect(px - z * 0.5, py - z * 0.5, ow + z, oh + z);
     }
 
-    // маніпулятор: лінія від модуля до того, що він тримає
     if (o.held) {
       ctx.strokeStyle = uiRgba('sand', 0.55);
       ctx.lineWidth = Math.max(1, z * 0.22);
@@ -258,7 +247,6 @@ function drawObjects() {
   }
 }
 
-/* Видно наперед рівно ті клітинки, що підуть у жменю. */
 function drawGrabHint(wx, wy) {
   if (heldObject) return;
   var cx = Math.floor(wx), cy = Math.floor(wy);
@@ -348,7 +336,6 @@ function drawBuildPreview() {
   drawBeltArrows(cells, stepOf(last.x - first.x), stepOf(last.y - first.y), uiRgba(tint, 0.9));
 }
 
-/* Трос захвата. */
 function drawHook() {
   if (hook.state === 'idle') return;
   var hx = hook.state === 'set' ? hook.ax : hook.x;
@@ -406,7 +393,6 @@ function drawPlayer() {
     ctx.fillRect(px - 1, py - 6, (pw + 2) * (player.hp / 100), 3);
   }
 
-  // паливо ранця
   ctx.fillStyle = '#0d131b';
   ctx.fillRect(px - 1, py + ph + 3, pw + 2, 2);
   ctx.fillStyle = uiHex('aqua');

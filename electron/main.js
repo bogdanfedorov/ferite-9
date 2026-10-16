@@ -1,17 +1,13 @@
-/* Головний процес Electron. Рендерер ізольований: без Node, без devtools у релізі. */
-
 const { app, BrowserWindow, Menu, session } = require('electron');
 const path = require('path');
 
 const isDev = !app.isPackaged || process.argv.includes('--dev');
 
-// Одна копія гри на машину — Steam запускає ярлик повторно.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
 
 function hardenSession() {
-  // Гра повністю локальна: різати все, що лізе в мережу, крім шрифтів.
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, done) => done(false));
 }
 
@@ -39,7 +35,6 @@ function createWindow() {
   win.once('ready-to-show', () => win.show());
   win.loadFile(path.join(__dirname, '..', 'app', 'index.html'));
 
-  // Жодних нових вікон і жодної навігації геть зі сторінки гри.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e) => e.preventDefault());
 
@@ -51,7 +46,6 @@ function createWindow() {
       return;
     }
     if (isDev) return;
-    // У релізі прибираємо типові гарячі клавіші інспектора.
     const key = (input.key || '').toLowerCase();
     const devCombo =
       key === 'f12' ||

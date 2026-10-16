@@ -10,7 +10,7 @@ var player = {
 };
 
 var hook = {
-  state: 'idle',        // idle | fly | set
+  state: 'idle',
   x: 0, y: 0, vx: 0, vy: 0,
   ax: 0, ay: 0, len: 0, anchor: -1, travel: 0
 };
@@ -65,7 +65,6 @@ function clearAirlock() {
     }
   }
 }
-
 
 function getPixelRange(cx, width) {
   return [
@@ -332,7 +331,6 @@ function drillAt(tx, ty) {
   }
   return broken;
 }
-
 
 function igniteAt(tx, ty) {
   var p = clampToReach(tx, ty);

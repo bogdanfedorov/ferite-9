@@ -17,7 +17,7 @@ var MATERIAL_DATA = [
     color: [34, 38, 48],
     grain: 8,
     density: 2900,
-    thermalConductivity: 0.00000001,// 2.2,
+    thermalConductivity: 0.00000001,
     heatCapacity: 800,
     hardness: -1
   },

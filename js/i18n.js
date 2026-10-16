@@ -1,6 +1,3 @@
-/* Локалізація: uk / en / pl.
-   Ключі пласкі з крапками; значення — рядок або масив варіантів. */
-
 var LANGS = {};
 var LANG = 'uk';
 var LANG_LIST = [
@@ -19,7 +16,6 @@ function t(key) {
   return v === undefined ? key : v;
 }
 
-/* Підстановка {змінних} у рядок. */
 function tf(key, vars) {
   var s = t(key);
   if (typeof s !== 'string') return s;
@@ -35,7 +31,6 @@ function tPick(key) {
   return arr[(Math.random() * arr.length) | 0];
 }
 
-/* Форма числівника: 0 — один, 1 — кілька, 2 — багато. */
 function pluralForm(n) {
   if (LANG === 'en') return n === 1 ? 0 : 1;
   var d10 = n % 10, d100 = n % 100;
@@ -68,7 +63,7 @@ function applyI18n(root) {
 function setLang(code, silent) {
   if (!LANGS[code]) return;
   LANG = code;
-  try { localStorage.setItem('ferit9.lang', code); } catch (e) { /* приватний режим */ }
+  try { localStorage.setItem('ferit9.lang', code); } catch (e) {}
   document.documentElement.lang = code;
   applyI18n();
   var btns = document.querySelectorAll('.lang-btn');
@@ -80,7 +75,7 @@ function setLang(code, silent) {
 
 function detectLang() {
   var saved = null;
-  try { saved = localStorage.getItem('ferit9.lang'); } catch (e) { /* нема доступу */ }
+  try { saved = localStorage.getItem('ferit9.lang'); } catch (e) {}
   if (saved && LANGS[saved]) return saved;
   var nav = (navigator.language || 'uk').toLowerCase();
   if (nav.indexOf('pl') === 0) return 'pl';
@@ -88,7 +83,6 @@ function detectLang() {
   return 'en';
 }
 
-/* Розставляє перемикачі мови в контейнерах .lang-switch. */
 function buildLangSwitches() {
   var holders = document.querySelectorAll('.lang-switch');
   for (var h = 0; h < holders.length; h++) {
