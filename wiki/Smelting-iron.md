@@ -3,9 +3,9 @@
 1. **The drill** chews through rock on a timer: sand is instant, stone takes
    5 ticks, ferrite 4, iron 7. Cracks on a cell show the work done so far.
    It does not touch liquids at all — the beam goes straight through water and
-   lava to the rock behind them. Liquid does not vanish when you build either:
-   masonry pushes it into the nearest free cell, and if
-   there is nowhere to push it, you cannot build there.
+   lava to the rock behind them. The builder does not push liquid aside: a wall
+   takes over whatever stands in its cells, liquid included, and a belt only
+   goes into open air.
 2. **Dig the furnace out of stone**: drill a niche with a narrow mouth. Stone
    holds heat and air carries it away, so solid walls matter.
 3. **Carry coal and ferrite in by hand** — coal at the bottom, ore above it —

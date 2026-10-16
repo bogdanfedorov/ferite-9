@@ -177,14 +177,23 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
   bit-identical to the fixed-size version. Costs measured here: 38 400 cells
   0.55 ms per step and 0.7 MB of grid, 153 600 cells 1.4 ms and 2.6 MB, 614 400
   cells 3.5 ms and 10.5 MB.
+- Both generators share a frame in `js/world.js`: `beginWorld(seed, w, h)`
+  resizes if needed, reseeds and clears every grid; `finishWorld(pad, tempOf)`
+  places the cargo pad, sets every cell's starting temperature and wakes all
+  thermal chunks. Grid writes go through a handful of primitives there:
+  `setCell` / `setCellHot` lay a fresh cell (new shade, damage cleared,
+  lifetime set, its thermal chunk woken), `paintCell` swaps only the material
+  and lifetime for generation, `moveCell` carries a cell and its temperature
+  into another and leaves void behind, and `openNear` searches rings outward
+  for the nearest open cell.
 - The quest road is a plain list in `js/quest.js`. A stage says what the pad
   accepts; closing it unlocks the builder (`js/game.js`). The goal panel is
-  built from that description, so the next stage — dock, mortar, furnace — needs no HTML or HUD
-  edits. A goal names a `cargo` group, so every substance tagged with it counts
-  towards it — scrap and ingot both deliver `iron` — and `label` is the name the
-  row shows. Cargo counters are built from the stage, so a third goal needs no
-  HUD, pad or terminal change: `event` names the lore line it fires, and the
-  boot terminal prints the whole list.
+  built from that description, so the next stage — dock, mortar, furnace — needs
+  no HTML or HUD edits. A goal names a `cargo` group, so every substance tagged
+  with it counts towards it — scrap and ingot both deliver `iron` — and `label`
+  is the name the row shows. Cargo counters are built from the stage, so a third
+  goal needs no HUD, pad or terminal change: `event` names the lore line it
+  fires, and the boot terminal prints the whole list.
 - Mission Control lines are plain arrays in `js/lore.js`.
 - Key bindings are a plain list in `KEY_BINDS` (`js/settings.js`): an id, the
   default codes, and a `set.key.<id>` dictionary entry. Adding an entry puts a
@@ -193,7 +202,7 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
 
 ## Settings
 
-The settings screen (`O`, or the gear in the utility row) holds language, sound,
+The settings screen (`O`, or the settings button on the module plate) holds language, sound,
 grab size, colour scheme and key bindings. Everything lives in the `settings`
 object in `js/settings.js` and is written to `localStorage` under
 `ferit9.settings` — language keeps its own key, `ferit9.lang`.
@@ -227,7 +236,7 @@ the only place material colours reach `palR/palG/palB`.
 | `js/lore.js` | module callsign, Mission Control channel, death and event lines |
 | `js/world.js` | grid, generation, particle simulation, heat field, phase transitions |
 | `js/objects.js` | portable objects: grab, drag, hit, drop back into the grid |
-| `js/build.js` | belts: frame, iron feeding, cargo movement |
+| `js/build.js` | the builder: belts, walls and removal; cargo movement on belts |
 | `js/sandbox.js` | the test room: flat world, a bin per material, restocking |
 | `js/player.js` | driller physics, timed drilling, grapple |
 | `js/render.js` | world raster, heat map, glow, vector overlays |

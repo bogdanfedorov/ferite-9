@@ -25,13 +25,13 @@ out without the shift hanging over you.
 - **No fall damage.** Drop from the ceiling onto bedrock and nothing happens.
 - **The whole room is surveyed.** Nothing is hidden, everything simulates from
   the first frame.
-- **The belt is unlocked** from the start, without waiting for the quota.
+- **The builder is unlocked** from the start, without waiting for the quota.
 - **Room temperature everywhere**, 22 °C with no geothermal gradient, so heat
   you see came from something you did. Liquids that would freeze at room
   temperature are poured just above their freezing point.
 
 Everything else is the real game: the same simulation, the same drill, hand,
-torch and belt, the same cargo pad above the row if you want to test deliveries.
+torch and builder, the same cargo pad above the row if you want to test deliveries.
 
 ## What is not different
 

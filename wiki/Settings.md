@@ -1,6 +1,6 @@
 # Settings
 
-`O`, or the gear in the utility row at the bottom right. The mine pauses while
+`O`, or the settings button on the module plate at the top left. The mine pauses while
 the panel is open. Everything is remembered between shifts.
 
 ## Language
@@ -10,8 +10,7 @@ everything at once, including lines Mission Control has already sent.
 
 ## Sound
 
-**Mute** kills every beep; `M` does the same from the game, and the utility
-button shows `×` instead of `♪` when it is off. **Volume** scales all of them
+**Mute** kills every beep; `M` does the same from the game. **Volume** scales all of them
 together, so the drill stays quieter than the shuttle.
 
 ## Grab size

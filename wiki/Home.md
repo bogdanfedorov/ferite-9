@@ -1,7 +1,7 @@
 # Ferit-9
 
 A game in the spirit of Sandustry: granular particle simulation, a heat field
-and an underground factory. There are no conveyor belts to start with — rock
+and an underground base. There are no conveyor belts to start with — rock
 crumbles in place under the drill and modules are carried by hand. You dig or
 build the furnace yourself, and iron runs liquid until cold or water sets it.
 

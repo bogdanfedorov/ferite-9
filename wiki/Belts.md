@@ -24,8 +24,10 @@ The run has to be clear, with no stone directly above it. Cargo rides on the
 top face; sides hold it in place, so on an incline it does not slide back but
 climbs — one cell every three frames.
 
-**Wall**: plain solid body. It blocks movement like rock, and the drill will
-not chew it — removal is the way it comes down.
+**Wall**: plain solid body. It goes in over anything that is not already a
+structure — rock, sand or liquid in its cells is replaced, not pushed aside. It
+blocks movement like rock, and the drill will not chew it — removal is the way
+it comes down.
 
 **Remove**: every structure the shape covers goes. Touching any part of a belt
 takes the whole run, since a belt is one machine; walls come away cell by cell.
