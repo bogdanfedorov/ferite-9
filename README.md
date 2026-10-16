@@ -160,8 +160,8 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
   plus up to 100 random, `life: 255` on embers is flat. `setCell` reads
   `LIFE_BASE` / `LIFE_RND` and no longer names any substance.
 - Substance-specific behaviour is a property, not a branch. A melt sinks through
-  anything `porous`, cargo stays on anything that `grips`, the cargo pad
-  accepts by `cargo` group so scrap and ingot count as the same delivery.
+  anything `porous`, cargo stays on anything that `grips`, the market
+  buys by `cargo` group so scrap and ingot count as the same good.
   Water quenching lava is a `reacts` entry in the table, read as a pair lookup
   in the thermal pass.
 - Material predicates are lookup tables, not type comparisons. The registry
@@ -178,22 +178,31 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
   0.55 ms per step and 0.7 MB of grid, 153 600 cells 1.4 ms and 2.6 MB, 614 400
   cells 3.5 ms and 10.5 MB.
 - Both generators share a frame in `js/world.js`: `beginWorld(seed, w, h)`
-  resizes if needed, reseeds and clears every grid; `finishWorld(pad, tempOf)`
-  places the cargo pad, sets every cell's starting temperature and wakes all
-  thermal chunks. Grid writes go through a handful of primitives there:
+  resizes if needed, reseeds and clears every grid; `finishWorld(tempOf)`
+  clears the pickup zone, sets every cell's starting temperature and wakes all
+  thermal chunks. The pickup zone is not generated: the player draws it with
+  the Pickup tool, and `setCargoPad(rect)` stores it. Grid writes go through a handful of primitives there:
   `setCell` / `setCellHot` lay a fresh cell (new shade, damage cleared,
   lifetime set, its thermal chunk woken), `paintCell` swaps only the material
   and lifetime for generation, `moveCell` carries a cell and its temperature
   into another and leaves void behind, and `openNear` searches rings outward
   for the nearest open cell.
-- The quest road is a plain list in `js/quest.js`. A stage says what the pad
-  accepts; closing it unlocks the builder (`js/game.js`). The goal panel is
-  built from that description, so the next stage — dock, mortar, furnace — needs
-  no HTML or HUD edits. A goal names a `cargo` group, so every substance tagged
-  with it counts towards it — scrap and ingot both deliver `iron` — and `label`
-  is the name the row shows. Cargo counters are built from the stage, so a third
-  goal needs no HUD, pad or terminal change: `event` names the lore line it
-  fires, and the boot terminal prints the whole list.
+- Tools live in `TOOL_LIST` (`js/toolbelt.js`) and behave per `TOOLS`
+  (`js/game.js`); build tools share one spec and differ only by their entry in
+  `BODIES` (`js/build.js`). A built thing is a cell of one material, never an
+  object: a belt cell is the `belt` material plus a direction code in the
+  `beltCells` map (index → direction), and the belt pass reads that map, not a
+  list of belts. The start opens drill, hand and pickup zone; every
+  other tool is bought in the E menu for the price in `TOOL_COST`
+  (`js/market.js`). An opened tool drops into the first free cell of the 8-cell
+  hotbar; the E menu moves tools between cells.
+- The market is one plain table, `GOODS` in `js/market.js`: a `cargo` group
+  name, a base price, and a half-life in minutes. `priceOf(good)` is a pure
+  function of `game.elapsed`, so a price needs no state and a new good is one
+  line plus a `cargo` tag on its materials. The player marks one pickup zone
+  (`cargoPad`); `callDrone()` charges `DRONE_FEE`, and halfway through the trip
+  `deliverPad()` clears the zone and pays at the prices of that moment. `event`
+  on a good names the lore line fired at its first sale.
 - Mission Control lines are plain arrays in `js/lore.js`.
 - Key bindings are a plain list in `KEY_BINDS` (`js/settings.js`): an id, the
   default codes, and a `set.key.<id>` dictionary entry. Adding an entry puts a
@@ -232,17 +241,18 @@ the only place material colours reach `palR/palG/palB`.
 | `js/materials.data.js` | the material list: one entry per substance, plain data |
 | `js/materials.js` | material registry: ids, predicates, heat coefficients, transitions |
 | `js/settings.js` | settings store, key bindings, colour-blind palettes, the settings panel |
-| `js/quest.js` | the quest road: what the shift must deliver |
+| `js/market.js` | goods, prices over time, the drone, tool prices |
 | `js/lore.js` | module callsign, Mission Control channel, death and event lines |
 | `js/world.js` | grid, generation, particle simulation, heat field, phase transitions |
 | `js/objects.js` | portable objects: grab, drag, hit, drop back into the grid |
-| `js/build.js` | the builder: belts, walls and removal; cargo movement on belts |
+| `js/build.js` | build bodies: pickup zone, belts, walls; drag shape detection, zone removal, belt cell movement |
 | `js/sandbox.js` | the test room: flat world, a bin per material, restocking |
-| `js/player.js` | driller physics, timed drilling, grapple |
+| `js/player.js` | driller physics, timed drilling |
 | `js/render.js` | world raster, heat map, glow, vector overlays |
 | `js/sound.js` | `SOUNDS` table of named tones, `play(name)` |
-| `js/hud.js` | DOM cache, meters, goal panel, probe chip, tip line and `say` |
-| `js/input.js` | keyboard and mouse state, key actions, toolbar clicks |
+| `js/hud.js` | DOM cache, meters, market panel, probe chip, shape bar, message line and `say` |
+| `js/toolbelt.js` | which tools are open, the 8-cell hotbar and the E menu |
+| `js/input.js` | keyboard and mouse state, key actions, shape bar clicks |
 | `js/game.js` | `game` state, `TOOLS` table, milestones, step and frame loop, screens |
 | `main.go` · `Makefile` | Go launcher: game inside the exe, own window, no cgo |
 | `electron/main.js` | main process of the Electron build |

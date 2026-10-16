@@ -53,6 +53,7 @@ var MATERIAL_DATA = [
     thermalConductivity: 0.9,
     heatCapacity: 830,
     hardness: 7,
+    cargo: 'sand',
     melt: { at: 1340, into: 'melt_glass' }
   },
   {
@@ -64,6 +65,7 @@ var MATERIAL_DATA = [
     thermalConductivity: 1.2,
     heatCapacity: 840,
     hardness: 10,
+    cargo: 'gravel',
     melt: { at: 1600, into: 'lava' }
   },
   {
@@ -88,6 +90,7 @@ var MATERIAL_DATA = [
     thermalConductivity: 0.3,
     heatCapacity: 1260,
     hardness: 22,
+    cargo: 'coal',
     ignite: { at: 420, into: 'ember' }
   },
   {
@@ -112,6 +115,7 @@ var MATERIAL_DATA = [
     thermalConductivity: 2.0,
     heatCapacity: 700,
     hardness: 34,
+    cargo: 'ferrite',
     melt: { at: 1120, into: 'melt_iron' }
   },
   {

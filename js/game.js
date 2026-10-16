@@ -1,9 +1,7 @@
 var game = {
   tool: 'drill',
   paused: true,
-  launched: false,
   elapsed: 0,
-  drilled: 0,
   igniteCd: 0
 };
 
@@ -12,26 +10,25 @@ var BUILD_REPORTS = {
   wall: { text: 'msg.wallDone', sound: 'built' },
   removed: { text: 'msg.structRemoved', sound: 'removed' },
   nothing: { text: 'msg.nothingToRemove', sound: null },
-  short: { text: 'msg.beltShort', sound: null },
+  pad: { text: 'msg.padDone', sound: 'built' },
+  big: { text: 'msg.padBig', sound: 'denied' },
   room: { text: 'msg.beltRoom', sound: 'denied' }
 };
+
+var BUILD_TOOL = { sound: 'pickTool', use: buildUse };
 
 var TOOLS = {
   drill: { sound: 'pickDrill', hold: drillHold },
   hand: { sound: 'pickTool', grips: true, press: handPress },
   ignite: { sound: 'pickTool', hold: igniteHold },
-  build: {
-    sound: 'pickTool',
-    locked: () => !builderUnlocked,
-    press: buildPress,
-    hold: buildHold,
-    idle: buildIdle
-  }
+  pad: BUILD_TOOL,
+  belt: BUILD_TOOL,
+  wall: BUILD_TOOL
 };
 
 var MILESTONES = [
-  { event: 'first_hook', when: () => hook.state === 'set' },
-  { event: 'goal_ready', when: questDone, reward: unlockBuilder },
+  { event: 'first_pad', when: () => cargoPad !== null },
+  { event: 'first_sale', when: () => market.sales > 0 },
   { event: 'first_ember', when: () => producedOf('ember') },
   { event: 'first_melt', when: () => producedOf('melt_iron') },
   {
@@ -46,20 +43,47 @@ var MILESTONES = [
   }
 ];
 
-var OVERLAYS = ['intro', 'help', 'settings', 'win'];
+var OVERLAYS = ['intro', 'help', 'settings', 'inventory'];
 
 var loop = { acc: 0, last: 0, hudTick: 0 };
 
 function selectTool(name) {
-  const spec = TOOLS[name];
-  if (spec.locked?.()) {
-    say(t('msg.builderLocked'));
+  if (!toolOpen(name)) {
+    say(t('msg.toolLocked'));
     return;
   }
   game.tool = name;
+  if (BODIES[name]) setBuildBody(name);
   endBuildDrag();
-  refreshToolBar();
-  play(spec.sound);
+  renderToolbelt();
+  refreshShapeBar();
+  play(TOOLS[name].sound);
+}
+
+function selectSlot(i) {
+  const name = slotTool(i);
+  if (name) selectTool(name);
+}
+
+function invSlot(i) {
+  if (placePicked(i)) play('pickTool');
+  renderToolbelt();
+}
+
+function invTool(name) {
+  if (!toolOpen(name)) {
+    buyTool(name);
+    return;
+  }
+  pickForSlot(name);
+  renderToolbelt();
+}
+
+function toggleInventory() {
+  if (game.paused && el.inventory.classList.contains('hidden')) return;
+  pickForSlot(null);
+  renderToolbelt();
+  toggleScreen('inventory');
 }
 
 function reportBuild(outcome) {
@@ -68,18 +92,8 @@ function reportBuild(outcome) {
   if (report.sound) play(report.sound);
 }
 
-function unlockBuilder(quiet) {
-  if (builderUnlocked) return;
-  builderUnlocked = true;
-  showBuilderUnlocked(true);
-  if (quiet) return;
-  transmit(t('comms.from'), t('comms.beltGift'), { hold: 5600 });
-  play('unlock');
-}
-
 function drillHold(wpt) {
   const got = drillAt(wpt[0], wpt[1]);
-  game.drilled += got;
   if (got && simFrame % 5 === 0) play('drill');
 }
 
@@ -89,10 +103,8 @@ function handPress(wpt) {
   const gx = Math.floor(g[0]),
     gy = Math.floor(g[1]);
   const only = grabTargetAt(gx, gy);
-  if (only && takeObject(gx, gy, only)) {
-    say(tf('msg.grabOnly', { mat: matLabel(only) }));
-    play('grab');
-  } else say(t('msg.nothingToGrab'));
+  if (only && takeObject(gx, gy, only)) play('grab');
+  else say(t('msg.nothingToGrab'));
 }
 
 function igniteHold(wpt) {
@@ -109,19 +121,18 @@ function igniteHold(wpt) {
   if (!lit) say(t('msg.noIgnite'));
 }
 
-function buildPress(wpt) {
+function buildUse(wpt) {
+  const mouse = input.mouse;
   buildEven = input.keys.shift;
-  startBuildDrag(wpt[0], wpt[1]);
-}
-
-function buildHold(wpt) {
-  buildEven = input.keys.shift;
-  if (buildFrom) buildTo = wpt;
-}
-
-function buildIdle() {
-  buildEven = input.keys.shift;
-  if (!buildFrom) return;
+  if (!buildFrom) {
+    if (mouse.pressed) startBuildDrag(wpt[0], wpt[1], false);
+    else if (mouse.rightPressed && activeBody().erasable) startBuildDrag(wpt[0], wpt[1], true);
+    return;
+  }
+  if (buildErase ? mouse.right : mouse.left) {
+    buildTo = wpt;
+    return;
+  }
   reportBuild(finishBuild(buildFrom, buildTo));
   endBuildDrag();
 }
@@ -129,7 +140,8 @@ function buildIdle() {
 function useTool(wpt) {
   const spec = TOOLS[game.tool],
     mouse = input.mouse;
-  if (!mouse.left) {
+  if (spec.use) spec.use(wpt);
+  else if (!mouse.left) {
     if (spec.idle) spec.idle(wpt);
   } else if (mouse.pressed && spec.press) spec.press(wpt);
   else if (spec.hold) spec.hold(wpt);
@@ -162,16 +174,15 @@ function checkMilestones() {
     loreEvent(m.event, m.opts);
     if (m.reward) m.reward();
   }
-  const want = questDeliver();
-  for (let k = 0; k < want.length; k++) {
-    if (want[k].event && cargo[want[k].key]) loreEvent(want[k].event);
+  for (let k = 0; k < GOODS.length; k++) {
+    if (GOODS[k].event && market.sold[GOODS[k].key] > 0) loreEvent(GOODS[k].event);
   }
 }
 
 function step() {
   const mouse = input.mouse;
   if (game.igniteCd > 0) game.igniteCd--;
-  if (updatePlayer(input.keys, mouse.right) === 'respawn') respawn();
+  if (updatePlayer(input.keys) === 'respawn') respawn();
   checkMilestones();
 
   const wpt = screenToWorld(mouse.x, mouse.y);
@@ -185,13 +196,14 @@ function step() {
   else useTool(wpt);
   mouse.pressed = false;
   mouse.clickReq = false;
+  mouse.rightPressed = false;
 
   if ((simFrame & 3) === 0) revealAround(Math.round(player.x), Math.round(player.y), 34);
   updateFog();
   simulate();
   const grip = clampToReach(wpt[0], wpt[1]);
   stepObjects(grip[0], grip[1]);
-  if ((simFrame & 7) === 0) tickCargoPad();
+  tickMarket();
   tickBuild(simFrame);
   if (sandbox.on) tickTestRoom(simFrame);
   tickSay();
@@ -232,7 +244,6 @@ function toggleScreen(id) {
 function swapWorld() {
   const room = !sandbox.on;
   enterWorld(room);
-  if (room) unlockBuilder(true);
   refreshSettingsPanel();
   toggleScreen('settings');
   say(t(room ? 'msg.roomOn' : 'msg.roomOff'));
@@ -253,25 +264,8 @@ function startRoom() {
   el.intro.classList.add('hidden');
   play('room');
   enterWorld(true);
-  unlockBuilder(true);
   game.paused = false;
   say(t('msg.roomOn'));
-}
-
-function launchShip() {
-  if (el.launch.disabled) return;
-  game.launched = true;
-  game.paused = true;
-  const sec = Math.floor(game.elapsed / 1000);
-  el['w-time'].textContent = `${Math.floor(sec / 60)}:${(`0${sec % 60}`).slice(-2)}`;
-  el['w-cargo'].textContent = cargoTotal();
-  el['w-drilled'].textContent = game.drilled;
-  el['w-lost'].textContent = SOL.deaths;
-  document.getElementById('win-text').textContent = SOL.deaths
-    ? tf('win.textLosses', { sol: solName(), n: SOL.deaths })
-    : tf('win.textClean', { sol: solName() });
-  el.win.classList.remove('hidden');
-  play('launch');
 }
 
 function onClick(id, fn) {
@@ -294,10 +288,7 @@ function bindScreens() {
   onClick('resume', () => {
     toggleScreen('help');
   });
-  onClick('keep', () => {
-    toggleScreen('win');
-  });
-  onClick('launch', launchShip);
+  onClick('drone-btn', callDrone);
 }
 
 function refreshLang() {
@@ -316,13 +307,11 @@ function applySettings(what) {
 function enterWorld(room) {
   sandbox.on = room;
   sandbox.bins.length = 0;
-  game.launched = false;
   game.elapsed = 0;
-  game.drilled = 0;
-  resetQuest();
+  resetMarket(room);
   resetObjects();
   resetBuild();
-  showBuilderUnlocked(false);
+  resetToolbelt(room);
   const seed = Date.now() & 0xffffff || 12345;
   const sp = room
     ? generateTestRoom(seed, WORLD_W, WORLD_H)
@@ -331,7 +320,7 @@ function enterWorld(room) {
   spawnPlayer(sp.spawnX, sp.spawnY);
   view.camX = player.x - view.vw / 2;
   view.camY = player.y - view.vh / 2;
-  buildGoalPanel();
+  buildMarketPanel();
   selectTool('drill');
 }
 
@@ -344,6 +333,7 @@ function startGame() {
   initLore();
   initRender();
   enterWorld(false);
+  buildToolbelt(selectSlot, invSlot, invTool);
   bindInput();
   bindScreens();
   updateHud([player.x, player.y]);

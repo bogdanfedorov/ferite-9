@@ -22,9 +22,9 @@ What changes:
 - from the third death on, a recommendation based on your most frequent cause
   with a counter ("stay out of lava · 3rd repeat") and the note "recommendation
   status · not carried into memory";
-- a progress line: if the delivery has not moved since the last drop, Mission
-  Control points it out, and if iron is already past half the quota — "pace ·
-  unexpectedly acceptable".
+- a progress line: if the account has not moved since the last drop, Mission
+  Control points it out, and if the money has at least doubled from the start —
+  "pace · unexpectedly acceptable".
 
 ## Basic test
 

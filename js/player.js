@@ -23,19 +23,6 @@ var player = {
   lastTemp: 22
 };
 
-var hook = {
-  state: 'idle',
-  x: 0,
-  y: 0,
-  vx: 0,
-  vy: 0,
-  ax: 0,
-  ay: 0,
-  len: 0,
-  anchor: -1,
-  travel: 0
-};
-
 var REACH = 32;
 var JET_EXHAUST = matId('smoke');
 var TORCH_FLAME = matId('fire');
@@ -43,8 +30,6 @@ var TORCH_TEMP = 500;
 var spoil = {};
 var DRILL_RADIUS = 2.4;
 var DRILL_POWER = 9;
-var HOOK_SPEED = 1.9;
-var HOOK_RANGE = 58;
 var FALL_SAFE = 30;
 var FUEL_BURN_RATE = 0.5;
 var JETPAK_POWER = 0.062;
@@ -84,7 +69,6 @@ function spawnPlayer(x, y) {
   moveToSpawn();
   resetVitals();
   player.fallDrop = 0;
-  hook.state = 'idle';
 }
 
 function clearAirlock() {
@@ -177,84 +161,7 @@ function moveAxis(dx, dy) {
   return hitX ? (hitY ? 3 : 1) : hitY ? 2 : 0;
 }
 
-function fireHook(tx, ty) {
-  const dx = tx - player.x,
-    dy = ty - player.y;
-  const d = Math.sqrt(dx * dx + dy * dy) || 1;
-  hook.state = 'fly';
-  hook.x = player.x;
-  hook.y = player.y;
-  hook.vx = (dx / d) * HOOK_SPEED;
-  hook.vy = (dy / d) * HOOK_SPEED;
-  hook.travel = 0;
-  hook.anchor = -1;
-}
-
-function releaseHook() {
-  hook.state = 'idle';
-  hook.anchor = -1;
-}
-
-function updateHook(reeling) {
-  if (hook.state === 'fly') {
-    for (let s = 0; s < 4; s++) {
-      hook.x += hook.vx * 0.25;
-      hook.y += hook.vy * 0.25;
-      hook.travel += HOOK_SPEED * 0.25;
-      const cx = Math.floor(hook.x),
-        cy = Math.floor(hook.y);
-      if (!inBounds(cx, cy) || hook.travel > HOOK_RANGE) {
-        releaseHook();
-        return;
-      }
-      const m = mat[cy * W + cx];
-      if (RIGID[m]) {
-        hook.state = 'set';
-        hook.anchor = cy * W + cx;
-        hook.ax = cx + 0.5;
-        hook.ay = cy + 0.5;
-        const dx = hook.ax - player.x,
-          dy = hook.ay - player.y;
-        hook.len = Math.max(2, Math.sqrt(dx * dx + dy * dy));
-        return;
-      }
-    }
-    return;
-  }
-
-  if (hook.state !== 'set') return;
-
-  const m2 = mat[hook.anchor];
-  if (!RIGID[m2]) {
-    releaseHook();
-    return;
-  }
-
-  const ddx = hook.ax - player.x,
-    ddy = hook.ay - player.y;
-  const d = Math.sqrt(ddx * ddx + ddy * ddy) || 0.001;
-  if (reeling) hook.len = Math.max(2.5, hook.len - 0.26);
-  if (d > HOOK_RANGE + 6) {
-    releaseHook();
-    return;
-  }
-
-  if (d > hook.len) {
-    const nx = ddx / d,
-      ny = ddy / d;
-    const stretch = d - hook.len;
-    player.vx += nx * stretch * 0.12;
-    player.vy += ny * stretch * 0.12;
-    const radial = player.vx * nx + player.vy * ny;
-    if (radial < 0) {
-      player.vx -= nx * radial * 0.5;
-      player.vy -= ny * radial * 0.5;
-    }
-    player.vx *= 0.995;
-  }
-}
-
-function updatePlayer(keys, reeling) {
+function updatePlayer(keys) {
   const hottest = sampleEnv();
 
   let acc = player.grounded ? FOOT_POWER : JETPAK_POWER;
@@ -264,7 +171,7 @@ function updatePlayer(keys, reeling) {
   if (!keys.left && !keys.right) player.vx *= player.grounded ? 0.78 : 0.94;
   else player.vx *= 0.94;
 
-  const maxVx = hook.state === 'set' ? 1.1 : player.inLiquid ? 0.3 : 0.55;
+  const maxVx = player.inLiquid ? 0.3 : 0.55;
   if (player.vx > maxVx) player.vx = maxVx;
   if (player.vx < -maxVx) player.vx = -maxVx;
 
@@ -285,14 +192,12 @@ function updatePlayer(keys, reeling) {
   if (keys.down) player.vy += 0.03;
   if (player.fuel > 100) player.fuel = 100;
 
-  updateHook(reeling);
-
-  const maxVy = hook.state === 'set' ? 1.2 : player.inLiquid ? 0.35 : 0.75;
+  const maxVy = player.inLiquid ? 0.35 : 0.75;
   if (player.vy > maxVy) player.vy = maxVy;
   if (player.vy < -maxVy) player.vy = -maxVy;
   if (player.inLiquid) player.vy *= 0.94;
 
-  if (player.grounded || player.vy < 0 || player.inLiquid || hook.state === 'set') {
+  if (player.grounded || player.vy < 0 || player.inLiquid) {
     player.fallFrom = player.y;
   }
 
@@ -347,7 +252,6 @@ function updatePlayer(keys, reeling) {
     resetVitals();
     clearAirlock();
     moveToSpawn();
-    releaseHook();
     return 'respawn';
   }
   return null;

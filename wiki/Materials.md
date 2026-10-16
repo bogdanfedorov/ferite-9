@@ -87,7 +87,7 @@ flame and melts 3, molten iron 35.
 | `look` | `flame` flickers with the cell's remaining life, `pulse` breathes like lava |
 | `hardness` | drill units per cell; `0` cannot be drilled, `-1` is indestructible |
 | `breaksInto` | what the drill leaves behind, two cells broken give one cell of spoil |
-| `cargo` | delivery group: `iron` covers both iron and scrap, so the pad and the belt accept either |
+| `cargo` | market group: `iron` covers both iron and scrap, so one price and one drone sale cover either |
 | `porous` | a melt sinks through it — embers, coal, slag |
 | `grips` | cargo does not slide off it sideways — the belt deck |
 | `life` | ticks before a gas or a bed burns out, `[base, random]` or a flat number |

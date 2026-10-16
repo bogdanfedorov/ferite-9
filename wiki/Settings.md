@@ -53,5 +53,5 @@ shows a dash. **Defaults** puts the whole list back.
 Movement ships with two or three keys per direction (WASD, the arrows, and space
 for the jetpack). Rebinding replaces all of them with the single key you press.
 
-Mouse controls are fixed: left button is the tool, right is the grapple, and
-the wheel zooms.
+Mouse controls are fixed: left button is the tool, right button removes belts
+and walls in a dragged zone, and the wheel zooms.

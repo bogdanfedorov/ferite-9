@@ -1,12 +1,10 @@
 var SOUNDS = {
   pickDrill: { freq: 420, dur: 0.05, wave: 'square', vol: 0.025 },
   pickTool: { freq: 620, dur: 0.05, wave: 'square', vol: 0.025 },
-  pickBody: { freq: 520, dur: 0.05, wave: 'square', vol: 0.02 },
   pickShape: { freq: 500, dur: 0.05, wave: 'square', vol: 0.02 },
   drill: { freq: 170, dur: 0.03, wave: 'square', vol: 0.013 },
   grab: { freq: 640, dur: 0.05, wave: 'triangle', vol: 0.025 },
   drop: { freq: 300, dur: 0.05, wave: 'square', vol: 0.02 },
-  hook: { freq: 760, dur: 0.05, wave: 'square', vol: 0.02 },
   ignite: { freq: 320, dur: 0.14, wave: 'sawtooth', vol: 0.035 },
   fizzle: { freq: 150, dur: 0.14, wave: 'sawtooth', vol: 0.035 },
   built: { freq: 560, dur: 0.07, wave: 'triangle', vol: 0.03 },
@@ -19,6 +17,7 @@ var SOUNDS = {
   start: { freq: 330, dur: 0.12, wave: 'triangle', vol: 0.04 },
   room: { freq: 440, dur: 0.12, wave: 'triangle', vol: 0.04 },
   launch: { freq: 660, dur: 0.5, wave: 'triangle', vol: 0.05 },
+  sale: { freq: 880, dur: 0.18, wave: 'triangle', vol: 0.045 },
   soundOn: { freq: 520, dur: 0.07, wave: 'triangle', vol: 0.03 },
   volume: { freq: 520, dur: 0.05, wave: 'triangle', vol: 0.03 },
   grabSize: { freq: 600, dur: 0.05, wave: 'triangle', vol: 0.025 }

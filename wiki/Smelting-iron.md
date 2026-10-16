@@ -40,10 +40,9 @@ world** and has to be carried by hand from then on. Rock compacts in the
 process — two broken cells give one loose cell — otherwise your own spoil would
 block the drift immediately.
 
-There is no inventory at all. The shift goal is delivered physically: the
-**cargo pad** by the airlock takes the iron scrap and cullet the module brings
-to it. Anything that falls inside its bounds is picked up by orbit at once.
-
-Shift goal: 10 iron and 8 glass on the cargo pad.
+There is no inventory at all. Goods are sold physically: whatever lies inside
+the **pickup zone** you draw yourself is what the drone takes when you call it.
+Iron and scrap count as the same good, and so do glass and cullet. See
+[[Market]].
 
 Next: [[Carrying things]], [[Glass]].

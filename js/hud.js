@@ -1,13 +1,17 @@
 var HUD_IDS = [
-  'goal-list',
-  'launch',
+  'market-list',
+  'market-sum',
+  'money',
+  'drone-btn',
   'tip',
   'intro',
   'help',
   'settings',
-  'win',
-  'buildbar',
-  'bodybar',
+  'hotbar',
+  'inventory',
+  'inv-tools',
+  'inv-slots',
+  'inv-money',
   'shapebar',
   'probe-chip',
   'probe-mat',
@@ -19,16 +23,11 @@ var HUD_IDS = [
   'fuel-num',
   'fuel-fill',
   'vital-hp',
-  'vital-fuel',
-  'w-time',
-  'w-cargo',
-  'w-drilled',
-  'w-lost',
-  'slot-build'
+  'vital-fuel'
 ];
 
 var el = {};
-var hud = { msg: '', msgT: 0, lastVals: {}, goalRows: [] };
+var hud = { msg: '', msgT: 0, lastVals: {}, marketRows: [] };
 
 function grabHud() {
   for (let i = 0; i < HUD_IDS.length; i++) el[HUD_IDS[i]] = document.getElementById(HUD_IDS[i]);
@@ -53,49 +52,66 @@ function tickSay() {
   if (hud.msgT > 0) hud.msgT--;
 }
 
-function goalRow(c) {
+function marketRow(good) {
   const li = document.createElement('li');
   const name = document.createElement('span');
-  name.setAttribute('data-i18n', c.label);
-  const num = document.createElement('b');
-  num.className = 'mono';
-  const have = document.createElement('span');
-  have.textContent = '0';
-  num.appendChild(have);
-  num.appendChild(document.createTextNode(`/${c.need}`));
+  name.setAttribute('data-i18n', `mat.${good.key}`);
+  const count = document.createElement('span');
+  count.className = 'mono mk-count';
+  const price = document.createElement('b');
+  price.className = 'mono';
   const box = document.createElement('div');
   box.className = 'bar';
   const fill = document.createElement('div');
   box.appendChild(fill);
   li.appendChild(name);
-  li.appendChild(num);
+  li.appendChild(count);
+  li.appendChild(price);
   li.appendChild(box);
-  return { c: c, li: li, have: have, fill: fill };
+  return { good: good, li: li, count: count, price: price, fill: fill };
 }
 
-function buildGoalPanel() {
-  const list = el['goal-list'];
+function buildMarketPanel() {
+  const list = el['market-list'];
   list.innerHTML = '';
-  hud.goalRows = [];
-  const want = questDeliver();
-  for (let i = 0; i < want.length; i++) {
-    const row = goalRow(want[i]);
+  hud.marketRows = [];
+  for (let i = 0; i < GOODS.length; i++) {
+    const row = marketRow(GOODS[i]);
     list.appendChild(row.li);
-    hud.goalRows.push(row);
+    hud.marketRows.push(row);
   }
   applyI18n(list);
 }
 
-function updateGoalPanel() {
-  for (let i = 0; i < hud.goalRows.length; i++) {
-    const r = hud.goalRows[i];
-    const n = Math.min(cargo[r.c.key] || 0, r.c.need);
-    const done = n >= r.c.need;
-    if (r.have.textContent !== `${n}`) r.have.textContent = n;
-    r.fill.style.width = `${(n / r.c.need) * 100}%`;
-    r.fill.classList.toggle('done', done);
-    r.li.classList.toggle('done', done);
+function setText(node, text) {
+  if (node.textContent !== text) node.textContent = text;
+}
+
+function droneLabel(value) {
+  if (market.drone > 0) return t('ui.droneBusy');
+  if (!cargoPad) return t('ui.droneNoPad');
+  if (market.money < DRONE_FEE) return tf('ui.dronePoor', { fee: DRONE_FEE });
+  return tf('ui.drone', { fee: DRONE_FEE, sum: value });
+}
+
+function updateMarketPanel() {
+  const counts = sweepPad(false);
+  for (let i = 0; i < hud.marketRows.length; i++) {
+    const r = hud.marketRows[i];
+    const n = counts[r.good.key] || 0;
+    const price = priceOf(r.good);
+    setText(r.count, n ? `×${n}` : '');
+    setText(r.price, `$${price}`);
+    r.fill.style.width = `${Math.min(100, (price / r.good.base) * 100)}%`;
+    r.li.classList.toggle('stocked', n > 0);
   }
+  const value = payoutOf(counts);
+  setVal('money', `$${market.money}`);
+  setVal('market-sum', tf('ui.inZone', { sum: value }));
+  const ready = market.drone <= 0 && cargoPad !== null && market.money >= DRONE_FEE;
+  el['drone-btn'].disabled = !ready;
+  el['drone-btn'].classList.toggle('worth', ready && value > DRONE_FEE);
+  setVal('drone-btn', droneLabel(value));
 }
 
 function setMeter(name, value) {
@@ -139,46 +155,27 @@ function updateProbe(wpt) {
 }
 
 function updateTip() {
-  const warn = hud.msgT > 0;
-  el.tip.textContent = warn ? hud.msg : t(`tip.${game.tool}`);
-  el.tip.parentNode.classList.toggle('warn', warn);
+  const shown = hud.msgT > 0;
+  if (shown) el.tip.textContent = hud.msg;
+  el.tip.parentNode.classList.toggle('hidden', !shown);
 }
 
 function updateHud(wpt) {
   updatePlate();
   setMeter('hp', player.hp);
   setMeter('fuel', player.fuel);
-  updateGoalPanel();
-  el.launch.disabled = !questDone() || game.launched;
+  updateMarketPanel();
   updateProbe(wpt);
   updateTip();
 }
 
-function refreshToolBar() {
-  const slots = el.buildbar.children;
-  for (let i = 0; i < slots.length; i++) {
-    slots[i].classList.toggle('active', slots[i].dataset.tool === game.tool);
-  }
-  const building = game.tool === 'build';
-  el.bodybar.classList.toggle('hidden', !building);
-  el.shapebar.classList.toggle('hidden', !building);
-  if (building) refreshBuildBars();
-}
-
-function refreshBuildBars() {
-  const bodies = el.bodybar.children;
-  for (let i = 0; i < bodies.length; i++) {
-    bodies[i].classList.toggle('active', bodies[i].dataset.body === buildBody);
-  }
-  const allowed = shapesOfBody();
+function refreshShapeBar() {
+  const allowed = BODIES[game.tool] ? shapesOfBody() : [];
+  el.shapebar.classList.toggle('hidden', allowed.length < 2);
   const shapes = el.shapebar.children;
   for (let k = 0; k < shapes.length; k++) {
     const name = shapes[k].dataset.shape;
     shapes[k].classList.toggle('hidden', allowed.indexOf(name) < 0);
     shapes[k].classList.toggle('active', name === buildShape);
   }
-}
-
-function showBuilderUnlocked(on) {
-  el['slot-build'].classList.toggle('locked', !on);
 }

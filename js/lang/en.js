@@ -1,8 +1,12 @@
 regLang('en', {
   'ui.module': 'Unit',
+  'ui.inZone': 'in zone · ${sum}',
+  'ui.dronePoor': 'Drone costs ${fee}',
+  'ui.droneNoPad': 'Mark a pickup zone',
+  'ui.droneBusy': 'Drone in flight…',
+  'ui.drone': 'Drone for ${fee}',
+  'ui.market': 'Market',
   'ui.parcel': 'parcel',
-  'ui.cargo': 'Cargo for orbit',
-  'ui.launch': 'Load the shuttle',
   'ui.losses': 'losses',
   'ui.explored': 'surveyed',
   'ui.hp': 'Integrity',
@@ -49,38 +53,34 @@ regLang('en', {
   'tool.ignite.cost': 'set alight',
   'tool.hand': 'Hand',
   'tool.hand.cost': 'carry loose material',
-  'tool.build': 'Builder',
-  'tool.build.cost': 'free',
+  'tool.pad': 'Pickup',
+  'tool.pad.cost': 'where the drone takes cargo',
+  'tool.belt': 'Belt',
+  'tool.belt.cost': 'a cell that pushes material',
+  'tool.wall': 'Wall',
+  'tool.wall.cost': 'a masonry cell, free',
 
-  'tip.drill': 'LMB — break rock: it spills loose right there · RMB — grapple',
-  'tip.ignite': 'LMB on coal — set it alight · embers hold 1500 °C',
-  'tip.hand':
-    'Hold LMB on loose material to scoop a handful of it alone · let go and it settles back into the ground',
-  'tip.build':
-    'Pick what to place and which shape · hold LMB and drag · Shift — even line or square · R — shape',
-
-  'body.belt': 'belt',
-  'body.wall': 'wall',
-  'body.erase': 'remove',
-
-  'shape.point': 'pixel',
   'shape.line': 'line',
-  'shape.angled': 'angled',
   'shape.rect': 'rectangle',
 
   'msg.tooFar': 'Out of reach — fly closer',
   'msg.nothingToGrab': 'Bare hands will not take packed rock — break it with the drill first',
-  'msg.builderLocked': 'The builder is not unlocked yet — close the quota first',
-  'msg.beltShort': 'That is a stub, not a line — drag further',
   'msg.beltRoom': 'No room here — the spot is taken',
   'msg.beltDone': 'Belt placed — the load rides on its own now',
   'msg.wallDone': 'Wall placed',
   'msg.structRemoved': 'Structure removed',
   'msg.nothingToRemove': 'Nothing to remove here',
-  'msg.buildBody': 'Mode: {body}',
   'msg.buildShape': 'Shape: {shape}',
-  'msg.grabOnly': 'In hand, this only: {mat}',
   'msg.noIgnite': 'Nothing to light — pour some coal first',
+  'msg.bought': 'Bought: {tool}',
+  'msg.droneEmpty': 'The drone came back empty — nothing in the zone',
+  'msg.droneSold': 'The drone sold the cargo: +${sum}',
+  'msg.droneOn': 'Drone dispatched — the pickup is moments away',
+  'msg.cantAfford': 'Not enough money: need ${cost}',
+  'msg.noPad': 'Mark a pickup zone first',
+  'msg.toolLocked': 'That tool is not bought yet',
+  'msg.padDone': 'Pickup zone marked — the drone takes cargo from here',
+  'msg.padBig': 'Zone too large — 96 cells at most',
   'msg.heatOn': 'Heat map on',
   'msg.heatOff': 'Heat map off',
   'msg.roomOn': 'Test room: every material in a bin, endless jetpack, no fall damage.',
@@ -94,8 +94,13 @@ regLang('en', {
     'You are research unit <b>sol_1.01</b>, the next parcel Mission Control dropped into this shaft. You have no stock: rock crumbles loose right where you break it, and everything travels in your hands. Hollow a furnace out of the rock, carry coal and ore into it, set it alight — and watch ferrite run out as molten iron. Every unit lost costs Control a new parcel, and costs you another round of remarks from orbit.',
   'intro.keyMove': 'move, the pack fires on up',
   'intro.keyTool': 'current tool',
-  'intro.keyHook': 'grapple and reel in',
-  'intro.keySlots': 'pick a tool',
+  'intro.keyErase': 'remove what you built',
+  'intro.keyDrone': 'call the drone',
+  'intro.keySlots': 'tool cells',
+  'inv.kicker': 'Tools',
+  'inv.note':
+    'Click a tool, then a cell below — or press its number. A locked tool is bought with a click. E or Esc closes.',
+  'intro.keyInv': 'all tools',
   'intro.keyHeat': 'heat map',
   'intro.keyHelp': 'help · pause',
   'intro.cta': 'Descend into the shaft',
@@ -120,7 +125,7 @@ regLang('en', {
   'help.s7':
     '<b>The world wakes where you go</b>: unsurveyed ground is not simulated at all. Break through and look — everything there starts at once, and keeps going after you leave.',
   'help.s8':
-    '<b>The unit is mortal</b>: falls over 17 cells, heat above 120 °C, drilling into glowing rock, and being buried in loose material. Every loss is a new parcel with a new number and another remark from orbit. <b>The pack does not refuel itself</b>: the tank is only filled at a dock station, so take height on the grapple.',
+    '<b>The unit is mortal</b>: falls over 17 cells, heat above 120 °C, drilling into glowing rock, and being buried in loose material. Every loss is a new parcel with a new number and another remark from orbit. <b>The pack does not refuel itself</b>: the tank is only filled at a dock station, so spend it on climbing wisely.',
   'help.cta': 'Back to work',
   'intro.keySettings': 'settings',
 
@@ -157,27 +162,21 @@ regLang('en', {
   'set.key.down': 'Down',
   'set.key.left': 'Left',
   'set.key.right': 'Right',
-  'set.key.slot1': 'Slot 1 · drill',
-  'set.key.slot2': 'Slot 2 · hand',
-  'set.key.slot3': 'Slot 3 · igniter',
-  'set.key.slot4': 'Slot 4 · builder',
-  'set.key.shape': 'Shape · builder',
+  'set.key.slot1': 'Cell 1',
+  'set.key.slot2': 'Cell 2',
+  'set.key.slot3': 'Cell 3',
+  'set.key.slot4': 'Cell 4',
+  'set.key.slot5': 'Cell 5',
+  'set.key.slot6': 'Cell 6',
+  'set.key.slot7': 'Cell 7',
+  'set.key.slot8': 'Cell 8',
+  'set.key.inventory': 'Tool menu',
+  'set.key.drone': 'Call the drone',
+  'set.key.shape': 'Build shape',
   'set.key.heat': 'Heat map',
   'set.key.mute': 'Sound',
   'set.key.help': 'Help',
   'set.key.settings': 'Settings',
-
-  'win.kicker': 'Cargo accepted',
-  'win.title': 'The shuttle is away',
-  'win.textClean':
-    '{sol} closed the quota without losing a single parcel. Control is checking the telemetry for forgery.',
-  'win.textLosses':
-    '{sol} closed the quota. The previous {n} parcels were written off as "research expenditure".',
-  'win.time': 'Shift time',
-  'win.cargo': 'Cargo on the pad',
-  'win.drilled': 'Cells drilled',
-  'win.lost': 'Parcels written off',
-  'win.cta': 'Stay in the shaft',
 
   'term.title': 'Control "Sol" · assembly terminal',
   'term.hintInit': 'initialising…',
@@ -201,15 +200,14 @@ regLang('en', {
   'term.firstFrame': 'frame · welded',
   'term.firstDrill': 'drill · calibrated to 9 units per tick',
   'term.firstJet': 'pack · tank full',
-  'term.firstHook': 'grapple · tension test — nominal',
   'term.firstMem': 'memory carrier · empty: first parcel of the series',
+  'term.balance': 'account · ${m}',
   'term.revision': 'REVISION {v} · new drawing, same old rake',
   'term.assembling': 'parcel {sol} · assembled to the same drawing',
   'term.assembly': [
     'frame · welded',
     'drill · calibrated to 9 units per tick',
     'pack · tank full',
-    'grapple · tension test — nominal',
     'heat probe · 18 °C, within range',
     'manipulator · torque set',
     'hull · seams spot-checked'
@@ -253,7 +251,6 @@ regLang('en', {
   ],
   'term.adviceRepeat': '{advice} · repeated for the {n}th time',
   'term.adviceStatus': 'advisory status · not carried into memory',
-  'term.quota': 'shift quota · {list}',
   'term.stale': 'progress · unchanged since {prev}',
   'term.pace': 'pace · unexpectedly acceptable',
   'term.baselineStart': 'baseline · test',
@@ -340,23 +337,22 @@ regLang('en', {
   ],
 
   'event.intro':
-    'Control "Sol" on the line. You are {sol}, a research unit. Shift quota: 60 iron and 40 glass onto the cargo pad by the airlock. You have no stock — everything travels in your hands. The previous parcels did not close it.',
-  'event.first_hook':
-    'The grapple holds. Later revisions will get the same one. If there are later revisions.',
+    'Control "Sol" on the line. You are {sol}, a research unit. Stack resources in a pickup zone — mark it yourself with the Pickup tool — and call the drone: it sells everything at the current price. Raw material gets cheaper every minute. You have no stock — everything travels in your hands. The previous parcels earned nothing.',
   'event.first_ember': 'The coal has caught. 1500 °C. Keep the fingers you do not have well clear.',
   'event.first_melt': 'Ferrite is running. Control is officially surprised.',
-  'event.first_iron': 'First ingot in stock. Orbit would like 59 more.',
-  'event.first_glass':
-    'Glass is coming through. The shuttle will get a porthole — to watch you fall.',
+  'event.first_iron':
+    'First ingot on the market. Iron is worth more than rock — and loses value slower.',
+  'event.first_glass': 'Glass is sold. Orbit pays most for what is hardest to make.',
   'event.dry_tank':
-    'Tank is dry. The next refuel is at a dock station. There is no dock station yet, so from here it is the grapple and your own two feet.',
+    'Tank is dry. The next refuel is at a dock station. There is no dock station yet, so from here it is your own two feet.',
   'event.glass_hint':
     'The sand heats up but will not run. Heat from below is not enough: bury it in the coal so it burns from every side.',
-  'event.goal_ready': 'Cargo is complete. {sol}, hit "Load the shuttle" before something caves in.',
+  'event.first_pad':
+    'We see the pickup zone. The drone will take whatever lies in it — for money, at the current price.',
+  'event.first_sale':
+    'First sale. Raw material gets cheaper by the minute — smelt iron and glass, they hold their price longer.',
 
   'comms.from': 'CONTROL · CHANNEL 7',
-  'comms.beltGift':
-    'Quota closed. Builder unlocked. Drag a line — place a belt or a wall, free of charge.',
 
   baseline: [
     { q: 'System. Rock.', a: 'Rock.' },

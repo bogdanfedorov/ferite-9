@@ -60,9 +60,11 @@
 
   <div class="right-stack">
     <section class="panel goal-panel">
-      <h2 class="eyebrow"><span data-i18n="ui.cargo">Вантаж на орбіту</span></h2>
-      <ul class="goal-list" id="goal-list"></ul>
-      <button id="launch" class="launch" disabled data-i18n="ui.launch">Спорядити шатл</button>
+      <h2 class="eyebrow"><span data-i18n="ui.market">Ринок</span>
+        <span class="money mono" id="money">$0</span></h2>
+      <ul class="goal-list" id="market-list"></ul>
+      <p class="market-sum mono" id="market-sum"></p>
+      <button id="drone-btn" class="launch" disabled></button>
     </section>
   </div>
 
@@ -71,38 +73,23 @@
     <p class="comms-text" id="comms-text"></p>
   </aside>
 
-  <div class="tipbar"><span id="tip"></span></div>
+  <div class="tipbar warn hidden"><span id="tip"></span></div>
 
   <div class="buildwrap">
-    <nav class="pickbar hidden" id="bodybar">
-      <button class="shape active" data-body="belt" data-i18n="body.belt">стрічка</button>
-      <button class="shape" data-body="wall" data-i18n="body.wall">стіна</button>
-      <button class="shape" data-body="erase" data-i18n="body.erase">знести</button>
-    </nav>
     <nav class="pickbar hidden" id="shapebar">
-      <button class="shape" data-shape="point" data-i18n="shape.point">піксель</button>
       <button class="shape active" data-shape="line" data-i18n="shape.line">лінія</button>
-      <button class="shape" data-shape="angled" data-i18n="shape.angled">під кутом</button>
       <button class="shape" data-shape="rect" data-i18n="shape.rect">прямокутник</button>
     </nav>
-    <nav class="buildbar" id="buildbar">
-      <button class="slot active" data-tool="drill">
-        <span class="srow"><kbd>1</kbd><span class="sname" data-i18n="tool.drill">Бур</span></span>
-        <span class="scost" data-i18n="tool.drill.cost">твердість породи</span>
-      </button>
-      <button class="slot" data-tool="hand">
-        <span class="srow"><kbd>2</kbd><span class="sname" data-i18n="tool.hand">Рука</span></span>
-        <span class="scost" data-i18n="tool.hand.cost">носити пухке</span>
-      </button>
-      <button class="slot" data-tool="ignite">
-        <span class="srow"><kbd>3</kbd><span class="sname" data-i18n="tool.ignite">Запал</span></span>
-        <span class="scost" data-i18n="tool.ignite.cost">підпалити</span>
-      </button>
-      <button class="slot locked" id="slot-build" data-tool="build">
-        <span class="srow"><kbd>4</kbd><span class="sname" data-i18n="tool.build">Будівник</span></span>
-        <span class="scost" data-i18n="tool.build.cost">без ресурсів</span>
-      </button>
-    </nav>
+    <nav class="buildbar" id="hotbar"></nav>
+  </div>
+
+  <div class="screen hidden" id="inventory">
+    <div class="screen-card inv-card">
+      <p class="kicker"><span data-i18n="inv.kicker">Інструменти</span> · <span id="inv-money"></span></p>
+      <p class="set-note" data-i18n="inv.note"></p>
+      <div class="inv-tools" id="inv-tools"></div>
+      <nav class="buildbar inv-slots" id="inv-slots"></nav>
+    </div>
   </div>
 
   <div class="screen boot hidden" id="boot">
@@ -128,8 +115,10 @@
       <div class="keys">
         <div><kbd data-bind="up,left,down,right">W A S D</kbd><span data-i18n="intro.keyMove">рух, ранець на підйомі</span></div>
         <div><kbd data-i18n="key.lmb">ЛКМ</kbd><span data-i18n="intro.keyTool">інструмент</span></div>
-        <div><kbd data-i18n="key.rmb">ПКМ</kbd><span data-i18n="intro.keyHook">захват і підтяг</span></div>
-        <div><kbd data-bind="slot1,slot2,slot3,slot4">1 2 3 4</kbd><span data-i18n="intro.keySlots">вибір інструмента</span></div>
+        <div><kbd data-bind="slot1,slot2,slot3,slot4,slot5,slot6,slot7,slot8">1 2 3 4 5 6 7 8</kbd><span data-i18n="intro.keySlots">клітинки інструментів</span></div>
+        <div><kbd data-bind="inventory">E</kbd><span data-i18n="intro.keyInv">усі інструменти</span></div>
+        <div><kbd data-i18n="key.rmb">ПКМ</kbd><span data-i18n="intro.keyErase">знести збудоване</span></div>
+        <div><kbd data-bind="drone">F</kbd><span data-i18n="intro.keyDrone">викликати дрон</span></div>
         <div><kbd data-bind="heat">T</kbd><span data-i18n="intro.keyHeat">теплова карта</span></div>
         <div><kbd data-bind="help">H</kbd><span data-i18n="intro.keyHelp">довідка · пауза</span></div>
         <div><kbd data-bind="settings">O</kbd><span data-i18n="intro.keySettings">налаштування</span></div>
@@ -218,21 +207,6 @@
     </div>
   </div>
 
-  <div class="screen hidden" id="win">
-    <div class="screen-card">
-      <p class="kicker" data-i18n="win.kicker">Вантаж прийнято</p>
-      <h1 data-i18n="win.title">Шатл пішов</h1>
-      <p class="lede" id="win-text"></p>
-      <dl class="scoreboard">
-        <div><dt data-i18n="win.time">Час зміни</dt><dd class="mono" id="w-time">—</dd></div>
-        <div><dt data-i18n="win.cargo">Вантажу на майданчику</dt><dd class="mono" id="w-cargo">—</dd></div>
-        <div><dt data-i18n="win.drilled">Клітинок пробурено</dt><dd class="mono" id="w-drilled">—</dd></div>
-        <div><dt data-i18n="win.lost">Посилок списано</dt><dd class="mono" id="w-lost">—</dd></div>
-      </dl>
-      <button class="cta" id="keep" data-i18n="win.cta">Лишитись у шахті</button>
-    </div>
-  </div>
-
 </div>
 
 <script src="js/i18n.js"></script>
@@ -242,16 +216,17 @@
 <script src="js/materials.data.js"></script>
 <script src="js/materials.js"></script>
 <script src="js/settings.js"></script>
-<script src="js/quest.js"></script>
 <script src="js/lore.js"></script>
 <script src="js/world.js"></script>
 <script src="js/objects.js"></script>
 <script src="js/build.js"></script>
 <script src="js/sandbox.js"></script>
+<script src="js/market.js"></script>
 <script src="js/player.js"></script>
 <script src="js/render.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/hud.js"></script>
+<script src="js/toolbelt.js"></script>
 <script src="js/input.js"></script>
 <script src="js/game.js"></script>
 </body>

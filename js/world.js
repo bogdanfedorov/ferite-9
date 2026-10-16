@@ -318,37 +318,10 @@ function decayDamage() {
   dmgList = keep;
 }
 
-var cargoPad = { x: 0, y: 0, w: 0, h: 0 };
-var cargo = {};
+var cargoPad = null;
 
-function resetCargo() {
-  cargo = {};
-  const d = questDeliver();
-  for (let i = 0; i < d.length; i++) cargo[d[i].key] = 0;
-}
-
-function cargoTotal() {
-  let n = 0;
-  for (const key in cargo) n += cargo[key];
-  return n;
-}
-
-function tickCargoPad() {
-  const want = questDeliver();
-  for (let y = cargoPad.y; y < cargoPad.y + cargoPad.h; y++) {
-    for (let x = cargoPad.x; x < cargoPad.x + cargoPad.w; x++) {
-      if (!inBounds(x, y)) continue;
-      const m = mat[y * W + x];
-      const group = CARGO[m];
-      if (!group) continue;
-      for (let c = 0; c < want.length; c++) {
-        if (want[c].key !== group) continue;
-        cargo[group]++;
-        setCell(x, y, VOID_ID);
-        break;
-      }
-    }
-  }
+function setCargoPad(rect) {
+  cargoPad = rect;
 }
 
 var surfaceTop = 40;
@@ -395,9 +368,8 @@ function beginWorld(seed, w, h) {
   seenCount = 0;
 }
 
-function finishWorld(pad, tempOf) {
-  cargoPad = pad;
-  resetCargo();
+function finishWorld(tempOf) {
+  cargoPad = null;
   for (let y = 0; y < H; y++) {
     for (let i = y * W; i < (y + 1) * W; i++) {
       temp[i] = tempOf(mat[i], y);
@@ -512,11 +484,7 @@ function generateWorld(seed, w, h) {
   paintRect(bx, by, bx + 23, by + 2, ROCK);
   paintRect(bx, by - 9, bx + 23, by - 1, VOID_ID);
 
-  const pad = { x: bx + 8, y: by - 3, w: 8, h: 3 };
-  paintRect(pad.x - 1, by - 3, pad.x - 1, by - 1, ROCK);
-  paintRect(pad.x + pad.w, by - 3, pad.x + pad.w, by - 1, ROCK);
-
-  finishWorld(pad, worldTemp);
+  finishWorld(worldTemp);
   revealSurface(surf);
   return { spawnX: W >> 1, spawnY: by - 6 };
 }

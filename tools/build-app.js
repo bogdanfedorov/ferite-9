@@ -14,16 +14,17 @@ const FILES = [
   'js/materials.data.js',
   'js/materials.js',
   'js/settings.js',
-  'js/quest.js',
   'js/lore.js',
   'js/world.js',
   'js/objects.js',
   'js/build.js',
   'js/sandbox.js',
+  'js/market.js',
   'js/player.js',
   'js/render.js',
   'js/sound.js',
   'js/hud.js',
+  'js/toolbelt.js',
   'js/input.js',
   'js/game.js'
 ];

@@ -7,7 +7,7 @@ var SOL = {
   lastCause: '',
   lastDrop: 0,
   lastTemp: 0,
-  lastQuota: null
+  lastMoney: null
 };
 
 var CAUSES = ['lava', 'heat', 'fall', 'hotdrill', 'buried'];
@@ -99,7 +99,6 @@ function buildBootSteps() {
     s.push({ k: 'log', t: t('term.firstFrame') });
     s.push({ k: 'log', t: t('term.firstDrill') });
     s.push({ k: 'log', t: t('term.firstJet') });
-    s.push({ k: 'log', t: t('term.firstHook') });
     s.push({ k: 'log', t: t('term.firstMem') });
   } else {
     if (SOL.parcel === 1 && SOL.version > 1) {
@@ -143,31 +142,13 @@ function buildBootSteps() {
     }
   }
 
-  const want = questDeliver();
-  let now = [],
-    parts = [],
-    got = 0,
-    need = 0,
-    qi;
-  for (qi = 0; qi < want.length; qi++) {
-    const c = want[qi];
-    const have = cargo[c.key] || 0;
-    now.push(have);
-    parts.push(`${t(c.label)} ${have}/${c.need}`);
-    got += Math.min(have, c.need);
-    need += c.need;
-  }
-  s.push({ k: 'log', t: tf('term.quota', { list: parts.join(' · ') }) });
-
-  let stale = !!SOL.lastQuota && SOL.lastQuota.length === now.length;
-  for (qi = 0; stale && qi < now.length; qi++) {
-    if (SOL.lastQuota[qi] !== now[qi]) stale = false;
-  }
+  s.push({ k: 'log', t: tf('term.balance', { m: market.money }) });
   if (!first) {
-    if (stale) s.push({ k: 'log', cls: 'bl-warn', t: tf('term.stale', { prev: prev }) });
-    else if (need > 0 && got >= need * 0.5) s.push({ k: 'log', t: t('term.pace') });
+    if (SOL.lastMoney === market.money) {
+      s.push({ k: 'log', cls: 'bl-warn', t: tf('term.stale', { prev: prev }) });
+    } else if (market.money >= START_MONEY * 2) s.push({ k: 'log', t: t('term.pace') });
   }
-  SOL.lastQuota = now;
+  SOL.lastMoney = market.money;
 
   s.push({ k: 'log', d: 460, t: t('term.baselineStart') });
 

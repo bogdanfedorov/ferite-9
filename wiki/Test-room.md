@@ -25,13 +25,13 @@ out without the shift hanging over you.
 - **No fall damage.** Drop from the ceiling onto bedrock and nothing happens.
 - **The whole room is surveyed.** Nothing is hidden, everything simulates from
   the first frame.
-- **The builder is unlocked** from the start, without waiting for the quota.
+- **Every tool is unlocked** from the start, and the account holds $9999.
 - **Room temperature everywhere**, 22 °C with no geothermal gradient, so heat
   you see came from something you did. Liquids that would freeze at room
   temperature are poured just above their freezing point.
 
 Everything else is the real game: the same simulation, the same drill, hand,
-torch and builder, the same cargo pad above the row if you want to test deliveries.
+igniter and build tools. Draw a pickup zone if you want to test selling.
 
 ## What is not different
 

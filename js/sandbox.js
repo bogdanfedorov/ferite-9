@@ -8,8 +8,6 @@ var ROOM_BIN_GAP = 2;
 var ROOM_LABEL_CELLS = 1.15;
 var ROOM_LABEL_PAD = 2;
 var ROOM_MARGIN = 6;
-var ROOM_PAD_W = 8;
-var ROOM_PAD_H = 3;
 var ROOM_APRON = 26;
 var ROOM_REFILL_EVERY = 12;
 var ROOM_STABLE_MARGIN = 20;
@@ -173,13 +171,7 @@ function generateTestRoom(seed, w, h) {
     at += wide[i] + ROOM_BIN_GAP;
   }
 
-  const padX = (W >> 1) - (ROOM_PAD_W >> 1);
-  const padY = floorY - ROOM_BIN_H - 16;
-  paintRect(padX - 1, padY, padX - 1, padY + ROOM_PAD_H - 1, ROCK);
-  paintRect(padX + ROOM_PAD_W, padY, padX + ROOM_PAD_W, padY + ROOM_PAD_H - 1, ROCK);
-  paintRect(padX - 1, padY + ROOM_PAD_H, padX + ROOM_PAD_W, padY + ROOM_PAD_H, ROCK);
-
-  finishWorld({ x: padX, y: padY, w: ROOM_PAD_W, h: ROOM_PAD_H }, roomTemp);
+  finishWorld(roomTemp);
   seen.fill(1);
   fogVal.fill(1);
   seenCount = seen.length;

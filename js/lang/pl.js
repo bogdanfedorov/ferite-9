@@ -1,8 +1,12 @@
 regLang('pl', {
   'ui.module': 'Moduł',
+  'ui.inZone': 'w strefie · ${sum}',
+  'ui.dronePoor': 'Dron kosztuje ${fee}',
+  'ui.droneNoPad': 'Wyznacz strefę odbioru',
+  'ui.droneBusy': 'Dron w drodze…',
+  'ui.drone': 'Dron za ${fee}',
+  'ui.market': 'Rynek',
   'ui.parcel': 'przesyłka',
-  'ui.cargo': 'Ładunek na orbitę',
-  'ui.launch': 'Załadować wahadłowiec',
   'ui.losses': 'straty',
   'ui.explored': 'zbadano',
   'ui.hp': 'Sprawność',
@@ -49,38 +53,34 @@ regLang('pl', {
   'tool.ignite.cost': 'podpalić',
   'tool.hand': 'Ręka',
   'tool.hand.cost': 'nosić sypkie',
-  'tool.build': 'Budowniczy',
-  'tool.build.cost': 'za darmo',
+  'tool.pad': 'Odbiór',
+  'tool.pad.cost': 'skąd dron bierze ładunek',
+  'tool.belt': 'Taśma',
+  'tool.belt.cost': 'komórka pchająca surowiec',
+  'tool.wall': 'Ściana',
+  'tool.wall.cost': 'komórka muru, za darmo',
 
-  'tip.drill': 'LPM — krusz skałę: rozsypie się sypka na miejscu · PPM — hak',
-  'tip.ignite': 'LPM na węgiel — podpalić · żar trzyma 1500 °C',
-  'tip.hand':
-    'Przytrzymaj LPM na sypkim — w garści tylko to, na co celujesz · puść, a od razu wsypie się w podłoże',
-  'tip.build':
-    'Wybierz co stawiasz i jaki kształt · przytrzymaj LPM i prowadź · Shift — równa linia lub kwadrat · R — kształt',
-
-  'body.belt': 'taśma',
-  'body.wall': 'ściana',
-  'body.erase': 'usuń',
-
-  'shape.point': 'piksel',
   'shape.line': 'linia',
-  'shape.angled': 'pod kątem',
   'shape.rect': 'prostokąt',
 
   'msg.tooFar': 'Za daleko — podleć bliżej',
   'msg.nothingToGrab': 'Gołymi rękami skały nie weźmiesz — najpierw pokrusz ją wiertłem',
-  'msg.builderLocked': 'Budowniczy jeszcze niedostępny — najpierw zamknij limit',
-  'msg.beltShort': 'To nie linia, tylko kikut — prowadź dalej',
   'msg.beltRoom': 'Tu się nie da postawić — miejsce zajęte',
   'msg.beltDone': 'Taśma postawiona — ładunek jedzie już sam',
   'msg.wallDone': 'Ściana postawiona',
   'msg.structRemoved': 'Strukturę zdjęto',
   'msg.nothingToRemove': 'Nie ma tu czego usuwać',
-  'msg.buildBody': 'Tryb: {body}',
   'msg.buildShape': 'Kształt: {shape}',
-  'msg.grabOnly': 'W garści tylko to: {mat}',
   'msg.noIgnite': 'Nie ma czego podpalić — wysyp najpierw węgiel',
+  'msg.bought': 'Kupiono: {tool}',
+  'msg.droneEmpty': 'Dron wrócił pusty — w strefie nic nie było',
+  'msg.droneSold': 'Dron sprzedał ładunek: +${sum}',
+  'msg.droneOn': 'Dron wyleciał — odbiór za chwilę',
+  'msg.cantAfford': 'Brakuje pieniędzy: potrzeba ${cost}',
+  'msg.noPad': 'Najpierw wyznacz strefę odbioru',
+  'msg.toolLocked': 'Tego narzędzia jeszcze nie kupiono',
+  'msg.padDone': 'Strefa odbioru wyznaczona — dron bierze ładunek stąd',
+  'msg.padBig': 'Za duża strefa — najwyżej 96 komórek',
   'msg.heatOn': 'Mapa ciepła włączona',
   'msg.heatOff': 'Mapa ciepła wyłączona',
   'msg.roomOn':
@@ -95,8 +95,13 @@ regLang('pl', {
     'Jesteś modułem badawczym <b>sol_1.01</b>, kolejną przesyłką Centrum do tego szybu. Magazynu nie masz: skała pod wiertłem rozsypuje się na miejscu, a wszystko nosisz w rękach. Wykuj piec w skale, wnieś do niego węgiel i rudę, podpal — i patrz, jak ferryt spływa ciekłym żelazem. Każda strata modułu kosztuje Centrum nową przesyłkę, a ciebie — kolejną porcję komentarzy z orbity.',
   'intro.keyMove': 'ruch, plecak przy wznoszeniu',
   'intro.keyTool': 'narzędzie',
-  'intro.keyHook': 'hak i podciąganie',
-  'intro.keySlots': 'wybór narzędzia',
+  'intro.keyErase': 'usuń zbudowane',
+  'intro.keyDrone': 'wezwać drona',
+  'intro.keySlots': 'komórki narzędzi',
+  'inv.kicker': 'Narzędzia',
+  'inv.note':
+    'Kliknij narzędzie, potem komórkę poniżej — albo wciśnij jej cyfrę. Zamknięte narzędzie kupujesz kliknięciem. E lub Esc zamyka.',
+  'intro.keyInv': 'wszystkie narzędzia',
   'intro.keyHeat': 'mapa ciepła',
   'intro.keyHelp': 'pomoc · pauza',
   'intro.cta': 'Zjechać do szybu',
@@ -121,7 +126,7 @@ regLang('pl', {
   'help.s7':
     '<b>Świat budzi się od ciebie</b>: niezbadane obszary nie są symulowane. Gdy tylko przebijesz chodnik i zobaczysz — wszystko tam rusza naraz i trwa, nawet gdy odejdziesz.',
   'help.s8':
-    '<b>Moduł jest śmiertelny</b>: upadek z ponad 17 komórek, upał powyżej 120 °C, wiercenie w rozżarzonym i zasypanie sypkim. Każda strata to nowa przesyłka z nowym numerem i kolejny komentarz z orbity. <b>Plecak sam się nie tankuje</b>: zbiornik napełnią tylko na stacji dokującej, więc wysokość bierz hakiem.',
+    '<b>Moduł jest śmiertelny</b>: upadek z ponad 17 komórek, upał powyżej 120 °C, wiercenie w rozżarzonym i zasypanie sypkim. Każda strata to nowa przesyłka z nowym numerem i kolejny komentarz z orbity. <b>Plecak sam się nie tankuje</b>: zbiornik napełnią tylko na stacji dokującej, więc na wznoszenie wydawaj go z głową.',
   'help.cta': 'Wrócić do pracy',
   'intro.keySettings': 'ustawienia',
 
@@ -158,27 +163,21 @@ regLang('pl', {
   'set.key.down': 'W dół',
   'set.key.left': 'W lewo',
   'set.key.right': 'W prawo',
-  'set.key.slot1': 'Slot 1 · wiertło',
-  'set.key.slot2': 'Slot 2 · ręka',
-  'set.key.slot3': 'Slot 3 · zapalnik',
-  'set.key.slot4': 'Slot 4 · budowniczy',
-  'set.key.shape': 'Kształt · budowniczy',
+  'set.key.slot1': 'Komórka 1',
+  'set.key.slot2': 'Komórka 2',
+  'set.key.slot3': 'Komórka 3',
+  'set.key.slot4': 'Komórka 4',
+  'set.key.slot5': 'Komórka 5',
+  'set.key.slot6': 'Komórka 6',
+  'set.key.slot7': 'Komórka 7',
+  'set.key.slot8': 'Komórka 8',
+  'set.key.inventory': 'Menu narzędzi',
+  'set.key.drone': 'Wezwać drona',
+  'set.key.shape': 'Kształt budowy',
   'set.key.heat': 'Mapa ciepła',
   'set.key.mute': 'Dźwięk',
   'set.key.help': 'Pomoc',
   'set.key.settings': 'Ustawienia',
-
-  'win.kicker': 'Ładunek przyjęty',
-  'win.title': 'Wahadłowiec odleciał',
-  'win.textClean':
-    'Normę zamknął {sol} — bez ani jednej straconej przesyłki. Centrum sprawdza telemetrię pod kątem fałszerstwa.',
-  'win.textLosses':
-    'Normę zamknął {sol}. Poprzednie {n} przesyłek Centrum spisało na „wydatki badawcze".',
-  'win.time': 'Czas zmiany',
-  'win.cargo': 'Ładunku na płycie',
-  'win.drilled': 'Komórek przewierconych',
-  'win.lost': 'Przesyłek spisanych',
-  'win.cta': 'Zostać w szybie',
 
   'term.title': 'Centrum „Sol" · terminal montażu',
   'term.hintInit': 'inicjalizacja…',
@@ -202,15 +201,14 @@ regLang('pl', {
   'term.firstFrame': 'rama · zespawana',
   'term.firstDrill': 'wiertło · kalibracja 9 jednostek na tik',
   'term.firstJet': 'plecak · zbiornik pełny',
-  'term.firstHook': 'hak · próba naciągu — norma',
   'term.firstMem': 'nośnik pamięci · pusty: pierwsza przesyłka serii',
+  'term.balance': 'konto · ${m}',
   'term.revision': 'REWIZJA {v} · nowy rysunek, te same grabie',
   'term.assembling': 'przesyłka {sol} · montaż wedle tego samego rysunku',
   'term.assembly': [
     'rama · zespawana',
     'wiertło · kalibracja 9 jednostek na tik',
     'plecak · zbiornik pełny',
-    'hak · próba naciągu — norma',
     'sonda cieplna · 18 °C, w granicach',
     'manipulator · moment dokręcony',
     'kadłub · spoiny sprawdzone wyrywkowo'
@@ -254,7 +252,6 @@ regLang('pl', {
   ],
   'term.adviceRepeat': '{advice} · powtórnie {n} raz',
   'term.adviceStatus': 'status zalecenia · nie przenosi się do pamięci',
-  'term.quota': 'norma zmiany · {list}',
   'term.stale': 'postęp · bez zmian od {prev}',
   'term.pace': 'tempo · nieoczekiwanie do przyjęcia',
   'term.baselineStart': 'linia bazowa · test',
@@ -341,22 +338,22 @@ regLang('pl', {
   ],
 
   'event.intro':
-    'Centrum „Sol" na łączach. Jesteś {sol}, moduł badawczy. Norma zmiany: 60 żelaza i 40 szkła na płytę ładunkową przy śluzie. Magazynu nie masz — wszystko nosisz w rękach. Poprzednie przesyłki jej nie zamknęły.',
-  'event.first_hook': 'Hak trzyma. Następne rewizje dostaną taki sam. O ile będą następne.',
+    'Centrum „Sol" na łączach. Jesteś {sol}, moduł badawczy. Składuj surowce w strefie odbioru — wyznacz ją sam narzędziem „Odbiór" — i wezwij drona: sprzeda wszystko po bieżącej cenie. Surowiec tanieje co minutę. Magazynu nie masz — wszystko nosisz w rękach. Poprzednie przesyłki nic nie zarobiły.',
   'event.first_ember': 'Węgiel się zajął. 1500 °C. Palce, których nie masz, trzymaj z daleka.',
   'event.first_melt': 'Ferryt popłynął. Centrum jest oficjalnie zdziwione.',
-  'event.first_iron': 'Pierwsza sztaba w magazynie. Orbita prosi o jeszcze 59.',
-  'event.first_glass': 'Szkło poszło. Wahadłowiec dostanie iluminator — żeby patrzeć, jak spadasz.',
+  'event.first_iron':
+    'Pierwsza sztaba na rynku. Żelazo jest warte więcej niż skała — i tanieje wolniej.',
+  'event.first_glass': 'Szkło sprzedane. Orbita płaci najwięcej za to, co najtrudniej zrobić.',
   'event.dry_tank':
-    'Zbiornik suchy. Następne tankowanie na stacji dokującej. Stacji jeszcze nie ma, więc dalej — hak i własne nogi.',
+    'Zbiornik suchy. Następne tankowanie na stacji dokującej. Stacji jeszcze nie ma, więc dalej — na własnych nogach.',
   'event.glass_hint':
     'Piasek się grzeje, ale nie płynie. Żar od spodu nie wystarcza: zakop go w węglu, żeby piekło ze wszystkich stron.',
-  'event.goal_ready':
-    'Ładunek zebrany. {sol}, wciśnij „Załadować wahadłowiec", zanim coś się zawali.',
+  'event.first_pad':
+    'Widzimy strefę odbioru. Dron zabierze wszystko, co w niej leży — za pieniądze i po bieżącej cenie.',
+  'event.first_sale':
+    'Pierwsza sprzedaż. Surowiec tanieje z każdą minutą — wytapiaj żelazo i szkło, one dłużej trzymają cenę.',
 
   'comms.from': 'CENTRUM · KANAŁ 7',
-  'comms.beltGift':
-    'Limit zamknięty. Odblokowano budowniczego. Prowadź linię — postaw taśmę albo ścianę, za darmo.',
 
   baseline: [
     { q: 'System. Skała.', a: 'Skała.' },

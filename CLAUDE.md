@@ -11,6 +11,12 @@ not. Enforced by `npm run lint` (`tools/no-comments.js`).
 
 Explanations belong in the README, BUILD.md or the wiki — not in the source.
 
+## World model
+
+Everything in the world is a cell: a material id plus, where needed, per-cell
+data keyed by cell index. No composite objects that own several cells — a belt
+is a row of belt cells, each with its own direction.
+
 ## Style
 
 - 2-space indent, single quotes, semicolons, LF
