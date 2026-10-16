@@ -56,25 +56,14 @@ function roomBinWidths(stock, room) {
   return wide;
 }
 
-function roomFill(x0, y0, x1, y1, m) {
-  for (var y = y0; y <= y1; y++) {
-    for (var x = x0; x <= x1; x++) {
-      if (!inBounds(x, y)) continue;
-      var i = y * W + x;
-      mat[i] = m;
-      life[i] = LIFE_RND[m] ? LIFE_BASE[m] + rndInt(LIFE_RND[m]) : LIFE_BASE[m];
-    }
-  }
-}
-
 function roomBin(x, floorY, m, w) {
   var wall = EDGE_ID;
   var top = floorY - ROOM_BIN_H;
-  roomFill(x - 1, top, x - 1, floorY, wall);
-  roomFill(x + w, top, x + w, floorY, wall);
-  roomFill(x, floorY, x + w - 1, floorY, wall);
-  if (OPEN[m]) roomFill(x, top, x + w - 1, top, wall);
-  roomFill(x, top + 1, x + w - 1, floorY - 1, m);
+  paintRect(x - 1, top, x - 1, floorY, wall);
+  paintRect(x + w, top, x + w, floorY, wall);
+  paintRect(x, floorY, x + w - 1, floorY, wall);
+  if (OPEN[m]) paintRect(x, top, x + w - 1, top, wall);
+  paintRect(x, top + 1, x + w - 1, floorY - 1, m);
   sandbox.bins.push({ id: m, x: x, w: w, top: top });
 }
 
@@ -146,35 +135,26 @@ function tickTestRoom(frame) {
   roomRefill(b, !roomStockLeft(b, roomBinBox(b)));
 }
 
+function roomTemp(m) {
+  return RIGID[m] || ISVOID[m] ? ROOM_TEMP : roomStableTemp(m);
+}
+
 function generateTestRoom(seed, w, h) {
-  if (w > 0 && h > 0 && (w !== W || h !== H)) {
-    resizeGrid(w, h);
-  }
-  srand(seed);
+  beginWorld(seed, w, h);
   sandbox.bins.length = 0;
-
-  mat.fill(VOID_ID);
-  life.fill(0);
-  flow.fill(0);
-  dmg.fill(0);
-  dmgList.length = 0;
-  produced.fill(0);
-  nearHot.fill(0);
-
-  var x, y, i;
-  for (i = 0; i < LEN; i++) shade[i] = (rnd() * 256) | 0;
-  for (y = 0; y < H; y++) geothermalGradient[y] = ROOM_TEMP;
+  var ROCK = matId('rock'), i;
+  for (i = 0; i < H; i++) geothermalGradient[i] = ROOM_TEMP;
 
   var floorY = Math.round(H * ROOM_SKY);
   surfaceTop = floorY - ROOM_BIN_H - 24;
 
-  roomFill(0, floorY + 1, W - 1, floorY + 8, matId('rock'));
-  roomFill(0, floorY + 9, W - 1, H - 1, matId('hardpan'));
-  roomFill(0, H - 12, W - 1, H - 1, matId('rock'));
-  roomFill(0, 0, 2, H - 1, EDGE_ID);
-  roomFill(W - 3, 0, W - 1, H - 1, EDGE_ID);
-  roomFill(0, H - 4, W - 1, H - 1, EDGE_ID);
-  roomFill(0, floorY, W - 1, floorY, matId('rock'));
+  paintRect(0, floorY + 1, W - 1, floorY + 8, ROCK);
+  paintRect(0, floorY + 9, W - 1, H - 1, matId('hardpan'));
+  paintRect(0, H - 12, W - 1, H - 1, ROCK);
+  paintRect(0, 0, 2, H - 1, EDGE_ID);
+  paintRect(W - 3, 0, W - 1, H - 1, EDGE_ID);
+  paintRect(0, H - 4, W - 1, H - 1, EDGE_ID);
+  paintRect(0, floorY, W - 1, floorY, ROCK);
 
   var stock = roomStock();
   var room = W - 2 * ROOM_MARGIN - ROOM_APRON;
@@ -192,21 +172,11 @@ function generateTestRoom(seed, w, h) {
 
   var padX = (W >> 1) - (ROOM_PAD_W >> 1);
   var padY = floorY - ROOM_BIN_H - 16;
-  roomFill(padX - 1, padY, padX - 1, padY + ROOM_PAD_H - 1, matId('rock'));
-  roomFill(padX + ROOM_PAD_W, padY, padX + ROOM_PAD_W, padY + ROOM_PAD_H - 1, matId('rock'));
-  roomFill(padX - 1, padY + ROOM_PAD_H, padX + ROOM_PAD_W, padY + ROOM_PAD_H, matId('rock'));
-  cargoPad = { x: padX, y: padY, w: ROOM_PAD_W, h: ROOM_PAD_H };
-  resetCargo();
+  paintRect(padX - 1, padY, padX - 1, padY + ROOM_PAD_H - 1, ROCK);
+  paintRect(padX + ROOM_PAD_W, padY, padX + ROOM_PAD_W, padY + ROOM_PAD_H - 1, ROCK);
+  paintRect(padX - 1, padY + ROOM_PAD_H, padX + ROOM_PAD_W, padY + ROOM_PAD_H, ROCK);
 
-  for (i = 0; i < LEN; i++) {
-    var m = mat[i];
-    temp[i] = RIGID[m] || ISVOID[m] ? ROOM_TEMP : roomStableTemp(m);
-    temp2[i] = temp[i];
-  }
-
-  clk.fill(0);
-  hotA.fill(1);
-  hotB.fill(1);
+  finishWorld({ x: padX, y: padY, w: ROOM_PAD_W, h: ROOM_PAD_H }, roomTemp);
   seen.fill(1);
   fogVal.fill(1);
   seenCount = seen.length;

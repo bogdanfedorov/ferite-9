@@ -156,13 +156,17 @@ function getMatByCords(x, y) { return mat[idx(x, y)] }
 function matAt(x, y) { return inBounds(x, y) ? mat[y * W + x] : EDGE_ID; }
 function tempAt(x, y) { return inBounds(x, y) ? temp[y * W + x] : 22; }
 
+function lifeOf(m) {
+  return LIFE_RND[m] ? LIFE_BASE[m] + rndInt(LIFE_RND[m]) : LIFE_BASE[m];
+}
+
 function setCell(x, y, m) {
   if (!inBounds(x, y)) return;
   var i = y * W + x;
   mat[i] = m;
   shade[i] = (rnd() * 256) | 0;
   dmg[i] = 0;
-  life[i] = LIFE_RND[m] ? LIFE_BASE[m] + rndInt(LIFE_RND[m]) : LIFE_BASE[m];
+  life[i] = lifeOf(m);
   markHot(x, y);
 }
 
@@ -171,58 +175,91 @@ function setCellHot(x, y, m, t) {
   if (inBounds(x, y)) temp[y * W + x] = t;
 }
 
+function putCell(i, m, t) {
+  setCellHot(i % W, (i / W) | 0, m, t);
+}
+
+function paintCell(i, m) {
+  mat[i] = m;
+  life[i] = lifeOf(m);
+}
+
+function moveCell(i, j) {
+  putCell(j, mat[i], temp[i]);
+  setCell(i % W, (i / W) | 0, VOID_ID);
+}
+
+function openAt(x, y) {
+  if (!inBounds(x, y)) return -1;
+  var i = y * W + x;
+  return OPEN[mat[i]] ? i : -1;
+}
+
+function isOpenCell(i) { return OPEN[mat[i]] === 1; }
+
+function ringFind(x, y, r, fit) {
+  for (var dy = -r; dy <= r; dy++) {
+    var ny = y + dy;
+    if (ny < 0 || ny >= H) continue;
+    var step = dy === -r || dy === r ? 1 : 2 * r;
+    for (var dx = -r; dx <= r; dx += step) {
+      var nx = x + dx;
+      if (nx >= 0 && nx < W && fit(ny * W + nx)) return ny * W + nx;
+    }
+  }
+  return -1;
+}
+
+function findNear(x, y, r0, r1, fit) {
+  for (var r = r0; r <= r1; r++) {
+    var j = ringFind(x, y, r, fit);
+    if (j >= 0) return j;
+  }
+  return -1;
+}
+
+function openNear(x, y, r0, r1) {
+  return findNear(x, y, r0, r1, isOpenCell);
+}
+
+function scatterOpen(x, y, maxR, tries) {
+  for (var r = 0; r <= maxR; r++) {
+    for (var a = 0; a < tries; a++) {
+      var j = openAt(x + rndInt(r * 2 + 1) - r, y + rndInt(r * 2 + 1) - r);
+      if (j >= 0) return j;
+    }
+  }
+  return -1;
+}
+
 function displaceCell(x, y) {
   if (!inBounds(x, y)) return false;
   var i = y * W + x;
   var m = mat[i];
   if (OPEN[m]) return true;
   if (STATE[m] !== MT.LIQUID) return false;
-  var hot = temp[i];
-  for (var r = 1; r <= 4; r++) {
-    for (var dy = -r; dy <= r; dy++) {
-      for (var dx = -r; dx <= r; dx++) {
-        if (dx !== -r && dx !== r && dy !== -r && dy !== r) continue;
-        var nx = x + dx, ny = y + dy;
-        if (!inBounds(nx, ny)) continue;
-        if (OPEN[mat[ny * W + nx]]) {
-          setCellHot(nx, ny, m, hot);
-          setCell(x, y, VOID_ID);
-          return true;
-        }
-      }
-    }
-  }
-  return false;
+  var j = openNear(x, y, 1, 4);
+  if (j < 0) return false;
+  moveCell(i, j);
+  return true;
 }
 
 function dropLoose(x, y, m, hot) {
-  for (var r = 0; r <= 2; r++) {
-    for (var a = 0; a < 12; a++) {
-      var px = x + rndInt(r * 2 + 1) - r;
-      var py = y + rndInt(r * 2 + 1) - r;
-      if (!inBounds(px, py)) continue;
-      if (OPEN[mat[py * W + px]]) {
-        setCellHot(px, py, m, hot);
-        return true;
-      }
-    }
+  var j = scatterOpen(x, y, 2, 12);
+  if (j < 0) {
+    setCellHot(x, y, m, hot);
+    return false;
   }
-  setCellHot(x, y, m, hot);
-  return false;
+  putCell(j, m, hot);
+  return true;
 }
 
 function spawnNear(x, y, m, radius) {
-  for (var r = 0; r <= radius; r++) {
-    for (var a = 0; a < 10; a++) {
-      var px = x + rndInt(r * 2 + 1) - r;
-      var py = y + rndInt(r * 2 + 1) - r;
-      if (!inBounds(px, py)) continue;
-      if (OPEN[mat[py * W + px]]) { setCell(px, py, m); return true; }
-    }
-  }
-  return false;
+  var j = scatterOpen(x, y, radius, 10);
+  if (j < 0) return false;
+  setCell(j % W, (j / W) | 0, m);
+  return true;
 }
-
 
 function markDamage(i) {
   if (dmg[i] === 0) dmgList.push(i);
@@ -301,113 +338,134 @@ function deposits(n) {
   return Math.max(1, Math.round(n * LEN / (WORLD_W * WORLD_H)));
 }
 
-function generateWorld(seed, w, h) {
-  if (w > 0 && h > 0 && (w !== W || h !== H)) {
-    resizeGrid(w, h);
-  }
+function beginWorld(seed, w, h) {
+  if (w > 0 && h > 0 && (w !== W || h !== H)) resizeGrid(w, h);
   srand(seed);
-  var VOID = VOID_ID;
-  var ROCK = matId('rock'), SAND = matId('sand'), HARDPAN = matId('hardpan');
-  var COAL_SEAM = matId('coal_seam'), ORE_SEAM = matId('ore_seam');
-  var WATER = matId('water'), LAVA = matId('lava');
-
-  mat.fill(VOID);
-  life.fill(0);
+  mat.fill(VOID_ID);
+  life.fill(LIFE_BASE[VOID_ID]);
   flow.fill(0);
   dmg.fill(0);
   dmgList.length = 0;
   produced.fill(0);
   nearHot.fill(0);
-  var x, y, i;
+  for (var i = 0; i < LEN; i++) shade[i] = (rnd() * 256) | 0;
+  seen.fill(0);
+  fogVal.fill(0);
+  seenCount = 0;
+}
 
-  for (i = 0; i < LEN; i++) shade[i] = (rnd() * 256) | 0;
+function finishWorld(pad, tempOf) {
+  cargoPad = pad;
+  resetCargo();
+  for (var y = 0; y < H; y++) {
+    for (var i = y * W; i < (y + 1) * W; i++) {
+      temp[i] = tempOf(mat[i], y);
+      temp2[i] = temp[i];
+    }
+  }
+  clk.fill(0);
+  hotA.fill(1);
+  hotB.fill(1);
+}
 
-  for (y = 0; y < H; y++) geothermalGradient[y] = 18 + (y / H) * 46;
+function paintRect(x0, y0, x1, y1, m) {
+  for (var y = y0; y <= y1; y++) {
+    for (var x = x0; x <= x1; x++) {
+      if (inBounds(x, y)) paintCell(y * W + x, m);
+    }
+  }
+}
 
+function surfaceProfile() {
   var surf = new Int32Array(W);
-  for (x = 0; x < W; x++) {
+  for (var x = 0; x < W; x++) {
     var s = fbm(x * 0.018, 0.5, 11, 3);
     var dune = Math.sin(x * 0.07) * 3;
     surf[x] = Math.round(H * 0.1625 + s * 26 + dune);
   }
-  surfaceTop = 999;
-  for (x = 0; x < W; x++) if (surf[x] < surfaceTop) surfaceTop = surf[x];
+  return surf;
+}
 
-  for (x = 0; x < W; x++) {
-    var top = surf[x];
-    for (y = top; y < H; y++) {
-      var depth = y - top;
-      var m;
+function layerColumns(surf) {
+  var SAND = matId('sand'), HARDPAN = matId('hardpan'), ROCK = matId('rock');
+  for (var x = 0; x < W; x++) {
+    for (var y = surf[x]; y < H; y++) {
+      var depth = y - surf[x];
+      var m = ROCK;
       if (depth < 7 + fbm(x * 0.05, 3, 21, 2) * 9) m = SAND;
       else if (depth < 22 + fbm(x * 0.04, 9, 33, 2) * 14) m = HARDPAN;
-      else m = ROCK;
-      mat[y * W + x] = m;
+      paintCell(y * W + x, m);
     }
   }
+}
 
-  for (y = 0; y < H; y++) {
-    for (x = 0; x < W; x++) {
+function carveCaves(surf) {
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
       if (y < surf[x] + 16 || y > H - 14) continue;
       var n = fbm(x * 0.028, y * 0.045, 51, 3);
       var n2 = fbm(x * 0.013, y * 0.02, 77, 2);
-      if (n > 0.47 && n < 0.565 && n2 > 0.33) mat[y * W + x] = VOID;
-      else if (n2 > 0.68 && n > 0.42 && n < 0.62) mat[y * W + x] = VOID;
+      if ((n > 0.47 && n < 0.565 && n2 > 0.33) || (n2 > 0.68 && n > 0.42 && n < 0.62)) {
+        paintCell(y * W + x, VOID_ID);
+      }
     }
   }
+}
 
+function seedDeposits() {
+  var ROCK = matId('rock'), HARDPAN = matId('hardpan'), i;
   var rockOnly = [ROCK, HARDPAN];
   var nSand = deposits(46), nCoal = deposits(44), nOre = deposits(38);
   var nWater = deposits(16), nLava = deposits(12);
-  for (i = 0; i < nSand; i++) blob(rndInt(W), bandY(0.28125, 0.875), 7 + rndInt(9), SAND, rockOnly);
-  for (i = 0; i < nCoal; i++) blob(rndInt(W), bandY(0.328125, 0.875), 5 + rndInt(7), COAL_SEAM, rockOnly);
-  for (i = 0; i < nOre; i++) blob(rndInt(W), bandY(0.4375, 0.890625), 4 + rndInt(6), ORE_SEAM, rockOnly);
-  for (i = 0; i < nWater; i++) blob(rndInt(W), bandY(0.375, 0.75), 5 + rndInt(6), WATER, [VOID]);
-  for (i = 0; i < nLava; i++) blob(rndInt(W), bandY(0.8125, 0.9375), 4 + rndInt(7), LAVA, [VOID, ROCK]);
-
-  for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
-    if (x < 3 || x > W - 4 || y > H - 5) mat[y * W + x] = EDGE_ID;
-  }
-
-  var bx = (W >> 1) - 12, by = surf[W >> 1] - 1;
-  for (x = bx; x < bx + 24; x++) {
-    for (y = by; y < by + 3; y++) if (inBounds(x, y)) mat[y * W + x] = ROCK;
-    for (y = by - 9; y < by; y++) if (inBounds(x, y)) mat[y * W + x] = VOID;
-  }
-
-  cargoPad = { x: bx + 8, y: by - 3, w: 8, h: 3 };
-  for (y = by - 3; y < by; y++) {
-    if (inBounds(cargoPad.x - 1, y)) mat[y * W + cargoPad.x - 1] = ROCK;
-    if (inBounds(cargoPad.x + cargoPad.w, y)) mat[y * W + cargoPad.x + cargoPad.w] = ROCK;
-  }
-  resetCargo();
-
-  for (y = 0; y < H; y++) {
-    for (x = 0; x < W; x++) {
-      i = y * W + x;
-      var mm = mat[i];
-      temp[i] = EMITS[mm] > 0 ? EMITS[mm] : geothermalGradient[y];
-      temp2[i] = temp[i];
-    }
-  }
-
-  clk.fill(0);
-  hotA.fill(1);
-  hotB.fill(1);
-
-  seen.fill(0);
-  fogVal.fill(0);
-  seenCount = 0;
-  for (x = 0; x < W; x++) {
-    var limit = surf[x] + 10;
-    for (y = 0; y <= limit && y < H; y += FCS) revealChunk(x >> FSHIFT, y >> FSHIFT);
-    revealChunk(x >> FSHIFT, limit >> FSHIFT);
-  }
-  for (x = 0; x < FCW; x++) fogVal[x] = 0;
-  for (var fi = 0; fi < seen.length; fi++) if (seen[fi]) fogVal[fi] = 1;
-
-  return { spawnX: W >> 1, spawnY: by - 6 };
+  for (i = 0; i < nSand; i++) blob(rndInt(W), bandY(0.28125, 0.875), 7 + rndInt(9), matId('sand'), rockOnly);
+  for (i = 0; i < nCoal; i++) blob(rndInt(W), bandY(0.328125, 0.875), 5 + rndInt(7), matId('coal_seam'), rockOnly);
+  for (i = 0; i < nOre; i++) blob(rndInt(W), bandY(0.4375, 0.890625), 4 + rndInt(6), matId('ore_seam'), rockOnly);
+  for (i = 0; i < nWater; i++) blob(rndInt(W), bandY(0.375, 0.75), 5 + rndInt(6), matId('water'), [VOID_ID]);
+  for (i = 0; i < nLava; i++) blob(rndInt(W), bandY(0.8125, 0.9375), 4 + rndInt(7), matId('lava'), [VOID_ID, ROCK]);
 }
 
+function revealSurface(surf) {
+  for (var x = 0; x < W; x++) {
+    var limit = surf[x] + 10;
+    for (var y = 0; y <= limit && y < H; y += FCS) revealChunk(x >> FSHIFT, y >> FSHIFT);
+    revealChunk(x >> FSHIFT, limit >> FSHIFT);
+  }
+  for (var i = 0; i < seen.length; i++) if (seen[i]) fogVal[i] = 1;
+}
+
+function worldTemp(m, y) {
+  return EMITS[m] > 0 ? EMITS[m] : geothermalGradient[y];
+}
+
+function generateWorld(seed, w, h) {
+  beginWorld(seed, w, h);
+  var ROCK = matId('rock');
+  for (var y = 0; y < H; y++) geothermalGradient[y] = 18 + (y / H) * 46;
+
+  var surf = surfaceProfile();
+  surfaceTop = 999;
+  for (var x = 0; x < W; x++) if (surf[x] < surfaceTop) surfaceTop = surf[x];
+
+  layerColumns(surf);
+  carveCaves(surf);
+  seedDeposits();
+
+  paintRect(0, 0, 2, H - 1, EDGE_ID);
+  paintRect(W - 3, 0, W - 1, H - 1, EDGE_ID);
+  paintRect(0, H - 4, W - 1, H - 1, EDGE_ID);
+
+  var bx = (W >> 1) - 12, by = surf[W >> 1] - 1;
+  paintRect(bx, by, bx + 23, by + 2, ROCK);
+  paintRect(bx, by - 9, bx + 23, by - 1, VOID_ID);
+
+  var pad = { x: bx + 8, y: by - 3, w: 8, h: 3 };
+  paintRect(pad.x - 1, by - 3, pad.x - 1, by - 1, ROCK);
+  paintRect(pad.x + pad.w, by - 3, pad.x + pad.w, by - 1, ROCK);
+
+  finishWorld(pad, worldTemp);
+  revealSurface(surf);
+  return { spawnX: W >> 1, spawnY: by - 6 };
+}
 
 function sinksInto(m, target) {
   return ISVOID[target] || (FLUID[target] && DENS[m] > DENS[target]);
@@ -490,9 +548,12 @@ function produceCell(x, y, to) {
   produced[to]++;
 }
 
+var NB_DX = new Int8Array([-1, 1, 0, 0]);
+var NB_DY = new Int8Array([0, 0, -1, 1]);
+
 function reactAt(i, x, y, base, nt) {
   for (var k = 0; k < 4; k++) {
-    var j = k === 0 ? i - 1 : (k === 1 ? i + 1 : (k === 2 ? i - W : i + W));
+    var j = i + NB_DX[k] + NB_DY[k] * W;
     var p = base + mat[j];
     var into = REACT_INTO[p];
     if (!into) continue;
@@ -502,7 +563,7 @@ function reactAt(i, x, y, base, nt) {
     produceCell(x, y, into);
     temp[i] = rt; temp2[i] = rt;
     if (gives) {
-      produceCell(j % W, (j / W) | 0, gives);
+      produceCell(x + NB_DX[k], y + NB_DY[k], gives);
       temp[j] = gt; temp2[j] = gt;
     }
     return true;

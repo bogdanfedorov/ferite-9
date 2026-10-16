@@ -18,43 +18,26 @@ function grabbableAt(x, y) {
   return STATE[m] === MT.POWDER ? m : 0;
 }
 
-function squareRing(cx, cy, radius) {
-  var points = [];
-  for (var y = -radius; y <= radius; y++) {
-    for (var x = -radius; x <= radius; x++) {
-      if (Math.max(Math.abs(x), Math.abs(y)) === radius) points.push([cx + x, cy + y]);
-    }
-  }
-  return points;
-}
-
-function findInRings(cx, cy, maxR, fit) {
-  for (var r = 0; r <= maxR; r++) {
-    var ring = squareRing(cx, cy, r);
-    for (var k = 0; k < ring.length; k++) {
-      if (fit(ring[k][0], ring[k][1])) return ring[k];
-    }
-  }
-  return null;
-}
+function isGrabbableCell(i) { return STATE[mat[i]] === MT.POWDER; }
 
 function grabTargetAt(cx, cy) {
-  var p = findInRings(cx, cy, 2, grabbableAt);
-  return p ? grabbableAt(p[0], p[1]) : 0;
+  var j = findNear(cx, cy, 0, 2, isGrabbableCell);
+  return j < 0 ? 0 : mat[j];
 }
 
 function grabPick(cx, cy, only) {
   var dx, dy;
   var fit = function (px, py) { return grabbableAt(px, py) === only; };
+  var fitCell = function (i) { return mat[i] === only && isGrabbableCell(i); };
 
-  var anchor = findInRings(cx, cy, 2, fit);
-  if (!anchor) return [];
-  var ax = anchor[0], ay = anchor[1];
+  var anchor = findNear(cx, cy, 0, 2, fitCell);
+  if (anchor < 0) return [];
+  var ax = anchor % W, ay = (anchor / W) | 0;
 
   var cap = settings.grabSize * settings.grabSize;
   var pick = [[ax, ay]];
   var seen = {};
-  seen[ay * W + ax] = 1;
+  seen[anchor] = 1;
   for (var q = 0; q < pick.length && pick.length < cap; q++) {
     for (dy = -1; dy <= 1; dy++) {
       for (dx = -1; dx <= 1; dx++) {
@@ -128,37 +111,26 @@ function objBlocked(o, nx, ny, hard) {
   return false;
 }
 
+function shoveTarget(x, y, dx, dy) {
+  var j = openAt(x + dx, y + dy);
+  if (j < 0) j = openAt(x + dy, y + dx);
+  if (j < 0) j = openAt(x - dy, y - dx);
+  if (j < 0) j = openAt(x, y - 1);
+  if (j < 0) j = openAt(x - dx, y - dy);
+  if (j < 0) j = openNear(x, y, 2, SHOVE_R);
+  return j;
+}
+
 function shoveCell(x, y, dx, dy) {
   if (!inBounds(x, y)) return false;
   var i = y * W + x, m = mat[i];
   if (OPEN[m]) return true;
   if (!MOVABLE[m]) return false;
-  var hot = temp[i];
-
-  var way = [dx, dy, dy, dx, -dy, -dx, 0, -1, -dx, -dy];
-  var k, nx, ny;
-  for (k = 0; k < way.length; k += 2) {
-    nx = x + way[k]; ny = y + way[k + 1];
-    if ((nx === x && ny === y) || !inBounds(nx, ny)) continue;
-    if (OPEN[mat[ny * W + nx]]) {
-      setCellHot(nx, ny, m, hot); setCell(x, y, VOID_ID); return true;
-    }
-  }
-  for (var r = 2; r <= SHOVE_R; r++) {
-    for (var oy = -r; oy <= r; oy++) {
-      for (var ox = -r; ox <= r; ox++) {
-        if (ox !== -r && ox !== r && oy !== -r && oy !== r) continue;
-        nx = x + ox; ny = y + oy;
-        if (!inBounds(nx, ny)) continue;
-        if (OPEN[mat[ny * W + nx]]) {
-          setCellHot(nx, ny, m, hot); setCell(x, y, VOID_ID); return true;
-        }
-      }
-    }
-  }
-  return false;
+  var j = shoveTarget(x, y, dx, dy);
+  if (j < 0) return false;
+  moveCell(i, j);
+  return true;
 }
-
 
 function objPass(o, nx, ny, dx, dy) {
   if (objBlocked(o, nx, ny, true)) return false;
@@ -175,22 +147,15 @@ var DROP_R = 14;
 function placeCell(x, y, m, hot) {
   if (inBounds(x, y)) {
     var at = mat[y * W + x];
-    if (OPEN[at]) { setCellHot(x, y, m, hot); return true; }
-    if (MOVABLE[at] && shoveCell(x, y, 0, -1)) {
-      setCellHot(x, y, m, hot); return true;
+    if (OPEN[at] || (MOVABLE[at] && shoveCell(x, y, 0, -1))) {
+      setCellHot(x, y, m, hot);
+      return true;
     }
   }
-  for (var r = 1; r <= DROP_R; r++) {
-    for (var dy = -r; dy <= r; dy++) {
-      for (var dx = -r; dx <= r; dx++) {
-        if (dx !== -r && dx !== r && dy !== -r && dy !== r) continue;
-        var px = x + dx, py = y + dy;
-        if (!inBounds(px, py)) continue;
-        if (OPEN[mat[py * W + px]]) { setCellHot(px, py, m, hot); return true; }
-      }
-    }
-  }
-  return false;
+  var j = openNear(x, y, 1, DROP_R);
+  if (j < 0) return false;
+  putCell(j, m, hot);
+  return true;
 }
 
 function swapCell(x, y, m, hot) {
