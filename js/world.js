@@ -153,7 +153,7 @@ function rndInt(n) {
 function hash2(x, y, s) {
   let h = (x | 0) * 374761393 + (y | 0) * 668265263 + (s | 0) * 362437;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 function smooth(t) {
   return t * t * (3 - 2 * t);
@@ -326,32 +326,6 @@ function setCargoPad(rect) {
 
 var surfaceTop = 40;
 
-function blob(cx, cy, r, m, mask) {
-  const r2 = r * r;
-  for (let y = cy - r; y <= cy + r; y++) {
-    for (let x = cx - r; x <= cx + r; x++) {
-      if (!inBounds(x, y)) continue;
-      const dx = x - cx,
-        dy = y - cy;
-      const d = dx * dx + dy * dy * 1.35;
-      const wob = fbm(x * 0.12, y * 0.12, 707, 2) * 0.55 + 0.72;
-      if (d > r2 * wob) continue;
-      const cur = mat[y * W + x];
-      if (mask && mask.indexOf(cur) < 0) continue;
-      setCell(x, y, m);
-    }
-  }
-}
-
-function bandY(f0, f1) {
-  const top = Math.round(H * f0);
-  return top + rndInt(Math.round(H * f1) - top);
-}
-
-function deposits(n) {
-  return Math.max(1, Math.round((n * LEN) / (WORLD_W * WORLD_H)));
-}
-
 function beginWorld(seed, w, h) {
   if (w > 0 && h > 0 && (w !== W || h !== H)) resizeGrid(w, h);
   srand(seed);
@@ -362,10 +336,13 @@ function beginWorld(seed, w, h) {
   dmgList.length = 0;
   produced.fill(0);
   nearHot.fill(0);
-  for (let i = 0; i < LEN; i++) shade[i] = (rnd() * 256) | 0;
   seen.fill(0);
   fogVal.fill(0);
   seenCount = 0;
+}
+
+function randomizeShade() {
+  for (let i = 0; i < LEN; i++) shade[i] = (rnd() * 256) | 0;
 }
 
 function finishWorld(tempOf) {
@@ -389,64 +366,179 @@ function paintRect(x0, y0, x1, y1, m) {
   }
 }
 
-function surfaceProfile() {
+var CHUNK_SHIFT = 6,
+  CHUNK_SIZE = 1 << CHUNK_SHIFT,
+  CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+var REF_W = 480,
+  REF_H = 320;
+var SURFACE_BASE = 52;
+var CAVE_FLOOR_MARGIN = 14;
+var SAND_ID = matId('sand'),
+  HARDPAN_ID = matId('hardpan'),
+  ROCK_ID = matId('rock');
+var DEPOSIT_SLOTS = 3;
+var DEPOSIT_KINDS = [
+  { id: SAND_ID, n: 46, y0: 90, y1: 280, r0: 7, rn: 9, mask: [ROCK_ID, HARDPAN_ID] },
+  { id: matId('coal_seam'), n: 44, y0: 105, y1: 280, r0: 5, rn: 7, mask: [ROCK_ID, HARDPAN_ID] },
+  { id: matId('ore_seam'), n: 38, y0: 140, y1: 285, r0: 4, rn: 6, mask: [ROCK_ID, HARDPAN_ID] },
+  { id: matId('water'), n: 16, y0: 120, y1: 240, r0: 5, rn: 6, mask: [VOID_ID] },
+  { id: matId('lava'), n: 12, y0: 260, y1: 300, r0: 4, rn: 7, mask: [VOID_ID, ROCK_ID] },
+];
+var BLOB_REACH = 1.3;
+
+function regionRand(seed, rx, ry, salt) {
+  return hash2(rx, ry, (seed ^ Math.imul(salt + 1, 0x9e3779b1)) | 0);
+}
+
+function geothermalAt(wy) {
+  return 18 + Math.min(Math.max(0, wy), REF_H) * (46 / REF_H);
+}
+
+function surfaceAt(seed, wx) {
+  const s = fbm(wx * 0.018, 0.5, seed + 11, 3);
+  const dune = Math.sin(wx * 0.07) * 3;
+  return Math.round(SURFACE_BASE + s * 26 + dune);
+}
+
+function sandDepthAt(seed, wx) {
+  return 7 + fbm(wx * 0.05, 3, seed + 21, 2) * 9;
+}
+
+function hardpanDepthAt(seed, wx) {
+  return 22 + fbm(wx * 0.04, 9, seed + 33, 2) * 14;
+}
+
+function isCaveAt(seed, wx, wy) {
+  const n = fbm(wx * 0.028, wy * 0.045, seed + 51, 3);
+  const n2 = fbm(wx * 0.013, wy * 0.02, seed + 77, 2);
+  return (n > 0.47 && n < 0.565 && n2 > 0.33) || (n2 > 0.68 && n > 0.42 && n < 0.62);
+}
+
+function regionBlobs(seed, rx, ry, k, out) {
+  const kind = DEPOSIT_KINDS[k];
+  const perRegion = (kind.n * CHUNK_AREA) / (REF_W * (kind.y1 - kind.y0));
+  const p = Math.min(1, perRegion / DEPOSIT_SLOTS);
+  for (let s = 0; s < DEPOSIT_SLOTS; s++) {
+    const salt = k * 16 + s * 4;
+    if (regionRand(seed, rx, ry, salt) >= p) continue;
+    const x = rx * CHUNK_SIZE + ((regionRand(seed, rx, ry, salt + 1) * CHUNK_SIZE) | 0);
+    const y = ry * CHUNK_SIZE + ((regionRand(seed, rx, ry, salt + 2) * CHUNK_SIZE) | 0);
+    if (y < kind.y0 || y >= kind.y1) continue;
+    const r = kind.r0 + ((regionRand(seed, rx, ry, salt + 3) * kind.rn) | 0);
+    out.push({ id: kind.id, mask: kind.mask, x, y, r, r2: r * r });
+  }
+}
+
+function blobsNear(seed, cx, cy) {
+  const found = [];
+  for (let k = 0; k < DEPOSIT_KINDS.length; k++) {
+    for (let ry = cy - 1; ry <= cy + 1; ry++) {
+      for (let rx = cx - 1; rx <= cx + 1; rx++) regionBlobs(seed, rx, ry, k, found);
+    }
+  }
+  const x0 = cx * CHUNK_SIZE,
+    y0 = cy * CHUNK_SIZE;
+  return found.filter((b) => {
+    const reach = b.r * BLOB_REACH + 1;
+    return (
+      b.x + reach >= x0 &&
+      b.x - reach < x0 + CHUNK_SIZE &&
+      b.y + reach >= y0 &&
+      b.y - reach < y0 + CHUNK_SIZE
+    );
+  });
+}
+
+function applyBlobs(seed, blobs, wx, wy, m) {
+  for (let n = 0; n < blobs.length; n++) {
+    const b = blobs[n];
+    const dx = wx - b.x,
+      dy = wy - b.y;
+    const d = dx * dx + dy * dy * 1.35;
+    if (d > b.r2 * 1.27 || b.mask.indexOf(m) < 0) continue;
+    const wob = fbm(wx * 0.12, wy * 0.12, seed + 707, 2) * 0.55 + 0.72;
+    if (d <= b.r2 * wob) m = b.id;
+  }
+  return m;
+}
+
+function layerAt(wy, surf, sandD, panD) {
+  if (wy < surf) return VOID_ID;
+  const depth = wy - surf;
+  if (depth < sandD) return SAND_ID;
+  if (depth < panD) return HARDPAN_ID;
+  return ROCK_ID;
+}
+
+function generateChunk(seed, cx, cy) {
+  const S = CHUNK_SIZE;
+  const chunk_mat = new Uint8Array(CHUNK_AREA).fill(VOID_ID);
+  const chunk_shade = new Uint8Array(CHUNK_AREA);
+  const blobs = blobsNear(seed, cx, cy);
+  const x0 = cx * S,
+    y0 = cy * S;
+  for (let x = 0; x < S; x++) {
+    const wx = x0 + x;
+    const surf = surfaceAt(seed, wx);
+    const sandD = sandDepthAt(seed, wx),
+      panD = hardpanDepthAt(seed, wx);
+    for (let y = 0; y < S; y++) {
+      const wy = y0 + y;
+      let m = layerAt(wy, surf, sandD, panD);
+      if (m !== VOID_ID && wy >= surf + 16 && isCaveAt(seed, wx, wy)) m = VOID_ID;
+      chunk_mat[y * S + x] = applyBlobs(seed, blobs, wx, wy, m);
+      chunk_shade[y * S + x] = (hash2(wx, wy, seed + 999) * 256) | 0;
+    }
+  }
+  return { mat: chunk_mat, shade: chunk_shade };
+}
+
+function stampChunk(chunk, cx, cy) {
+  const S = CHUNK_SIZE;
+  const x0 = cx * S,
+    y0 = cy * S;
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      if (!inBounds(x0 + x, y0 + y)) continue;
+      const i = (y0 + y) * W + x0 + x;
+      paintCell(i, chunk.mat[y * S + x]);
+      shade[i] = chunk.shade[y * S + x];
+    }
+  }
+}
+
+function fillCaveFloor(seed, cx, cy) {
+  const S = CHUNK_SIZE;
+  const x0 = cx * S,
+    y0 = cy * S;
+  const floorTop = H - CAVE_FLOOR_MARGIN + 1;
+  if (y0 + S <= floorTop) return;
+  const blobs = blobsNear(seed, cx, cy);
+  for (let wy = Math.max(y0, floorTop); wy < Math.min(y0 + S, H); wy++) {
+    for (let wx = x0; wx < Math.min(x0 + S, W); wx++) {
+      const surf = surfaceAt(seed, wx);
+      if (wy < surf + 16 || !isCaveAt(seed, wx, wy)) continue;
+      const base = layerAt(wy, surf, sandDepthAt(seed, wx), hardpanDepthAt(seed, wx));
+      paintCell(wy * W + wx, applyBlobs(seed, blobs, wx, wy, base));
+    }
+  }
+}
+
+function stampWorld(seed) {
+  const cw = Math.ceil(W / CHUNK_SIZE),
+    ch = Math.ceil(H / CHUNK_SIZE);
+  for (let cy = 0; cy < ch; cy++) {
+    for (let cx = 0; cx < cw; cx++) {
+      stampChunk(generateChunk(seed, cx, cy), cx, cy);
+      fillCaveFloor(seed, cx, cy);
+    }
+  }
+}
+
+function surfaceRow(seed) {
   const surf = new Int32Array(W);
-  for (let x = 0; x < W; x++) {
-    const s = fbm(x * 0.018, 0.5, 11, 3);
-    const dune = Math.sin(x * 0.07) * 3;
-    surf[x] = Math.round(H * 0.1625 + s * 26 + dune);
-  }
+  for (let x = 0; x < W; x++) surf[x] = surfaceAt(seed, x);
   return surf;
-}
-
-function layerColumns(surf) {
-  const SAND = matId('sand'),
-    HARDPAN = matId('hardpan'),
-    ROCK = matId('rock');
-  for (let x = 0; x < W; x++) {
-    for (let y = surf[x]; y < H; y++) {
-      const depth = y - surf[x];
-      let m = ROCK;
-      if (depth < 7 + fbm(x * 0.05, 3, 21, 2) * 9) m = SAND;
-      else if (depth < 22 + fbm(x * 0.04, 9, 33, 2) * 14) m = HARDPAN;
-      paintCell(y * W + x, m);
-    }
-  }
-}
-
-function carveCaves(surf) {
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      if (y < surf[x] + 16 || y > H - 14) continue;
-      const n = fbm(x * 0.028, y * 0.045, 51, 3);
-      const n2 = fbm(x * 0.013, y * 0.02, 77, 2);
-      if ((n > 0.47 && n < 0.565 && n2 > 0.33) || (n2 > 0.68 && n > 0.42 && n < 0.62)) {
-        paintCell(y * W + x, VOID_ID);
-      }
-    }
-  }
-}
-
-function seedDeposits() {
-  let ROCK = matId('rock'),
-    HARDPAN = matId('hardpan'),
-    i;
-  const rockOnly = [ROCK, HARDPAN];
-  const nSand = deposits(46),
-    nCoal = deposits(44),
-    nOre = deposits(38);
-  const nWater = deposits(16),
-    nLava = deposits(12);
-  for (i = 0; i < nSand; i++)
-    blob(rndInt(W), bandY(0.28125, 0.875), 7 + rndInt(9), matId('sand'), rockOnly);
-  for (i = 0; i < nCoal; i++)
-    blob(rndInt(W), bandY(0.328125, 0.875), 5 + rndInt(7), matId('coal_seam'), rockOnly);
-  for (i = 0; i < nOre; i++)
-    blob(rndInt(W), bandY(0.4375, 0.890625), 4 + rndInt(6), matId('ore_seam'), rockOnly);
-  for (i = 0; i < nWater; i++)
-    blob(rndInt(W), bandY(0.375, 0.75), 5 + rndInt(6), matId('water'), [VOID_ID]);
-  for (i = 0; i < nLava; i++)
-    blob(rndInt(W), bandY(0.8125, 0.9375), 4 + rndInt(7), matId('lava'), [VOID_ID, ROCK]);
 }
 
 function revealSurface(surf) {
@@ -465,15 +557,13 @@ function worldTemp(m, y) {
 function generateWorld(seed, w, h) {
   beginWorld(seed, w, h);
   const ROCK = matId('rock');
-  for (let y = 0; y < H; y++) geothermalGradient[y] = 18 + (y / H) * 46;
+  for (let y = 0; y < H; y++) geothermalGradient[y] = geothermalAt(y);
 
-  const surf = surfaceProfile();
+  const surf = surfaceRow(seed);
   surfaceTop = 999;
   for (let x = 0; x < W; x++) if (surf[x] < surfaceTop) surfaceTop = surf[x];
 
-  layerColumns(surf);
-  carveCaves(surf);
-  seedDeposits();
+  stampWorld(seed);
 
   paintRect(0, 0, 2, H - 1, EDGE_ID);
   paintRect(W - 3, 0, W - 1, H - 1, EDGE_ID);

@@ -141,6 +141,7 @@ function roomTemp(m) {
 
 function generateTestRoom(seed, w, h) {
   beginWorld(seed, w, h);
+  randomizeShade();
   sandbox.bins.length = 0;
   let ROCK = matId('rock'),
     i;
