@@ -36,7 +36,7 @@
     ['goal-list', 'launch', 'tip', 'intro', 'help', 'settings', 'win', 'buildbar', 'bodybar', 'shapebar',
       'probe-chip', 'probe-mat', 'probe-t', 'probe-mark', 'heat-legend',
       'hp-num', 'hp-fill', 'fuel-num', 'fuel-fill', 'vital-hp', 'vital-fuel',
-      'w-time', 'w-cargo', 'w-drilled', 'w-lost', 'slot-belt'].forEach(function (id) {
+      'w-time', 'w-cargo', 'w-drilled', 'w-lost', 'slot-build'].forEach(function (id) {
         el[id] = document.getElementById(id);
       });
   }
@@ -109,7 +109,7 @@
     var ok = questDone();
     el['launch'].disabled = !ok || launched;
 
-    if (ok) { loreEvent('goal_ready'); unlockBelt(); }
+    if (ok) { loreEvent('goal_ready'); unlockBuilder(); }
     if (producedOf('ember')) loreEvent('first_ember');
     if (producedOf('melt_iron')) loreEvent('first_melt');
     var want = questDeliver();
@@ -159,7 +159,6 @@
   }
 
   function tipFor(tool) {
-    if (tool === 'belt') return t('tip.belt');
     return t('tip.' + tool);
   }
 
@@ -167,16 +166,16 @@
 
   /* ---------- інструменти ---------- */
   function selectTool(name) {
-    if (name === 'belt' && !beltUnlocked) { say(t('msg.beltLocked')); return; }
+    if (name === 'build' && !builderUnlocked) { say(t('msg.beltLocked')); return; }
     tool = name;
     endBuildDrag();
     var slots = el['buildbar'].children;
     for (var i = 0; i < slots.length; i++) {
       slots[i].classList.toggle('active', slots[i].dataset.tool === name);
     }
-    el['bodybar'].classList.toggle('hidden', name !== 'belt');
-    el['shapebar'].classList.toggle('hidden', name !== 'belt');
-    if (name === 'belt') refreshBuildBars();
+    el['bodybar'].classList.toggle('hidden', name !== 'build');
+    el['shapebar'].classList.toggle('hidden', name !== 'build');
+    if (name === 'build') refreshBuildBars();
     beep(name === 'drill' ? 420 : 620, 0.05, 'square', 0.025);
   }
 
@@ -208,19 +207,25 @@
     } else say(t('msg.nothingToGrab'));
   }
 
+  var BUILD_REPORTS = {
+    belt: { text: 'msg.beltDone', tone: [560, 0.07, 'triangle', 0.03] },
+    wall: { text: 'msg.wallDone', tone: [560, 0.07, 'triangle', 0.03] },
+    removed: { text: 'msg.structRemoved', tone: [220, 0.08, 'square', 0.025] },
+    nothing: { text: 'msg.nothingToRemove', tone: null },
+    short: { text: 'msg.beltShort', tone: null },
+    room: { text: 'msg.beltRoom', tone: [150, 0.12, 'sawtooth', 0.03] }
+  };
+
   function reportBuild(outcome) {
-    if (outcome === 'removed') { say(t('msg.structRemoved')); beep(220, 0.08, 'square', 0.025); return; }
-    if (outcome === 'nothing') { say(t('msg.nothingToRemove')); return; }
-    if (outcome === 'short') { say(t('msg.beltShort')); return; }
-    if (outcome === 'room') { say(t('msg.beltRoom')); beep(150, 0.12, 'sawtooth', 0.03); return; }
-    say(t(buildBody === 'belt' ? 'msg.beltDone' : 'msg.wallDone'));
-    beep(560, 0.07, 'triangle', 0.03);
+    var report = BUILD_REPORTS[outcome];
+    say(t(report.text));
+    if (report.tone) beep.apply(null, report.tone);
   }
 
-  function unlockBelt(quiet) {
-    if (beltUnlocked) return;
-    beltUnlocked = true;
-    el['slot-belt'].classList.remove('locked');
+  function unlockBuilder(quiet) {
+    if (builderUnlocked) return;
+    builderUnlocked = true;
+    el['slot-build'].classList.remove('locked');
     if (quiet) return;
     transmit(t('comms.from'), t('comms.beltGift'), { hold: 5600 });
     beep(680, 0.16, 'triangle', 0.04);
@@ -268,7 +273,7 @@
         beep(560, 0.06, 'triangle', 0.03);
       }
       mouse.pressed = false;
-    } else if (tool === 'belt') {
+    } else if (tool === 'build') {
       buildEven = keys.shift;
       if (mouse.left && mouse.pressed) startBuildDrag(wpt[0], wpt[1]);
       else if (mouse.left && buildFrom) buildTo = wpt;
@@ -358,7 +363,7 @@
         el['heat-legend'].classList.toggle('hidden', !heatView);
         say(t(heatView ? 'msg.heatOn' : 'msg.heatOff'));
       }
-      if (c === 'KeyR' && tool === 'belt') {
+      if (c === 'KeyR' && tool === 'build') {
         cycleBuildShape();
         refreshBuildBars();
         say(tf('msg.buildShape', { shape: t('shape.' + buildShape) }));
@@ -457,7 +462,7 @@
     document.getElementById('set-world-swap').addEventListener('click', function () {
       var room = !sandbox.on;
       enterWorld(room);
-      if (room) unlockBelt(true);
+      if (room) unlockBuilder(true);
       refreshSettingsPanel();
       toggleScreen('settings');
       say(t(room ? 'msg.roomOn' : 'msg.roomOff'));
@@ -477,7 +482,7 @@
       el['intro'].classList.add('hidden');
       beep(440, 0.12, 'triangle', 0.04);
       enterWorld(true);
-      unlockBelt(true);
+      unlockBuilder(true);
       paused = false;
       say(t('msg.roomOn'));
     });
@@ -548,7 +553,7 @@
     resetQuest();
     resetObjects();
     resetBuild();
-    el['slot-belt'].classList.add('locked');
+    el['slot-build'].classList.add('locked');
     resetCargo();
     var seed = (Date.now() & 0xffffff) || 12345;
     var sp = room ? generateTestRoom(seed, WORLD_W, WORLD_H)

@@ -67,15 +67,15 @@ regLang('pl', {
   'tool.ignite.cost': 'podpalić',
   'tool.hand': 'Ręka',
   'tool.hand.cost': 'nosić sypkie',
-  'tool.belt': 'Budowniczy',
-  'tool.belt.cost': 'za darmo',
+  'tool.build': 'Budowniczy',
+  'tool.build.cost': 'za darmo',
 
   /* ---------- podpowiedzi i komunikaty ---------- */
   'tip.drill': 'LPM — krusz skałę: rozsypie się sypka na miejscu · PPM — hak',
   'tip.wall': 'LPM — kłaść kamień · przytrzymaj i prowadź, aby wymurować piec',
   'tip.ignite': 'LPM na węgiel — podpalić · żar trzyma 1500 °C',
   'tip.hand': 'Przytrzymaj LPM na sypkim — w garści tylko to, na co celujesz · puść, a od razu wsypie się w podłoże',
-  'tip.belt': 'Wybierz co stawiasz i jaki kształt · przytrzymaj LPM i prowadź · Shift — równa linia lub kwadrat · R — kształt',
+  'tip.build': 'Wybierz co stawiasz i jaki kształt · przytrzymaj LPM i prowadź · Shift — równa linia lub kwadrat · R — kształt',
   'tip.build': 'LPM — postawić „{tool}" · PPM — hak',
 
   'body.belt': 'taśma',

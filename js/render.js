@@ -329,12 +329,8 @@ function drawBuildPreview() {
   var cells = buildCells(buildFrom, buildTo);
   if (!cells.length) return;
 
-  var erasing = buildBody === 'erase';
-  var ok = erasing ? true
-    : buildBody === 'belt' ? (cells.length >= BELT_MIN && beltFits(cells))
-      : wallFits(cells);
-
-  var tint = erasing ? 'rust' : (ok ? 'sand' : 'dangerSoft');
+  var body = activeBody();
+  var tint = buildVerdict(cells) === 'ok' ? body.tint.ok : body.tint.bad;
   var z = view.zoom;
   ctx.fillStyle = uiRgba(tint, 0.22);
   ctx.strokeStyle = uiRgba(tint, 0.85);
@@ -347,7 +343,7 @@ function drawBuildPreview() {
     ctx.strokeRect(sx(c.x) + 0.5, sy(c.y) + 0.5, z - 1, z - 1);
   }
 
-  if (buildBody !== 'belt' || cells.length < 2) return;
+  if (!body.arrows || cells.length < 2) return;
   var first = cells[0], last = cells[cells.length - 1];
   drawBeltArrows(cells, stepOf(last.x - first.x), stepOf(last.y - first.y), uiRgba(tint, 0.9));
 }
@@ -516,7 +512,7 @@ function render(tool, mouseWorld) {
   drawObjects();
   drawHook();
   drawPlayer();
-  if (tool === 'belt') drawBuildPreview();
+  if (tool === 'build') drawBuildPreview();
   if (tool === 'hand') drawGrabHint(mouseWorld[0], mouseWorld[1]);
   if (sandbox.on) drawRoomBins(mouseWorld);
   if (!roomButtonAt(mouseWorld[0], mouseWorld[1])) {

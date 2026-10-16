@@ -66,15 +66,15 @@ regLang('en', {
   'tool.ignite.cost': 'set alight',
   'tool.hand': 'Hand',
   'tool.hand.cost': 'carry loose material',
-  'tool.belt': 'Builder',
-  'tool.belt.cost': 'free',
+  'tool.build': 'Builder',
+  'tool.build.cost': 'free',
 
   /* ---------- tips and messages ---------- */
   'tip.drill': 'LMB — break rock: it spills loose right there · RMB — grapple',
   'tip.wall': 'LMB — lay stone · hold and drag to wall up a furnace',
   'tip.ignite': 'LMB on coal — set it alight · embers hold 1500 °C',
   'tip.hand': 'Hold LMB on loose material to scoop a handful of it alone · let go and it settles back into the ground',
-  'tip.belt': 'Pick what to place and which shape · hold LMB and drag · Shift — even line or square · R — shape',
+  'tip.build': 'Pick what to place and which shape · hold LMB and drag · Shift — even line or square · R — shape',
   'tip.build': 'LMB — place "{tool}" · RMB — grapple',
 
   'body.belt': 'belt',
