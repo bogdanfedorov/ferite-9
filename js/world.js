@@ -20,7 +20,6 @@ var originX = 0;
 var infiniteX = false;
 var windowSeed = 0;
 var chunkStore = new Map();
-var seenAway = 0;
 var fogStore = new Map();
 var windowSurf;
 
@@ -382,7 +381,6 @@ function beginWorld(seed, w, h) {
   seen.fill(0);
   fogVal.fill(0);
   seenCount = 0;
-  seenAway = 0;
   fogStore.clear();
   dirtyT.fill(0);
   originX = 0;
@@ -647,12 +645,6 @@ function copyFogOut(lx, ly) {
   return n ? slice : null;
 }
 
-function sliceCount(slice) {
-  let n = 0;
-  for (let i = 0; i < slice.length; i++) n += slice[i];
-  return n;
-}
-
 function chunkDirty(lx, ly) {
   const T = CHUNK_SIZE >> TCSHIFT;
   for (let r = 0; r < T; r++) {
@@ -673,10 +665,7 @@ function setChunkDirty(lx, ly) {
 function saveChunk(cx, cy, lx, ly, belts) {
   const key = chunkKey(cx, cy);
   const slice = copyFogOut(lx, ly);
-  if (slice) {
-    fogStore.set(key, slice);
-    seenAway += sliceCount(slice);
-  }
+  if (slice) fogStore.set(key, slice);
   if (!belts && !chunkDirty(lx, ly)) return;
   const ch = copyChunkOut(lx, ly);
   ch.belts = belts;
@@ -696,7 +685,6 @@ function loadChunk(cx, cy, lx, ly) {
   pasteChunk(stored || buildChunk(windowSeed, cx, cy), lx, ly);
   const slice = fogStore.get(key);
   if (slice) {
-    seenAway -= sliceCount(slice);
     fogStore.delete(key);
     pasteFog(slice, lx, ly);
   }
@@ -822,10 +810,6 @@ function windowSurfaceTop() {
   let top = 999;
   for (let x = 0; x < W; x++) top = Math.min(top, windowSurf[x]);
   return top;
-}
-
-function exploredTotal() {
-  return seenCount + seenAway;
 }
 
 function revealSurface(x0, x1) {

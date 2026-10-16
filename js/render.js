@@ -46,8 +46,8 @@ function allocBuffers() {
 }
 
 function setZoom(z) {
-  const floor = Math.max(3, cv.width / maxViewCells());
-  view.zoom = Math.max(floor, Math.min(9, z));
+  const floor = Math.ceil(Math.max(3, cv.width / maxViewCells()));
+  view.zoom = Math.max(floor, Math.min(9, Math.round(z)));
   allocBuffers();
 }
 

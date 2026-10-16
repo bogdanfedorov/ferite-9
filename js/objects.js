@@ -3,6 +3,7 @@ var shelvedObjects = [];
 
 var OBJ_MAX = 16;
 var OBJ_LIFT = 48;
+var SHELF_MAX = 8;
 var IMPACT_STEAM = matId('smoke');
 var OBJ_GRAV = 0.03;
 var OBJ_MAXV = 1.4;
@@ -88,7 +89,7 @@ function makeObject(bx, by, cells) {
 }
 
 function takeObject(cx, cy, only) {
-  if (objects.length + shelvedObjects.length >= OBJ_MAX) return null;
+  if (objects.length >= OBJ_MAX) return null;
   const pick = grabPick(cx, cy, only);
   if (!pick.length) return null;
 
@@ -320,6 +321,7 @@ function shelveObject(o) {
   if (o === heldObject) heldObject = null;
   o.held = false;
   o.x = worldX(o.x);
+  if (shelvedObjects.length >= SHELF_MAX) shelvedObjects.shift();
   shelvedObjects.push(o);
 }
 
@@ -330,6 +332,9 @@ function unshelveObject(o, lx) {
   if (objBlocked(o, lx, y)) return false;
   o.x = lx;
   o.y = y;
+  o.vx = 0;
+  o.vy = 0;
+  o.rest = 0;
   return true;
 }
 

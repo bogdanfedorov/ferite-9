@@ -43,9 +43,9 @@ Done:
    it by whole chunks, saving leaving columns and loading entering ones.
    `shiftMargin()` is the larger of a constant and half the visible width plus
    the frozen edge strip plus one chunk, capped inside the window; `setZoom`
-   keeps the visible width below what the cap allows (re-applied when the
-   canvas resizes and after the world is generated), so the frozen strip is
-   never on screen.
+   keeps an integral zoom with the visible width below what the cap allows
+   (re-applied when the canvas resizes and after the world is generated), so
+   the frozen strip is never on screen.
 3. **Window border.** `EDGE_FREEZE` cells on each side do not simulate.
 4. **Per-chunk state.** A stored chunk carries `mat`, `shade`, `life`, `temp`
    and its belt direction codes. Belts stay per-cell data in `beltCells`.
@@ -59,11 +59,10 @@ Done:
 6. **Fog.** Every leaving chunk with seen cells leaves a 64-byte slice in
    `fogStore`, dirty or not; it is pasted back on re-entry, so caves stay
    mapped. Fog alone never makes a chunk dirty. `seenCount` counts the window
-   only (the explored % is relative to the window); `seenAway` counts seen
-   cells in stored slices and `exploredTotal()` is the sum, which never drops.
+   only, so the explored % is relative to the window.
 7. **Loose objects.** Objects that leave the window move to `shelvedObjects`
    with world X and come back when their column is in the window again, lifted
-   out of solid terrain if needed. Shelved objects count toward `OBJ_MAX`.
+   out of solid terrain if needed. At most `SHELF_MAX` are kept; the oldest is dropped when the shelf is full.
 8. **Cargo pad.** `cargoPad` is in world coordinates; `padLocal()` converts.
    Calling the drone needs the pad inside the window; a drone in flight whose
    pad has left the window turns back and refunds the fee.
@@ -75,7 +74,7 @@ Done:
 Remaining:
 
 1. **Persistence.** `chunkStore` lives in memory only. Saving it (and the
-   shelved objects, pad and `seenAway` data) to disk is not done.
+   shelved objects and pad) to disk is not done.
 2. **Vertical axis.** Unbounded horizontally; depth is still bounded by
    `WORLD_H`. `geothermalGradient` is still an array of length `H`.
 3. **Fog slices.** `fogStore` grows by 64 bytes per visited chunk and is never
