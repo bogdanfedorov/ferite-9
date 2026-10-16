@@ -17,10 +17,12 @@ var dmgT;
 var dmgList = [];
 
 var originX = 0;
+var originY = 0;
 var infiniteX = false;
+var infiniteY = false;
 var windowSeed = 0;
-var chunkStore = new Map();
-var fogStore = new Map();
+var pendingChunks = new Set();
+var pendingFog = new Set();
 var windowSurf;
 
 var simFrame = 0;
@@ -204,6 +206,12 @@ function worldX(lx) {
 function localX(wx) {
   return wx - originX;
 }
+function worldY(ly) {
+  return originY + ly;
+}
+function localY(wy) {
+  return wy - originY;
+}
 
 function inBounds(x, y) {
   return x >= 0 && y >= 0 && x < W && y < H;
@@ -225,12 +233,13 @@ function lifeOf(m) {
 function setCell(x, y, m) {
   if (!inBounds(x, y)) return;
   const i = y * W + x;
+  const regenerable = AIRLIKE[mat[i]] && AIRLIKE[m];
   mat[i] = m;
   shade[i] = (rnd() * 256) | 0;
   dmg[i] = 0;
   life[i] = lifeOf(m);
   markHot(x, y);
-  markDirty(x, y);
+  if (!regenerable) markDirty(x, y);
 }
 
 function setCellHot(x, y, m, t) {
@@ -347,7 +356,7 @@ function decayDamage() {
 var cargoPad = null;
 
 function setCargoPad(rect) {
-  cargoPad = { x: worldX(rect.x), y: rect.y, w: rect.w, h: rect.h };
+  cargoPad = { x: worldX(rect.x), y: worldY(rect.y), w: rect.w, h: rect.h };
 }
 
 var padScratch = { x: 0, y: 0, w: 0, h: 0 };
@@ -355,7 +364,7 @@ var padScratch = { x: 0, y: 0, w: 0, h: 0 };
 function padLocal() {
   if (!cargoPad) return null;
   padScratch.x = localX(cargoPad.x);
-  padScratch.y = cargoPad.y;
+  padScratch.y = localY(cargoPad.y);
   padScratch.w = cargoPad.w;
   padScratch.h = cargoPad.h;
   return padScratch;
@@ -363,12 +372,12 @@ function padLocal() {
 
 function padInWindow() {
   const p = padLocal();
-  return p !== null && p.x >= 0 && p.x + p.w <= W;
+  return p !== null && p.x >= 0 && p.x + p.w <= W && p.y >= 0 && p.y + p.h <= H;
 }
 
 var surfaceTop = 40;
 
-function beginWorld(seed, w, h) {
+function beginWorld(seed, w, h, resume) {
   if (w > 0 && h > 0 && (w !== W || h !== H)) resizeGrid(w, h);
   srand(seed);
   mat.fill(VOID_ID);
@@ -381,11 +390,14 @@ function beginWorld(seed, w, h) {
   seen.fill(0);
   fogVal.fill(0);
   seenCount = 0;
-  fogStore.clear();
   dirtyT.fill(0);
   originX = 0;
+  originY = 0;
   infiniteX = false;
-  chunkStore.clear();
+  infiniteY = false;
+  pendingChunks.clear();
+  pendingFog.clear();
+  if (!resume) storeReset();
 }
 
 function randomizeShade() {
@@ -394,7 +406,7 @@ function randomizeShade() {
 
 function finishWorld(tempOf) {
   cargoPad = null;
-  for (let y = 0; y < H; y++) {
+  for (let y = 0; tempOf && y < H; y++) {
     for (let i = y * W; i < (y + 1) * W; i++) {
       temp[i] = tempOf(mat[i], y);
       temp2[i] = temp[i];
@@ -419,11 +431,12 @@ var CHUNK_SHIFT = 6,
 var REF_W = 480,
   REF_H = 320;
 var SURFACE_BASE = 52;
-var CAVE_FLOOR_MARGIN = 14;
+var WORLD_FLOOR = 99840;
 var SHIFT_MARGIN = 6 * CHUNK_SIZE;
+var SHIFT_MARGIN_Y = CHUNK_SIZE;
+var PREFETCH_RING = 2;
 var FOG_CHUNK = CHUNK_SIZE >> FSHIFT;
 var EDGE_FREEZE = 16;
-var BOTTOM_EDGE = 4;
 var SAND_ID = matId('sand'),
   HARDPAN_ID = matId('hardpan'),
   ROCK_ID = matId('rock');
@@ -434,6 +447,7 @@ var DEPOSIT_KINDS = [
   { id: matId('ore_seam'), n: 38, y0: 140, y1: 285, r0: 4, rn: 6, mask: [ROCK_ID, HARDPAN_ID] },
   { id: matId('water'), n: 16, y0: 120, y1: 240, r0: 5, rn: 6, mask: [VOID_ID] },
   { id: matId('lava'), n: 12, y0: 260, y1: 300, r0: 4, rn: 7, mask: [VOID_ID, ROCK_ID] },
+  { id: matId('lava'), n: 3500, y0: 300, y1: WORLD_FLOOR, r0: 4, rn: 7, mask: [VOID_ID, ROCK_ID] },
 ];
 var BLOB_REACH = 1.3;
 
@@ -544,26 +558,9 @@ function generateChunk(seed, cx, cy, nearBlobs) {
   return { mat: chunk_mat, shade: chunk_shade };
 }
 
-function applyCaveFloor(seed, ch, cx, cy, blobs) {
+function applyWorldFloor(ch, cy) {
   const S = CHUNK_SIZE;
-  const x0 = cx * S,
-    y0 = cy * S;
-  const floorTop = H - CAVE_FLOOR_MARGIN + 1;
-  if (y0 + S <= floorTop) return;
-  for (let wy = Math.max(y0, floorTop); wy < Math.min(y0 + S, H); wy++) {
-    for (let x = 0; x < S; x++) {
-      const wx = x0 + x;
-      const surf = surfaceAt(seed, wx);
-      if (wy < surf + 16 || !isCaveAt(seed, wx, wy)) continue;
-      const base = layerAt(wy, surf, sandDepthAt(seed, wx), hardpanDepthAt(seed, wx));
-      ch.mat[(wy - y0) * S + x] = applyBlobs(seed, blobs, wx, wy, base);
-    }
-  }
-}
-
-function applyBottomEdge(ch, cy) {
-  const S = CHUNK_SIZE;
-  const top = H - BOTTOM_EDGE - cy * S;
+  const top = WORLD_FLOOR - cy * S;
   if (top >= S) return;
   ch.mat.fill(EDGE_ID, Math.max(0, top) * S);
 }
@@ -571,8 +568,7 @@ function applyBottomEdge(ch, cy) {
 function buildChunk(seed, cx, cy) {
   const blobs = blobsNear(seed, cx, cy);
   const ch = generateChunk(seed, cx, cy, blobs);
-  applyCaveFloor(seed, ch, cx, cy, blobs);
-  applyBottomEdge(ch, cy);
+  applyWorldFloor(ch, cy);
   ch.life = new Uint8Array(CHUNK_AREA);
   ch.temp = new Float32Array(CHUNK_AREA);
   for (let i = 0; i < CHUNK_AREA; i++) {
@@ -581,10 +577,6 @@ function buildChunk(seed, cx, cy) {
     ch.temp[i] = EMITS[m] > 0 ? EMITS[m] : geothermalAt(cy * CHUNK_SIZE + (i >> CHUNK_SHIFT));
   }
   return ch;
-}
-
-function chunkKey(cx, cy) {
-  return cx * 4096 + cy;
 }
 
 function copyChunkOut(lx, ly) {
@@ -665,42 +657,142 @@ function setChunkDirty(lx, ly) {
 function saveChunk(cx, cy, lx, ly, belts) {
   const key = chunkKey(cx, cy);
   const slice = copyFogOut(lx, ly);
-  if (slice) fogStore.set(key, slice);
+  const fogPending = pendingFog.delete(key);
+  if (slice && !fogPending) tierPut(fogTier, key, slice);
+  pendingChunks.delete(key);
   if (!belts && !chunkDirty(lx, ly)) return;
   const ch = copyChunkOut(lx, ly);
   ch.belts = belts;
-  chunkStore.set(key, ch);
+  tierPut(chunkTier, key, ch);
+}
+
+function windowTopChunk() {
+  return originY >> CHUNK_SHIFT;
+}
+
+function windowLeftChunk() {
+  return originX >> CHUNK_SHIFT;
 }
 
 function saveColumn(cx, lx) {
   const belts = beltsOutColumn(lx);
-  for (let cy = 0; cy < H >> CHUNK_SHIFT; cy++) {
-    saveChunk(cx, cy, lx, cy * CHUNK_SIZE, belts.get(cy) || null);
+  const top = windowTopChunk();
+  for (let r = 0; r < H >> CHUNK_SHIFT; r++) {
+    saveChunk(cx, top + r, lx, r * CHUNK_SIZE, belts.get(r) || null);
+  }
+}
+
+function saveRow(cy, ly) {
+  const belts = beltsOutRow(ly);
+  const left = windowLeftChunk();
+  for (let c = 0; c < W >> CHUNK_SHIFT; c++) {
+    saveChunk(left + c, cy, c * CHUNK_SIZE, ly, belts.get(c) || null);
   }
 }
 
 function loadChunk(cx, cy, lx, ly) {
   const key = chunkKey(cx, cy);
-  const stored = chunkStore.get(key);
+  const stored = tierTake(chunkTier, key);
+  if (!stored && tierWaiting(chunkTier, key)) pendingChunks.add(key);
   pasteChunk(stored || buildChunk(windowSeed, cx, cy), lx, ly);
-  const slice = fogStore.get(key);
-  if (slice) {
-    fogStore.delete(key);
-    pasteFog(slice, lx, ly);
-  }
+  const slice = tierTake(fogTier, key);
+  if (slice) pasteFog(slice, lx, ly);
+  else if (tierWaiting(fogTier, key)) pendingFog.add(key);
   if (!stored) return;
-  chunkStore.delete(key);
   if (stored.belts) beltsIn(stored.belts, lx, ly);
   setChunkDirty(lx, ly);
 }
 
 function loadColumn(cx, lx) {
-  for (let cy = 0; cy < H >> CHUNK_SHIFT; cy++) loadChunk(cx, cy, lx, cy * CHUNK_SIZE);
+  const top = windowTopChunk();
+  for (let r = 0; r < H >> CHUNK_SHIFT; r++) loadChunk(cx, top + r, lx, r * CHUNK_SIZE);
+}
+
+function loadRow(cy, ly) {
+  const left = windowLeftChunk();
+  for (let c = 0; c < W >> CHUNK_SHIFT; c++) loadChunk(left + c, cy, c * CHUNK_SIZE, ly);
+}
+
+function chunkInWindow(lx, ly) {
+  return lx >= 0 && ly >= 0 && lx + CHUNK_SIZE <= W && ly + CHUNK_SIZE <= H;
+}
+
+function markChunkHot(lx, ly) {
+  const T = CHUNK_SIZE >> TCSHIFT;
+  for (let r = 0; r < T; r++) {
+    const t = ((ly >> TCSHIFT) + r) * TCW + (lx >> TCSHIFT);
+    hotA.fill(1, t, t + T);
+    hotB.fill(1, t, t + T);
+  }
+}
+
+function chunkArrived(key) {
+  if (!pendingChunks.delete(key)) return;
+  const lx = keyCx(key) * CHUNK_SIZE - originX,
+    ly = keyCy(key) * CHUNK_SIZE - originY;
+  if (!chunkInWindow(lx, ly)) return;
+  const stored = tierTake(chunkTier, key);
+  if (!stored) return;
+  pasteChunk(stored, lx, ly);
+  if (stored.belts) beltsIn(stored.belts, lx, ly);
+  setChunkDirty(lx, ly);
+  markChunkHot(lx, ly);
+}
+
+function fogArrived(key) {
+  if (!pendingFog.delete(key)) return;
+  const lx = keyCx(key) * CHUNK_SIZE - originX,
+    ly = keyCy(key) * CHUNK_SIZE - originY;
+  if (!chunkInWindow(lx, ly)) return;
+  const slice = tierTake(fogTier, key);
+  if (!slice) return;
+  mergeFog(slice, lx, ly);
+  seenCount = countSeen();
+  markChunkHot(lx, ly);
+}
+
+function mergeFog(slice, lx, ly) {
+  for (let r = 0; r < FOG_CHUNK; r++) {
+    const f = ((ly >> FSHIFT) + r) * FCW + (lx >> FSHIFT);
+    for (let c = 0; c < FOG_CHUNK; c++) {
+      if (!slice[r * FOG_CHUNK + c]) continue;
+      seen[f + c] = 1;
+      fogVal[f + c] = 1;
+    }
+  }
+}
+
+function prefetchAround() {
+  if (!chunkTier.disk.size && !fogTier.disk.size) return;
+  const ring = PREFETCH_RING;
+  const cols = W >> CHUNK_SHIFT,
+    rows = H >> CHUNK_SHIFT;
+  const c0 = windowLeftChunk() - ring,
+    r0 = windowTopChunk() - ring;
+  for (let r = 0; r < rows + 2 * ring; r++) {
+    for (let c = 0; c < cols + 2 * ring; c++) {
+      const inside = r >= ring && r < rows + ring && c >= ring && c < cols + ring;
+      if (inside) continue;
+      const key = chunkKey(c0 + c, r0 + r);
+      tierRead(chunkTier, key);
+      tierRead(fogTier, key);
+    }
+  }
+}
+
+function windowKeysAt(ox, oy) {
+  const keys = [];
+  const left = ox >> CHUNK_SHIFT,
+    top = oy >> CHUNK_SHIFT;
+  for (let r = 0; r < H >> CHUNK_SHIFT; r++) {
+    for (let c = 0; c < W >> CHUNK_SHIFT; c++) keys.push(chunkKey(left + c, top + r));
+  }
+  return keys;
 }
 
 function stampWorld(seed) {
   windowSeed = seed;
-  const left = originX >> CHUNK_SHIFT;
+  const left = windowLeftChunk();
   for (let k = 0; k < W >> CHUNK_SHIFT; k++) loadColumn(left + k, k * CHUNK_SIZE);
 }
 
@@ -713,8 +805,18 @@ function shiftRows(a, rowLen, rows, d) {
   }
 }
 
+function shiftRowsV(a, rowLen, rows, d) {
+  if (d === 0 || Math.abs(d) >= rows) return;
+  if (d > 0) a.copyWithin(0, d * rowLen, rows * rowLen);
+  else a.copyWithin(-d * rowLen, 0, (rows + d) * rowLen);
+}
+
 function fillCols(a, rowLen, rows, c0, c1, v) {
   for (let r = 0; r < rows; r++) a.fill(v, r * rowLen + c0, r * rowLen + c1);
+}
+
+function fillRowsV(a, rowLen, r0, r1, v) {
+  a.fill(v, r0 * rowLen, r1 * rowLen);
 }
 
 function countSeen() {
@@ -742,16 +844,46 @@ function shiftCoarse(dc, n) {
   fillCols(dirtyT, TCW, TCH, t0, t0 + tn, 0);
 }
 
-function shiftDamage(dx) {
+function shiftCoarseY(dr, n) {
+  const fd = (dr * CHUNK_SIZE) >> FSHIFT,
+    fn = (n * CHUNK_SIZE) >> FSHIFT;
+  shiftRowsV(seen, FCW, FCH, fd);
+  shiftRowsV(fogVal, FCW, FCH, fd);
+  const f0 = dr > 0 ? FCH - fn : 0;
+  fillRowsV(seen, FCW, f0, f0 + fn, 0);
+  fillRowsV(fogVal, FCW, f0, f0 + fn, 0);
+  const td = (dr * CHUNK_SIZE) >> TCSHIFT,
+    tn = (n * CHUNK_SIZE) >> TCSHIFT;
+  shiftRowsV(hotA, TCW, TCH, td);
+  shiftRowsV(hotB, TCW, TCH, td);
+  shiftRowsV(dirtyT, TCW, TCH, td);
+  const t0 = dr > 0 ? TCH - tn : 0;
+  fillRowsV(hotA, TCW, t0, t0 + tn, 1);
+  fillRowsV(hotB, TCW, t0, t0 + tn, 1);
+  fillRowsV(dirtyT, TCW, t0, t0 + tn, 0);
+}
+
+function shiftDamage(dx, dy) {
   const kept = [];
   for (let n = 0; n < dmgList.length; n++) {
     const i = dmgList[n];
-    const x = (i % W) - dx;
-    if (x >= 0 && x < W && dmg[i] !== 0) kept.push(i - dx);
+    const x = (i % W) - dx,
+      y = ((i / W) | 0) - dy;
+    if (x >= 0 && x < W && y >= 0 && y < H && dmg[i] !== 0) kept.push(y * W + x);
   }
   shiftRows(dmg, W, H, dx);
   shiftRows(dmgT, W, H, dx);
+  shiftRowsV(dmg, W, H, dy);
+  shiftRowsV(dmgT, W, H, dy);
   dmgList = kept;
+}
+
+function shiftLayers(dx, dy) {
+  const layers = [mat, shade, life, clk, flow, temp, temp2];
+  for (let k = 0; k < layers.length; k++) {
+    shiftRows(layers[k], W, H, dx);
+    shiftRowsV(layers[k], W, H, dy);
+  }
 }
 
 function shiftWindow(dc) {
@@ -759,30 +891,60 @@ function shiftWindow(dc) {
   const S = CHUNK_SIZE,
     cols = W >> CHUNK_SHIFT;
   const n = Math.min(Math.abs(dc), cols);
-  const oldLeft = originX >> CHUNK_SHIFT;
+  const oldLeft = windowLeftChunk();
   const leaving = dc > 0 ? 0 : cols - n;
   for (let j = 0; j < n; j++) saveColumn(oldLeft + leaving + j, (leaving + j) * S);
 
   const dx = dc * S;
-  const layers = [mat, shade, life, clk, flow, temp, temp2];
-  for (let k = 0; k < layers.length; k++) shiftRows(layers[k], W, H, dx);
-  shiftDamage(dx);
-  shiftBelts(dx);
+  shiftLayers(dx, 0);
+  shiftDamage(dx, 0);
+  shiftBelts(dx, 0);
   originX += dx;
   shiftCoarse(dc, n);
 
-  const newLeft = originX >> CHUNK_SHIFT;
+  const newLeft = windowLeftChunk();
   const entering = dc > 0 ? cols - n : 0;
   for (let j = 0; j < n; j++) loadColumn(newLeft + entering + j, (entering + j) * S);
   shiftRows(windowSurf, W, 1, dx);
   fillSurface(windowSeed, entering * S, (entering + n) * S);
-  revealSurface(entering * S, (entering + n) * S);
+  revealSurface(entering * S, (entering + n) * S, 0, H);
   seenCount = countSeen();
-  surfaceTop = windowSurfaceTop();
+  surfaceTop = windowSurfaceTop() - originY;
+  prefetchAround();
+}
+
+function shiftWindowY(dr) {
+  if (dr === 0) return;
+  const S = CHUNK_SIZE,
+    rows = H >> CHUNK_SHIFT;
+  const n = Math.min(Math.abs(dr), rows);
+  const oldTop = windowTopChunk();
+  const leaving = dr > 0 ? 0 : rows - n;
+  for (let j = 0; j < n; j++) saveRow(oldTop + leaving + j, (leaving + j) * S);
+
+  const dy = dr * S;
+  shiftLayers(0, dy);
+  shiftDamage(0, dy);
+  shiftBelts(0, dy);
+  originY += dy;
+  shiftCoarseY(dr, n);
+  fillGeothermal();
+
+  const newTop = windowTopChunk();
+  const entering = dr > 0 ? rows - n : 0;
+  for (let j = 0; j < n; j++) loadRow(newTop + entering + j, (entering + j) * S);
+  revealSurface(0, W, entering * S, (entering + n) * S);
+  seenCount = countSeen();
+  surfaceTop = windowSurfaceTop() - originY;
+  prefetchAround();
 }
 
 function maxShiftMargin() {
   return (W >> 1) - CHUNK_SIZE;
+}
+
+function maxShiftMarginY() {
+  return (H >> 1) - (CHUNK_SIZE >> 1);
 }
 
 function maxViewCells() {
@@ -790,9 +952,19 @@ function maxViewCells() {
   return 2 * (maxShiftMargin() - EDGE_FREEZE - CHUNK_SIZE);
 }
 
+function maxViewRows() {
+  if (!infiniteY) return Infinity;
+  return 2 * (maxShiftMarginY() - EDGE_FREEZE);
+}
+
 function shiftMargin() {
   const seenHalf = Math.ceil(view.vw / 2) + EDGE_FREEZE + CHUNK_SIZE;
   return Math.min(maxShiftMargin(), Math.max(SHIFT_MARGIN, seenHalf));
+}
+
+function shiftMarginY() {
+  const seenHalf = Math.ceil(view.vh / 2) + EDGE_FREEZE;
+  return Math.min(maxShiftMarginY(), Math.max(SHIFT_MARGIN_Y, seenHalf));
 }
 
 function windowShiftFor(lx) {
@@ -802,8 +974,19 @@ function windowShiftFor(lx) {
   return Math.round((lx - (W >> 1)) / CHUNK_SIZE);
 }
 
+function windowShiftForY(ly) {
+  if (!infiniteY) return 0;
+  const margin = shiftMarginY();
+  if (ly >= margin && ly < H - margin) return 0;
+  return Math.round((ly - (H >> 1)) / CHUNK_SIZE);
+}
+
 function fillSurface(seed, x0, x1) {
   for (let x = x0; x < x1; x++) windowSurf[x] = surfaceAt(seed, worldX(x));
+}
+
+function fillGeothermal() {
+  for (let y = 0; y < H; y++) geothermalGradient[y] = geothermalAt(worldY(y));
 }
 
 function windowSurfaceTop() {
@@ -812,13 +995,14 @@ function windowSurfaceTop() {
   return top;
 }
 
-function revealSurface(x0, x1) {
+function revealSurface(x0, x1, y0, y1) {
   for (let x = x0; x < x1; x++) {
-    const limit = windowSurf[x] + 10;
-    for (let y = 0; y <= limit && y < H; y += FCS) revealQuiet(x >> FSHIFT, y >> FSHIFT);
-    revealQuiet(x >> FSHIFT, limit >> FSHIFT);
+    const limit = windowSurf[x] + 10 - originY;
+    const last = Math.min(limit, y1 - 1);
+    for (let y = y0; y <= last; y += FCS) revealQuiet(x >> FSHIFT, y >> FSHIFT);
+    if (limit >= y0 && limit < y1) revealQuiet(x >> FSHIFT, limit >> FSHIFT);
   }
-  for (let fy = 0; fy < FCH; fy++) {
+  for (let fy = y0 >> FSHIFT; fy < y1 >> FSHIFT; fy++) {
     for (let fx = x0 >> FSHIFT; fx < x1 >> FSHIFT; fx++) {
       if (seen[fy * FCW + fx]) fogVal[fy * FCW + fx] = 1;
     }
@@ -829,17 +1013,46 @@ function worldTemp(m, y) {
   return EMITS[m] > 0 ? EMITS[m] : geothermalGradient[y];
 }
 
-function generateWorld(seed, w, h) {
-  beginWorld(seed, w, h);
-  originX = -(W >> 1);
+function worldMeta() {
+  return { version: 1, seed: windowSeed, originX, originY };
+}
+
+function saveWorld() {
+  const left = windowLeftChunk();
+  for (let k = 0; k < W >> CHUNK_SHIFT; k++) saveColumn(left + k, k * CHUNK_SIZE);
+  const flushed = storeFlushAll(worldMeta());
+  for (let k = 0; k < W >> CHUNK_SHIFT; k++) loadColumn(left + k, k * CHUNK_SIZE);
+  hotA.fill(1);
+  hotB.fill(1);
+  return flushed;
+}
+
+function resumeWorld() {
+  return storeLoadIndex().then((meta) => {
+    if (!meta) return null;
+    return storeWarm(windowKeysAt(meta.originX, meta.originY)).then(() => meta);
+  });
+}
+
+function generateWorld(seed, w, h, resume) {
+  beginWorld(seed, w, h, resume);
+  originX = resume ? resume.originX : -(W >> 1);
+  originY = resume ? resume.originY : 0;
   infiniteX = true;
+  infiniteY = true;
   const ROCK = matId('rock');
-  for (let y = 0; y < H; y++) geothermalGradient[y] = geothermalAt(y);
+  fillGeothermal();
 
   fillSurface(seed, 0, W);
-  surfaceTop = windowSurfaceTop();
+  surfaceTop = windowSurfaceTop() - originY;
 
   stampWorld(seed);
+
+  if (resume) {
+    finishWorld(null);
+    revealSurface(0, W, 0, H);
+    return { spawnX: W >> 1, spawnY: H >> 1 };
+  }
 
   const bx = (W >> 1) - 12,
     by = windowSurf[W >> 1] - 1;
@@ -847,7 +1060,7 @@ function generateWorld(seed, w, h) {
   paintRect(bx, by - 9, bx + 23, by - 1, VOID_ID);
 
   finishWorld(worldTemp);
-  revealSurface(0, W);
+  revealSurface(0, W, 0, H);
   return { spawnX: W >> 1, spawnY: by - 6 };
 }
 
@@ -882,8 +1095,10 @@ function swapCells(x1, y1, x2, y2, par) {
   dmg[j] = t;
   clk[i] = par;
   clk[j] = par;
-  markDirty(x1, y1);
-  markDirty(x2, y2);
+  if (!(AIRLIKE[mat[i]] && AIRLIKE[mat[j]])) {
+    markDirty(x1, y1);
+    markDirty(x2, y2);
+  }
   const c = (y2 >> FSHIFT) * FCW + (x2 >> FSHIFT);
   if (!seen[c]) {
     seen[c] = 1;
@@ -939,7 +1154,6 @@ function stepGas(i, x, y, m, par) {
     return;
   }
   life[i] = l - 1;
-  markDirty(x, y);
 
   if (y > 0 && risesInto(m, mat[i - W]) && rnd() < 0.8) {
     swapCells(x, y, x, y - 1, par);
@@ -1003,13 +1217,15 @@ function thermoPass() {
     _hot = HOT_T,
     _cold = COLD_T,
     _life = life,
+    _air = AIRLIKE,
     _mc = MAT_COUNT;
 
   _n.set(_t);
   hotB.fill(0);
   const freezeT = infiniteX ? EDGE_FREEZE >> TCSHIFT : 0;
+  const freezeTY = infiniteY ? EDGE_FREEZE >> TCSHIFT : 0;
 
-  for (let cy = 0; cy < TCH; cy++) {
+  for (let cy = freezeTY; cy < TCH - freezeTY; cy++) {
     for (let cx = freezeT; cx < TCW - freezeT; cx++) {
       let live = 0;
       for (let oy = -1; oy <= 1 && !live; oy++) {
@@ -1037,7 +1253,8 @@ function thermoPass() {
       if (y0 < 1) y0 = 1;
       if (x1 > W - 1) x1 = W - 1;
       if (y1 > H - 1) y1 = H - 1;
-      let stillHot = 0;
+      let stillHot = 0,
+        lasting = 0;
 
       for (let y = y0; y < y1; y++) {
         const row = y * W;
@@ -1077,7 +1294,10 @@ function thermoPass() {
           _n[i] = nt;
 
           const diff = nt - amb;
-          if (diff > 1.2 || diff < -1.2) stillHot = 1;
+          if (diff > 1.2 || diff < -1.2) {
+            stillHot = 1;
+            if (!_air[m] && hs === 0) lasting = 1;
+          }
 
           if (REACTIVE[m] && reactAt(i, x, y, base, nt)) continue;
 
@@ -1122,10 +1342,8 @@ function thermoPass() {
           }
         }
       }
-      if (stillHot) {
-        hotB[cy * TCW + cx] = 1;
-        dirtyT[cy * TCW + cx] = 1;
-      }
+      if (stillHot) hotB[cy * TCW + cx] = 1;
+      if (lasting) dirtyT[cy * TCW + cx] = 1;
     }
   }
 
@@ -1148,9 +1366,10 @@ function simulate() {
     _block = BLOCKING,
     _rigid = RIGID;
   const freezeF = infiniteX ? EDGE_FREEZE >> FSHIFT : 0;
+  const freezeFY = infiniteY ? EDGE_FREEZE >> FSHIFT : 0;
   let lcg = (simFrame * 1103515245 + 12345) | 0;
 
-  for (let fy = FCH - 1; fy >= 0; fy--) {
+  for (let fy = FCH - 1 - freezeFY; fy >= freezeFY; fy--) {
     for (let fk = 0; fk < FCW; fk++) {
       const fx = ltr ? fk : FCW - 1 - fk;
       if (fx < freezeF || fx >= FCW - freezeF) continue;

@@ -87,7 +87,7 @@ function clickRoomButton(bin) {
 }
 
 function respawn() {
-  followWindow(localX(player.spawnX), Infinity);
+  followWindow(localX(player.spawnX), localY(player.spawnY), Infinity);
   clearAirlock();
   moveToSpawn();
   releaseObject();
@@ -114,21 +114,24 @@ function checkMilestones() {
   }
 }
 
-function followWindow(lx, maxChunks) {
-  const dc = Math.max(-maxChunks, Math.min(maxChunks, windowShiftFor(lx)));
-  if (!dc) return;
-  const dx = dc * CHUNK_SIZE;
-  shiftWindow(dc);
-  shiftPlayer(dx);
-  shiftObjects(dx);
-  shiftCamera(dx);
+function followWindow(lx, ly, maxChunks) {
+  const dcx = Math.max(-maxChunks, Math.min(maxChunks, windowShiftFor(lx)));
+  const dcy = Math.max(-maxChunks, Math.min(maxChunks, windowShiftForY(ly)));
+  if (!dcx && !dcy) return;
+  const dx = dcx * CHUNK_SIZE,
+    dy = dcy * CHUNK_SIZE;
+  shiftWindow(dcx);
+  shiftWindowY(dcy);
+  shiftPlayer(dx, dy);
+  shiftObjects(dx, dy);
+  shiftCamera(dx, dy);
   endBuildDrag();
 }
 
 function step() {
   const mouse = input.mouse;
   if (updatePlayer(input.keys) === 'respawn') respawn();
-  followWindow(player.x, 1);
+  followWindow(player.x, player.y, 1);
   checkMilestones();
 
   const wpt = screenToWorld(mouse.x, mouse.y);

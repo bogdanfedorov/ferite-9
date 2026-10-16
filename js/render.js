@@ -46,8 +46,8 @@ function allocBuffers() {
 }
 
 function setZoom(z) {
-  const floor = Math.ceil(Math.max(3, cv.width / maxViewCells()));
-  view.zoom = Math.max(floor, Math.min(9, Math.round(z)));
+  const floor = Math.ceil(Math.max(3, cv.width / maxViewCells(), cv.height / maxViewRows()));
+  view.zoom = Math.max(Math.min(floor, 9), Math.min(9, Math.round(z)));
   allocBuffers();
 }
 
@@ -64,8 +64,9 @@ function updateCamera() {
   view.oy = Math.floor(view.camY);
 }
 
-function shiftCamera(dx) {
+function shiftCamera(dx, dy) {
   view.camX -= dx;
+  view.camY -= dy;
 }
 
 function sx(wx) {

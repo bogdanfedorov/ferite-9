@@ -44,13 +44,13 @@ function resetVitals() {
 function arrivalHeight() {
   const sx = localX(player.spawnX);
   let rise = 0;
-  while (rise < ARRIVAL_DROP && !boxBlocked(sx, player.spawnY - rise - 1)) rise++;
+  while (rise < ARRIVAL_DROP && !boxBlocked(sx, localY(player.spawnY) - rise - 1)) rise++;
   return rise;
 }
 
 function moveToSpawn() {
   player.x = localX(player.spawnX);
-  player.y = player.spawnY - arrivalHeight();
+  player.y = localY(player.spawnY) - arrivalHeight();
   player.vx = 0;
   player.vy = 0;
   player.fallFrom = player.y;
@@ -63,13 +63,15 @@ function floorBelow(x, y) {
   return fy;
 }
 
-function shiftPlayer(dx) {
+function shiftPlayer(dx, dy) {
   player.x -= dx;
+  player.y -= dy;
+  player.fallFrom -= dy;
 }
 
 function spawnPlayer(x, y) {
   player.spawnX = worldX(x);
-  player.spawnY = floorBelow(Math.round(x), y) - player.h / 2;
+  player.spawnY = worldY(floorBelow(Math.round(x), y) - player.h / 2);
   clearAirlock();
   moveToSpawn();
   resetVitals();
@@ -80,8 +82,9 @@ function clearAirlock() {
   const sx = localX(player.spawnX);
   const x0 = spanStart(sx, player.w) - 2,
     x1 = spanEnd(sx, player.w) + 2;
-  const y0 = spanStart(player.spawnY, player.h) - ARRIVAL_DROP,
-    y1 = spanEnd(player.spawnY, player.h);
+  const spawnLy = localY(player.spawnY);
+  const y0 = spanStart(spawnLy, player.h) - ARRIVAL_DROP,
+    y1 = spanEnd(spawnLy, player.h);
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       if (!inBounds(x, y)) continue;

@@ -1,8 +1,9 @@
 # Infinite world: design notes
 
-Status: horizontal sliding window implemented, including state outside the
-material arrays. Not implemented: persistence of the chunk store to disk and the
-vertical axis. The window is `WORLD_W` x `WORLD_H` (1280 x 320) in `js/world.js`.
+Status: complete in both axes. The sliding window follows the player horizontally and
+vertically, chunks that leave it are kept in a bounded in-memory store that spills to
+IndexedDB, and the terrain is generated from the seed for any chunk. The window is
+`WORLD_W` x `WORLD_H` (1280 x 320) in `js/world.js`; the disk layer is `js/store.js`.
 
 ## Why not a bigger fixed grid
 
@@ -37,45 +38,83 @@ Memory grows with area: every cell costs about 19 bytes across `mat`, `shade`,
 
 Done:
 
-1. **Generation.** `buildChunk(seed, cx, cy)` depends only on the seed and
-   world coordinates; features crossing chunk borders match on both sides.
-2. **Horizontal window.** `originX` maps local to world X. `shiftWindow` moves
-   it by whole chunks, saving leaving columns and loading entering ones.
-   `shiftMargin()` is the larger of a constant and half the visible width plus
-   the frozen edge strip plus one chunk, capped inside the window; `setZoom`
-   keeps an integral zoom with the visible width below what the cap allows
-   (re-applied when the canvas resizes and after the world is generated), so
-   the frozen strip is never on screen.
-3. **Window border.** `EDGE_FREEZE` cells on each side do not simulate.
-4. **Per-chunk state.** A stored chunk carries `mat`, `shade`, `life`, `temp`
-   and its belt direction codes. Belts stay per-cell data in `beltCells`.
-5. **Dirty tracking.** `dirtyT` marks 16x16 tiles that were modified: cell
-   writes (`setCell`, `paintCell`, `swapCells`), direct tool writes (the torch
-   calls `markDirty`), gas life countdown, burning and latent-heat life changes,
-   and tiles left above ambient temperature by the thermal pass. Hot tiles
-   (`hotA`/`hotB`) are separate and do not imply modified. A leaving chunk is
-   stored only if a tile of it is dirty or it holds belts; otherwise it is
-   regenerated from the seed on re-entry.
-6. **Fog.** Every leaving chunk with seen cells leaves a 64-byte slice in
-   `fogStore`, dirty or not; it is pasted back on re-entry, so caves stay
-   mapped. Fog alone never makes a chunk dirty. `seenCount` counts the window
-   only, so the explored % is relative to the window.
-7. **Loose objects.** Objects that leave the window move to `shelvedObjects`
-   with world X and come back when their column is in the window again, lifted
-   out of solid terrain if needed. At most `SHELF_MAX` are kept; the oldest is dropped when the shelf is full.
-8. **Cargo pad.** `cargoPad` is in world coordinates; `padLocal()` converts.
-   Calling the drone needs the pad inside the window; a drone in flight whose
-   pad has left the window turns back and refunds the fee.
-9. **Damage.** `dmg` and `dmgT` shift with the window and `dmgList` is rebuilt.
-10. **Hot tiles.** Entering columns are marked hot.
-11. **Surface.** `windowSurf` caches the surface row, shifts with the window
-    and `surfaceTop` is recomputed from it on every shift.
+1. **Generation.** `buildChunk(seed, cx, cy)` depends only on the seed and world
+   coordinates, for any `cy`: sky above the surface, sand, hardpan and rock below,
+   deposits and caves from noise, deep lava pools from world Y 300 down, and a
+   floor of `EDGE` material from `WORLD_FLOOR` (99840 cells) down. Features
+   crossing chunk borders match on both sides.
+2. **Horizontal window.** `originX` maps local to world X. `shiftWindow` moves it
+   by whole chunks, saving leaving columns and loading entering ones.
+3. **Vertical window.** `originY` maps local to world Y (`worldY` / `localY`).
+   `shiftWindowY` is the exact mirror of `shiftWindow`: rows leave and enter, all
+   per-cell layers, fog, hot and dirty tiles, damage, belts, loose objects, the
+   cargo pad, the player (including `fallFrom`) and the camera shift together.
+   `geothermalGradient` is refilled from `geothermalAt(worldY)` (clamped
+   function of world Y). The hard bottom edge of the window is gone. A shift by
+   more chunks than the window holds reloads it whole.
+4. **Shift margins.** `shiftMargin()` (X) and `shiftMarginY()` (Y) keep the
+   frozen edge strip off screen; `setZoom` raises the minimum integral zoom so the
+   visible width and height fit what the window can show (`maxViewCells`,
+   `maxViewRows`).
+5. **Window border.** `EDGE_FREEZE` cells on every side do not simulate.
+6. **Per-chunk state.** A stored chunk carries `mat`, `shade`, `life`, `temp` and
+   its belt direction codes. Belts stay per-cell data in `beltCells`.
+7. **Dirty tracking.** `dirtyT` marks 16x16 tiles holding changes that cannot be
+   regenerated from the seed: cell writes (`setCell`, `paintCell`, `swapCells`),
+   the torch, burning and latent-heat life changes, and tiles of non-gas
+   material left above ambient by the thermal pass. Transient gas does not
+   count: `AIRLIKE` (void and expiring gas: smoke, steam, fire) cells swapping
+   with each other, a gas appearing in or expiring into air, the gas life
+   countdown, and heat held only by air or gas cells and by self-emitting
+   materials never mark a tile. A chunk is stored only if a tile is dirty or it
+   holds belts; otherwise it is regenerated on re-entry, so clean gas chunks
+   are never persisted.
+8. **Fog.** Every leaving chunk with seen cells leaves a 64-byte slice in the fog
+   tier, dirty or not. Fog alone never makes a chunk dirty.
+9. **Loose objects, cargo pad, damage, hot tiles, surface cache.** As before, now
+   in both axes. `cargoPad` and shelved objects are in world coordinates.
+   `windowSurf` holds world Y; `surfaceTop` is the window-local value.
+10. **Bounded store (`js/store.js`).** Two tiers, `chunkTier` and `fogTier`, share
+    one structure: `mem` (insertion order is the LRU order), `spill` (evicted,
+    write pending), `cache` (read from disk, not yet used), `disk` (index of keys
+    known to be on disk) and `reading` (reads in flight, each with a token).
+    `mem` is capped (`CHUNK_MEM_MAX` chunks, `FOG_MEM_MAX` slices); the oldest
+    entries move to `spill` and one batched IndexedDB write persists them.
+    Lookups try `mem`, `spill`, `cache`, in that order, so an evicted entry is
+    never lost between eviction and write completion. A failed write turns the disk
+    layer off and returns everything to `mem` (memory only, unbounded, but safe).
+    Without `indexedDB` the store behaves like before: unbounded, in memory.
+11. **No stalls.** Disk reads are asynchronous. After each shift
+    `prefetchAround` requests every on-disk chunk and fog slice in a ring of
+    `PREFETCH_RING` chunks around the window. If a chunk that is only on disk is
+    needed anyway, the window gets the chunk regenerated from the seed
+    immediately (a placeholder, remembered in `pendingChunks`); when the read
+    arrives, `chunkArrived` pastes the stored chunk over it if it is still in the
+    window. Fog slices arrive the same way and are merged into `seen`. A
+    placeholder that leaves the window before the read arrives is not stored
+    unless it was modified in between.
+12. **World save and resume.** `saveWorld()` writes every chunk and fog slice of
+    the window and a meta record (seed, origins) to IndexedDB. `resumeWorld()`
+    loads the index and meta and warms the window's chunks;
+    `generateWorld(seed, w, h, meta)` then rebuilds the same window. Starting a
+    new world wipes the disk store.
 
 Remaining:
 
-1. **Persistence.** `chunkStore` lives in memory only. Saving it (and the
-   shelved objects and pad) to disk is not done.
-2. **Vertical axis.** Unbounded horizontally; depth is still bounded by
-   `WORLD_H`. `geothermalGradient` is still an array of length `H`.
-3. **Fog slices.** `fogStore` grows by 64 bytes per visited chunk and is never
-   pruned.
+1. **Game-level save is not wired.** The game has no save mechanism (only
+   settings and language in `localStorage`). `saveWorld` / `resumeWorld` store
+   and restore the terrain only; nothing calls them yet. Inventory, market,
+   player, loose objects, the cargo pad and belts outside the window are not
+   part of a save, and a resumed world has no spawn shelter.
+2. **Placeholder race.** In the rare case a chunk is needed before its read
+   completes, edits made to the placeholder in that short time are overwritten
+   when the stored chunk arrives (or overwrite it, if the chunk left first).
+3. **Zoom floor.** With a 320-cell window, the minimum integral zoom is raised so
+   the view is at most 224 cells tall: about 5 on a 1080p screen, and above the
+   normal maximum of 9 on a very tall screen (the frozen strip is then visible).
+4. **Depth limits.** The world ends at `WORLD_FLOOR` (99840 cells deep). Ore,
+   coal and sand deposits stop at their original depth ranges; deeper chunks hold
+   rock, caves and lava. Temperature below world Y 320 is constant.
+5. **Chunk data is not compressed** on disk (about 28 KB per chunk).
+6. **Shelf limit.** At most `SHELF_MAX` loose objects are kept away from the
+   window.

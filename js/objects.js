@@ -321,12 +321,13 @@ function shelveObject(o) {
   if (o === heldObject) heldObject = null;
   o.held = false;
   o.x = worldX(o.x);
+  o.y = worldY(o.y);
   if (shelvedObjects.length >= SHELF_MAX) shelvedObjects.shift();
   shelvedObjects.push(o);
 }
 
-function unshelveObject(o, lx) {
-  let y = o.y;
+function unshelveObject(o, lx, ly) {
+  let y = ly;
   const top = Math.max(0, y - OBJ_LIFT);
   while (y > top && objBlocked(o, lx, y)) y--;
   if (objBlocked(o, lx, y)) return false;
@@ -338,19 +339,22 @@ function unshelveObject(o, lx) {
   return true;
 }
 
-function shiftObjects(dx) {
+function shiftObjects(dx, dy) {
   const inside = [];
   for (let k = 0; k < objects.length; k++) {
     const o = objects[k];
     o.x -= dx;
-    if (o.x >= 0 && o.x < W) inside.push(o);
+    o.y -= dy;
+    if (o.x >= 0 && o.x < W && o.y >= 0 && o.y < H) inside.push(o);
     else shelveObject(o);
   }
   const shelved = [];
   for (let k = 0; k < shelvedObjects.length; k++) {
     const o = shelvedObjects[k];
-    const lx = localX(o.x);
-    if (lx >= 0 && lx < W && unshelveObject(o, lx)) inside.push(o);
+    const lx = localX(o.x),
+      ly = localY(o.y);
+    const placed = lx >= 0 && lx < W && ly >= 0 && ly < H && unshelveObject(o, lx, ly);
+    if (placed) inside.push(o);
     else shelved.push(o);
   }
   shelvedObjects = shelved;
