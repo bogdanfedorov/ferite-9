@@ -3,8 +3,8 @@ var player = {
   y: 0,
   vx: 0,
   vy: 0,
-  w: 3,
-  h: 5,
+  w: cellsOf(SIZE_M.player.w),
+  h: cellsOf(SIZE_M.player.h),
   grounded: false,
   inLiquid: false,
   fuel: 100,
@@ -20,12 +20,14 @@ var player = {
   fallFrom: 0,
   fallDrop: 0,
   buried: 0,
-  lastTemp: 22
+  lastTemp: 22,
+  arriving: false
 };
 
 var REACH = 32;
 var JET_EXHAUST = matId('smoke');
 var FALL_SAFE = 30;
+var ARRIVAL_DROP = 60;
 var FUEL_BURN_RATE = 0.5;
 var JETPAK_POWER = 0.062;
 var FOOT_POWER = 0.05;
@@ -39,10 +41,19 @@ function resetVitals() {
   player.buried = 0;
 }
 
+function arrivalHeight() {
+  let rise = 0;
+  while (rise < ARRIVAL_DROP && !boxBlocked(player.spawnX, player.spawnY - rise - 1)) rise++;
+  return rise;
+}
+
 function moveToSpawn() {
   player.x = player.spawnX;
-  player.y = player.spawnY;
+  player.y = player.spawnY - arrivalHeight();
+  player.vx = 0;
+  player.vy = 0;
   player.fallFrom = player.y;
+  player.arriving = true;
 }
 
 function spawnPlayer(x, y) {
@@ -182,6 +193,7 @@ function updatePlayer(keys) {
   if (player.grounded || player.vy < 0 || player.inLiquid) {
     player.fallFrom = player.y;
   }
+  if (player.inLiquid) player.arriving = false;
 
   const hit = moveAxis(player.vx, player.vy);
   if (hit & 1) player.vx = 0;
@@ -190,12 +202,13 @@ function updatePlayer(keys) {
     if (player.vy > 0) {
       player.grounded = true;
       const drop = player.y - player.fallFrom;
-      if (drop > FALL_SAFE && !sandbox.on) {
+      if (drop > FALL_SAFE && !sandbox.on && !player.arriving) {
         player.fallDrop = drop;
         player.hp -= (drop - FALL_SAFE) * 3.4;
         if (player.hp <= 0) player.deathCause = 'fall';
       }
       player.fallFrom = player.y;
+      player.arriving = false;
     }
     player.vy = 0;
   }

@@ -96,6 +96,7 @@ function drawBelts() {
 
 regBuilding({
   id: 'belt',
+  size: SIZE_M.belt,
   hud: { name: 'tool.belt', desc: 'tool.belt.desc', icon: '»' },
   cost: 240,
   sound: 'pickTool',

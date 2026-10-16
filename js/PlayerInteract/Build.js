@@ -90,7 +90,8 @@ function buildPlan(fromWorld, toWorld) {
   const opt = { vertical: activeBuilding().vertical, even: buildEven };
   const cells = shapeCells(buildShape, from, to, opt);
   const heading = shapeHeading(cells);
-  return { cells: cells, dx: heading.dx, dy: heading.dy };
+  const thick = activeBuilding().size ? activeBuilding().size : 1;
+  return { cells: thickenCells(cells, thick), dx: heading.dx, dy: heading.dy };
 }
 
 function buildVerdict(plan) {
