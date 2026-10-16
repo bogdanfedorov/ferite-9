@@ -1,7 +1,5 @@
 var SETTINGS_KEY = 'ferit9.settings';
 
-var GRAB_MIN = 1;
-var GRAB_MAX = 4;
 
 var VISION_MODES = ['off', 'protan', 'deutan', 'tritan', 'contrast'];
 var VISION_SAMPLE = ['ferrite', 'coal', 'iron', 'glass', 'lava', 'water'];
@@ -103,7 +101,7 @@ var RESERVED_KEYS = { Escape: 1, ShiftLeft: 1, ShiftRight: 1 };
 var settings = {
   muted: false,
   volume: 100,
-  grabSize: 2,
+  grabSize: 4,
   vision: 'off',
   keys: {}
 };

@@ -134,6 +134,12 @@ regLang('en', {
   'help.cta': 'Back to work',
   'intro.keySettings': 'settings',
 
+  'pause.kicker': 'Paused',
+  'pause.title': 'Menu',
+  'pause.resume': 'Resume',
+  'pause.settings': 'Settings',
+  'pause.help': 'Help',
+
   'set.kicker': 'Settings',
   'set.title': 'Unit console',
   'set.lang': 'Language',

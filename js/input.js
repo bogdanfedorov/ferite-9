@@ -44,27 +44,22 @@ function toggleMute() {
   settings.muted = !settings.muted;
   saveSettings();
   refreshSettingsPanel();
-  say(t(settings.muted ? 'msg.soundOff' : 'msg.soundOn'));
+  transmit(t(settings.muted ? 'msg.soundOff' : 'msg.soundOn'), NOTICE);
   if (!settings.muted) play('soundOn');
 }
 
 function toggleHeat() {
   const on = toggleHeatView();
   el['heat-legend'].classList.toggle('hidden', !on);
-  say(t(on ? 'msg.heatOn' : 'msg.heatOff'));
+  transmit(t(on ? 'msg.heatOn' : 'msg.heatOff'), NOTICE);
 }
 
 function cycleShapeKey() {
   if (!isBuilding(game.tool) || shapesOfBuilding().length < 2) return;
   cycleBuildShape();
   refreshShapeBar();
-  say(tf('msg.buildShape', { shape: t(`shape.${buildShape}`) }));
+  transmit(tf('msg.buildShape', { shape: t(`shape.${buildShape}`) }), NOTICE);
   play('pickShape');
-}
-
-function onEscape() {
-  if (!el.help.classList.contains('hidden')) toggleScreen('help');
-  else selectTool('drill');
 }
 
 function onKeyDown(e) {
@@ -77,8 +72,16 @@ function onKeyDown(e) {
   }
   if (rebinding()) return;
   const act = keyAction(c);
+  if (!el.pause.classList.contains('hidden')) {
+    if (c === 'Escape') toggleScreen('pause');
+    return;
+  }
   if (!el.settings.classList.contains('hidden')) {
-    if (c === 'Escape' || act === 'settings') toggleScreen('settings');
+    if (c === 'Escape' || act === 'settings') closeScreen('settings');
+    return;
+  }
+  if (!el.help.classList.contains('hidden')) {
+    if (c === 'Escape' || act === 'help') closeScreen('help');
     return;
   }
   if (!el.inventory.classList.contains('hidden')) {
@@ -91,7 +94,7 @@ function onKeyDown(e) {
   }
   if (act.indexOf('slot') === 0) selectSlot(slotIndex(act));
   if (KEY_ACTIONS[act]) KEY_ACTIONS[act]();
-  if (c === 'Escape') onEscape();
+  if (c === 'Escape') toggleScreen('pause');
 }
 
 function slotIndex(act) {

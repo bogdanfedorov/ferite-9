@@ -194,8 +194,10 @@ function bootLine(cls, text) {
 }
 
 function startBoot(onDone) {
-  if (!boot.el) {
-    if (onDone) onDone();
+  if (!boot.el || SKIP_BOOT) {
+    boot.active = true;
+    boot.onDone = onDone || null;
+    finishBoot();
     return;
   }
   boot.steps = buildBootSteps();
@@ -219,7 +221,7 @@ function finishBoot() {
   boot.reportDeath = false;
   boot.el.classList.add('hidden');
   if (boot.afterLine) {
-    transmit(t('comms.from'), boot.afterLine, { hold: 3800 });
+    transmit(boot.afterLine, { hold: 3800 });
     boot.afterLine = '';
   }
   const cb = boot.onDone;
@@ -377,15 +379,27 @@ function fillVars(text) {
     .replace(/\{t\}/g, Math.round(SOL.lastTemp));
 }
 
-function transmit(from, text, opts) {
+var NOTICE = { now: true, hold: 1200 };
+var SKIP_BOOT = true;
+
+function repeatsShown(msg) {
+  if (comms.hold > 0 && comms.full === msg.text) {
+    comms.hold = Math.max(comms.hold, msg.hold + msg.text.length * 16);
+    return true;
+  }
+  return comms.queue.length > 0 && comms.queue[0].text === msg.text;
+}
+
+function transmit(text, opts) {
   opts = opts || {};
   const msg = {
-    from: from,
+    from: t('comms.from'),
     text: fillVars(text),
     hold: opts.hold || 4200,
     alarm: !!opts.alarm
   };
-  if (opts.alarm) {
+  if (opts.now && repeatsShown(msg)) return;
+  if (opts.alarm || opts.now) {
     comms.queue.unshift(msg);
     comms.hold = 0;
   } else if (opts.after) {
@@ -439,7 +453,7 @@ function loreEvent(key, opts) {
   loreSeen[key] = 1;
   const line = t(`event.${key}`);
   if (typeof line !== 'string') return;
-  transmit(t('comms.from'), line, opts);
+  transmit(line, opts);
 }
 
 function pickLine(cause, n) {

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -35,12 +35,6 @@
       </div>
 
       <dl class="idstats">
-        <button class="util-btn" id="btn-settings">
-          <span class="ub-key" data-bind="settings">O</span><span class="ub-label" data-i18n="ui.settings">налаштування</span>
-        </button>
-        <button class="util-btn" id="btn-help">
-          <span class="ub-key" data-bind="help">H</span><span class="ub-label" data-i18n="ui.help">довідка</span>
-        </button>
         <div><dt data-i18n="ui.losses">втрат</dt><dd class="mono" id="stat-losses">0</dd></div>
         <div><dt data-i18n="ui.explored">розвідано</dt><dd class="mono" id="stat-explored">0%</dd></div>
       </dl>
@@ -73,8 +67,6 @@
     <p class="comms-text" id="comms-text"></p>
   </aside>
 
-  <div class="tipbar warn hidden"><span id="tip"></span></div>
-
   <div class="buildwrap">
     <nav class="pickbar hidden" id="shapebar"></nav>
     <nav class="buildbar" id="hotbar"></nav>
@@ -103,7 +95,7 @@
     </div>
   </div>
 
-  <div class="screen" id="intro">
+  <div class="screen hidden" id="intro">
     <div class="screen-card">
       <div class="lang-switch card-lang"></div>
       <p class="kicker" data-i18n="intro.kicker">Глибинна копальня · зміна 41</p>
@@ -123,6 +115,18 @@
       <button class="cta" id="start" data-i18n="intro.cta">Спуститись у шахту</button>
       <button class="ghost-btn room-btn" id="start-room" type="button" data-i18n="intro.room">Полігон</button>
       <p class="foot" data-i18n="intro.foot"></p>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="pause">
+    <div class="screen-card pause-card">
+      <p class="kicker" data-i18n="pause.kicker">Paused</p>
+      <h1 data-i18n="pause.title">Menu</h1>
+      <div class="pause-list">
+        <button class="cta" id="pause-resume" data-i18n="pause.resume">Resume</button>
+        <button class="ghost-btn" id="pause-settings" type="button" data-i18n="pause.settings">Settings</button>
+        <button class="ghost-btn" id="pause-help" type="button" data-i18n="pause.help">Help</button>
+      </div>
     </div>
   </div>
 
@@ -207,9 +211,7 @@
 </div>
 
 <script src="js/i18n.js"></script>
-<script src="js/lang/uk.js"></script>
 <script src="js/lang/en.js"></script>
-<script src="js/lang/pl.js"></script>
 <script src="js/materials.data.js"></script>
 <script src="js/materials.js"></script>
 <script src="js/settings.js"></script>

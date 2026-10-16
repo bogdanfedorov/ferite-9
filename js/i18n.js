@@ -1,9 +1,7 @@
 var LANGS = {};
-var LANG = 'uk';
+var LANG = 'en';
 var LANG_LIST = [
-  { code: 'uk', label: 'UA' },
-  { code: 'en', label: 'EN' },
-  { code: 'pl', label: 'PL' }
+  { code: 'en', label: 'EN' }
 ];
 var onLangChange = null;
 
@@ -18,7 +16,7 @@ function regLang(code, data) {
 function t(key) {
   const d = LANGS[LANG];
   let v = d ? d[key] : undefined;
-  if (v === undefined && LANGS.uk) v = LANGS.uk[key];
+  if (v === undefined && LANGS.en) v = LANGS.en[key];
   return v === undefined ? key : v;
 }
 
@@ -86,9 +84,6 @@ function detectLang() {
     saved = localStorage.getItem('ferit9.lang');
   } catch (e) {}
   if (saved && LANGS[saved]) return saved;
-  const nav = (navigator.language || 'uk').toLowerCase();
-  if (nav.indexOf('pl') === 0) return 'pl';
-  if (nav.indexOf('uk') === 0 || nav.indexOf('ru') === 0) return 'uk';
   return 'en';
 }
 
@@ -96,6 +91,10 @@ function buildLangSwitches() {
   const holders = document.querySelectorAll('.lang-switch');
   for (let h = 0; h < holders.length; h++) {
     const box = holders[h];
+    if (LANG_LIST.length < 2) {
+      (box.closest('.set-group') || box).remove();
+      continue;
+    }
     box.innerHTML = '';
     for (let i = 0; i < LANG_LIST.length; i++) {
       const b = document.createElement('button');

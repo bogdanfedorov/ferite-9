@@ -3,7 +3,7 @@ var HUD_IDS = [
   'market-sum',
   'money',
   'drone-btn',
-  'tip',
+  'pause',
   'intro',
   'help',
   'settings',
@@ -27,7 +27,7 @@ var HUD_IDS = [
 ];
 
 var el = {};
-var hud = { msg: '', msgT: 0, lastVals: {}, marketRows: [] };
+var hud = { lastVals: {}, marketRows: [] };
 
 function grabHud() {
   for (let i = 0; i < HUD_IDS.length; i++) el[HUD_IDS[i]] = document.getElementById(HUD_IDS[i]);
@@ -41,15 +41,6 @@ function setVal(id, v) {
 
 function forgetHudVals() {
   hud.lastVals = {};
-}
-
-function say(text) {
-  hud.msg = text;
-  hud.msgT = 150;
-}
-
-function tickSay() {
-  if (hud.msgT > 0) hud.msgT--;
 }
 
 function marketRow(good) {
@@ -154,19 +145,12 @@ function updateProbe(wpt) {
   }
 }
 
-function updateTip() {
-  const shown = hud.msgT > 0;
-  if (shown) el.tip.textContent = hud.msg;
-  el.tip.parentNode.classList.toggle('hidden', !shown);
-}
-
 function updateHud(wpt) {
   updatePlate();
   setMeter('hp', player.hp);
   setMeter('fuel', player.fuel);
   updateMarketPanel();
   updateProbe(wpt);
-  updateTip();
 }
 
 function refreshShapeBar() {

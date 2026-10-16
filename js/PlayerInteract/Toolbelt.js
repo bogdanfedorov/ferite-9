@@ -43,7 +43,7 @@ function nextLevelOf(name) {
 
 function spend(cost) {
   if (market.money < cost) {
-    say(tf('msg.cantAfford', { cost: cost }));
+    transmit(tf('msg.cantAfford', { cost: cost }), NOTICE);
     play('denied');
     return false;
   }
@@ -54,7 +54,7 @@ function spend(cost) {
 function buyTool(name) {
   if (!spend(pieceCost(name))) return;
   openTool(name);
-  say(tf('msg.bought', { tool: t(PIECES[name].hud.name) }));
+  transmit(tf('msg.bought', { tool: t(PIECES[name].hud.name) }), NOTICE);
   play('unlock');
   renderToolbelt();
 }
@@ -63,7 +63,8 @@ function upgradePiece(name) {
   const next = nextLevelOf(name);
   if (!toolOpen(name) || !next || !spend(next.cost)) return;
   toolbelt.level[name]++;
-  say(tf('msg.upgraded', { tool: t(PIECES[name].hud.name), level: levelOf(name) + 1 }));
+  const vars = { tool: t(PIECES[name].hud.name), level: levelOf(name) + 1 };
+  transmit(tf('msg.upgraded', vars), NOTICE);
   play('unlock');
   renderToolbelt();
 }

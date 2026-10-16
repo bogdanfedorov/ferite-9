@@ -64,7 +64,7 @@ function deliverPad() {
   for (const key in counts) market.sold[key] += counts[key];
   market.money += sum;
   if (sum > 0) market.sales++;
-  say(sum > 0 ? tf('msg.droneSold', { sum: sum }) : t('msg.droneEmpty'));
+  transmit(sum > 0 ? tf('msg.droneSold', { sum: sum }) : t('msg.droneEmpty'), NOTICE);
   play(sum > 0 ? 'sale' : 'denied');
   renderToolbelt();
 }
@@ -72,18 +72,18 @@ function deliverPad() {
 function callDrone() {
   if (market.drone > 0) return;
   if (!cargoPad) {
-    say(t('msg.noPad'));
+    transmit(t('msg.noPad'), NOTICE);
     play('denied');
     return;
   }
   if (market.money < DRONE_FEE) {
-    say(tf('msg.cantAfford', { cost: DRONE_FEE }));
+    transmit(tf('msg.cantAfford', { cost: DRONE_FEE }), NOTICE);
     play('denied');
     return;
   }
   market.money -= DRONE_FEE;
   market.drone = DRONE_TRIP;
-  say(t('msg.droneOn'));
+  transmit(t('msg.droneOn'), NOTICE);
   play('launch');
 }
 

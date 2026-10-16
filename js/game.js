@@ -1,6 +1,7 @@
 var game = {
   tool: 'drill',
-  paused: true,
+  paused: false,
+  menuBack: false,
   elapsed: 0
 };
 
@@ -21,13 +22,13 @@ var MILESTONES = [
   }
 ];
 
-var OVERLAYS = ['intro', 'help', 'settings', 'inventory'];
+var OVERLAYS = ['intro', 'pause', 'help', 'settings', 'inventory'];
 
 var loop = { acc: 0, last: 0, hudTick: 0 };
 
 function selectTool(name) {
   if (!toolOpen(name)) {
-    say(t('msg.toolLocked'));
+    transmit(t('msg.toolLocked'), NOTICE);
     return;
   }
   game.tool = name;
@@ -81,7 +82,7 @@ function useTool(wpt) {
 function clickRoomButton(bin) {
   if (!input.mouse.clickReq) return;
   roomResetBin(bin);
-  say(tf('msg.roomReset', { mat: matLabel(bin.id) }));
+  transmit(tf('msg.roomReset', { mat: matLabel(bin.id) }), NOTICE);
   play('roomReset');
 }
 
@@ -136,7 +137,6 @@ function step() {
   tickMarket();
   tickPieces(simFrame);
   if (sandbox.on) tickTestRoom(simFrame);
-  tickSay();
 }
 
 function frame(now) {
@@ -171,12 +171,26 @@ function toggleScreen(id) {
   }
 }
 
+function closeScreen(id) {
+  toggleScreen(id);
+  if (!game.menuBack) return;
+  game.menuBack = false;
+  toggleScreen('pause');
+}
+
+function openFromPause(id) {
+  toggleScreen('pause');
+  toggleScreen(id);
+  game.menuBack = true;
+}
+
 function swapWorld() {
   const room = !sandbox.on;
   enterWorld(room);
   refreshSettingsPanel();
+  game.menuBack = false;
   toggleScreen('settings');
-  say(t(room ? 'msg.roomOn' : 'msg.roomOff'));
+  transmit(t(room ? 'msg.roomOn' : 'msg.roomOff'), NOTICE);
   play(room ? 'room' : 'start');
 }
 
@@ -195,7 +209,7 @@ function startRoom() {
   play('room');
   enterWorld(true);
   game.paused = false;
-  say(t('msg.roomOn'));
+  transmit(t('msg.roomOn'), NOTICE);
 }
 
 function onClick(id, fn) {
@@ -203,20 +217,23 @@ function onClick(id, fn) {
 }
 
 function bindScreens() {
-  onClick('btn-help', () => {
-    toggleScreen('help');
+  onClick('pause-resume', () => {
+    toggleScreen('pause');
   });
-  onClick('btn-settings', () => {
-    toggleScreen('settings');
+  onClick('pause-settings', () => {
+    openFromPause('settings');
+  });
+  onClick('pause-help', () => {
+    openFromPause('help');
   });
   onClick('set-close', () => {
-    toggleScreen('settings');
+    closeScreen('settings');
   });
   onClick('set-world-swap', swapWorld);
   onClick('start', startMission);
   onClick('start-room', startRoom);
   onClick('resume', () => {
-    toggleScreen('help');
+    closeScreen('help');
   });
   onClick('drone-btn', callDrone);
 }

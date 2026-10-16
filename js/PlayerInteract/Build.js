@@ -147,7 +147,7 @@ function finishBuild(fromWorld, toWorld) {
 }
 
 function reportBuild(report) {
-  say(t(report.text));
+  transmit(t(report.text), NOTICE);
   if (report.sound) play(report.sound);
 }
 

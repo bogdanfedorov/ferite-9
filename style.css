@@ -395,21 +395,6 @@ body{
 .launch.worth{animation:ready 1.9s ease-in-out infinite}
 @keyframes ready{50%{box-shadow:0 0 0 3px #e0a85226}}
 
-/* ---------- підказка ---------- */
-
-.tipbar{
-  grid-column:2;grid-row:2;
-  align-self:end;justify-self:center;
-  max-width:100%;
-  text-align:center;
-  font-size:12px;color:var(--muted);
-  background:#0a0e15cc;border:1px solid var(--edge);
-  padding:5px 11px;
-  font-family:var(--f-mono);
-}
-.tipbar b{color:var(--sand);font-weight:600}
-.tipbar.warn{border-color:var(--danger);color:#e8b0a1}
-
 /* ---------- панель будівництва ---------- */
 
 .buildwrap{
@@ -692,6 +677,9 @@ body{
 .kb-key.listening{border-color:var(--sand);background:#221c12;color:var(--sand)}
 .kb-key:focus-visible{outline:2px solid var(--sand);outline-offset:1px}
 
+.pause-list{display:flex;flex-direction:column;gap:10px;min-width:240px}
+.pause-list .ghost-btn{margin-top:0;padding:11px 14px;font-size:12px}
+
 .ghost-btn{
   appearance:none;
   margin-top:12px;
@@ -731,14 +719,12 @@ body{
   .rn,.goal-list li{font-size:11.5px}
   .rv{font-size:12px}
   .idstats dd{font-size:12px}
-  .tipbar{font-size:11px;padding:4px 8px}
   .slot{min-width:78px}
   .sname{font-size:12px}
   .scost{font-size:9.5px}
 }
 
 @media (max-width:640px){
-  .tipbar{display:none}
   .comms{width:min(240px,50vw)}
   .scost{display:none}
   .slot{min-width:58px;padding:6px 7px}
