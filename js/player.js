@@ -3,8 +3,8 @@ var player = {
   y: 0,
   vx: 0,
   vy: 0,
-  w: cellsOf(SIZE_M.player.w),
-  h: cellsOf(SIZE_M.player.h),
+  w: SIZE.m(0.13),
+  h: SIZE.m(0.3),
   grounded: false,
   inLiquid: false,
   fuel: 100,
@@ -56,26 +56,32 @@ function moveToSpawn() {
   player.arriving = true;
 }
 
+function floorBelow(x, y) {
+  let fy = Math.round(y);
+  while (inBounds(x, fy) && !BLOCKING[mat[fy * W + x]]) fy++;
+  return fy;
+}
+
 function spawnPlayer(x, y) {
   player.spawnX = x;
-  player.spawnY = y;
+  player.spawnY = floorBelow(Math.round(x), y) - player.h / 2;
+  clearAirlock();
   moveToSpawn();
   resetVitals();
   player.fallDrop = 0;
 }
 
 function clearAirlock() {
-  const x0 = Math.round(player.spawnX) - 3,
-    x1 = Math.round(player.spawnX) + 3;
-  const y0 = Math.round(player.spawnY) - 4,
-    y1 = Math.round(player.spawnY) + 3;
+  const x0 = spanStart(player.spawnX, player.w) - 2,
+    x1 = spanEnd(player.spawnX, player.w) + 2;
+  const y0 = spanStart(player.spawnY, player.h) - ARRIVAL_DROP,
+    y1 = spanEnd(player.spawnY, player.h);
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       if (!inBounds(x, y)) continue;
       const m = mat[y * W + x];
-      const st = STATE[m];
-      if (st === MT.POWDER) setCellHot(x, y, VOID_ID, 22);
-      else if (st === MT.LIQUID) displaceCell(x, y);
+      if (STATE[m] === MT.LIQUID) displaceCell(x, y);
+      else if (m !== VOID_ID && !FIXED[m]) setCellHot(x, y, VOID_ID, 22);
     }
   }
 }

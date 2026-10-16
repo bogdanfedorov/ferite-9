@@ -6,7 +6,7 @@ function wallPlace(plan) {
 
 regBuilding({
   id: 'wall',
-  size: SIZE_M.wall,
+  size: { w: SIZE.m(0.1), h: SIZE.m(0.1) },
   hud: { name: 'tool.wall', desc: 'tool.wall.desc', icon: '▦' },
   cost: 120,
   sound: 'pickTool',

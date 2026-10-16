@@ -16,7 +16,6 @@ var buildEven = false;
 
 var buildFrom = null;
 var buildTo = null;
-var buildAnchor = null;
 var buildErase = false;
 
 function regBuilding(spec) {
@@ -65,7 +64,6 @@ function cycleBuildShape() {
 }
 
 function startBuildDrag(wx, wy, erase) {
-  buildAnchor = { x: player.x, y: player.y };
   buildFrom = [wx, wy];
   buildTo = buildFrom;
   buildErase = erase;
@@ -74,13 +72,11 @@ function startBuildDrag(wx, wy, erase) {
 function endBuildDrag() {
   buildFrom = null;
   buildTo = null;
-  buildAnchor = null;
   buildErase = false;
 }
 
 function gridPoint(wx, wy) {
-  const p = clampToReach(wx, wy, buildAnchor);
-  return { x: Math.round(p[0]), y: Math.round(p[1]) };
+  return { x: Math.round(wx), y: Math.round(wy) };
 }
 
 function buildPlan(fromWorld, toWorld) {
@@ -90,8 +86,8 @@ function buildPlan(fromWorld, toWorld) {
   const opt = { vertical: activeBuilding().vertical, even: buildEven };
   const cells = shapeCells(buildShape, from, to, opt);
   const heading = shapeHeading(cells);
-  const thick = activeBuilding().size ? activeBuilding().size : 1;
-  return { cells: thickenCells(cells, thick), dx: heading.dx, dy: heading.dy };
+  const size = activeBuilding().size || { w: 1, h: 1 };
+  return { cells: thickenCells(cells, size), dx: heading.dx, dy: heading.dy };
 }
 
 function buildVerdict(plan) {
@@ -137,7 +133,6 @@ function eraseCells(cells) {
 
 function finishBuild(fromWorld, toWorld) {
   const plan = buildPlan(fromWorld, toWorld);
-  buildAnchor = null;
   if (buildErase) return eraseCells(plan.cells) > 0 ? BUILD_REPORTS.removed : BUILD_REPORTS.nothing;
   const spec = activeBuilding();
   const verdict = buildVerdict(plan);
