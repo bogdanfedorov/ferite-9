@@ -1,4 +1,5 @@
 var objects = [];
+var shelvedObjects = [];
 
 var OBJ_MAX = 16;
 var IMPACT_STEAM = matId('smoke');
@@ -314,13 +315,36 @@ function stepObjects(targetX, targetY) {
   }
 }
 
+function shelveObject(o) {
+  if (o === heldObject) heldObject = null;
+  o.held = false;
+  o.x = worldX(o.x);
+  shelvedObjects.push(o);
+}
+
 function shiftObjects(dx) {
-  for (let k = 0; k < objects.length; k++) objects[k].x -= dx;
-  objects = objects.filter((o) => o.x >= 0 && o.x < W);
-  if (heldObject && objects.indexOf(heldObject) < 0) heldObject = null;
+  const inside = [];
+  for (let k = 0; k < objects.length; k++) {
+    const o = objects[k];
+    o.x -= dx;
+    if (o.x >= 0 && o.x < W) inside.push(o);
+    else shelveObject(o);
+  }
+  const shelved = [];
+  for (let k = 0; k < shelvedObjects.length; k++) {
+    const o = shelvedObjects[k];
+    const lx = localX(o.x);
+    if (lx >= 0 && lx < W) {
+      o.x = lx;
+      inside.push(o);
+    } else shelved.push(o);
+  }
+  shelvedObjects = shelved;
+  objects = inside;
 }
 
 function resetObjects() {
   objects.length = 0;
+  shelvedObjects.length = 0;
   heldObject = null;
 }

@@ -437,7 +437,8 @@ function updatePlate(bump) {
   comms.plate.textContent = solName();
   if (comms.statLosses) comms.statLosses.textContent = SOL.deaths;
   if (comms.statExplored) {
-    comms.statExplored.textContent = `${Math.round((seenCount / (FCW * FCH)) * 100)}%`;
+    const explored = Math.round((seenCount / (FCW * FCH)) * 100);
+    comms.statExplored.textContent = `${Math.min(100, explored)}%`;
   }
   if (bump && !comms.reduced) {
     comms.plate.classList.remove('bump');

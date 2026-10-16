@@ -84,6 +84,27 @@ function shiftBelts(dx) {
   beltCells = moved;
 }
 
+function beltsOut(lx, ly) {
+  const S = CHUNK_SIZE;
+  let out = null;
+  for (const [i, code] of beltCells) {
+    const x = (i % W) - lx,
+      y = ((i / W) | 0) - ly;
+    if (x < 0 || y < 0 || x >= S || y >= S) continue;
+    if (!out) out = new Map();
+    out.set(y * S + x, code);
+    beltCells.delete(i);
+  }
+  return out;
+}
+
+function beltsIn(cells, lx, ly) {
+  const S = CHUNK_SIZE;
+  for (const [k, code] of cells) {
+    beltCells.set((ly + ((k / S) | 0)) * W + lx + (k % S), code);
+  }
+}
+
 var ARROW_EVERY = 3;
 
 function drawBelts() {
@@ -126,6 +147,5 @@ regBuilding({
     beltCells.clear();
   },
   tick: tickBelts,
-  shiftWorld: shiftBelts,
   drawWorld: drawBelts
 });

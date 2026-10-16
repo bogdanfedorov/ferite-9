@@ -123,7 +123,6 @@ function followWindow(lx, maxChunks) {
   shiftObjects(dx);
   shiftCamera(dx);
   endBuildDrag();
-  eachPiece('shiftWorld', dx);
 }
 
 function step() {

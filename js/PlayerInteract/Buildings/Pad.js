@@ -12,12 +12,13 @@ function padPlace(plan) {
 }
 
 function drawCargoPad() {
-  if (!cargoPad) return;
+  const pad = padLocal();
+  if (!pad) return;
   const z = view.zoom;
-  const px = sx(cargoPad.x),
-    py = sy(cargoPad.y);
-  const pw = cargoPad.w * z,
-    ph = cargoPad.h * z;
+  const px = sx(pad.x),
+    py = sy(pad.y);
+  const pw = pad.w * z,
+    ph = pad.h * z;
   if (px + pw < 0 || py + ph < 0 || px > cv.width || py > cv.height) return;
 
   ctx.save();
