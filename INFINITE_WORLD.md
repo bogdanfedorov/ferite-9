@@ -1,7 +1,8 @@
 # Infinite world: design notes
 
-Status: planned, not implemented. The world is currently a fixed grid
-(`WORLD_W` x `WORLD_H` in `js/world.js`).
+Status: horizontal sliding window implemented, including state outside the
+material arrays. Not implemented: persistence of the chunk store to disk and the
+vertical axis. The window is `WORLD_W` x `WORLD_H` (1280 x 320) in `js/world.js`.
 
 ## Why not a bigger fixed grid
 
@@ -32,30 +33,49 @@ Memory grows with area: every cell costs about 19 bytes across `mat`, `shade`,
 - Cells outside the window are frozen. The window must be larger than the
   screen so the player never sees the border.
 
-## Required changes
+## Status
 
-1. **Generation.** Replace `generateWorld(seed, W, H)` with
-   `generateChunk(seed, cx, cy)`. It must depend only on the seed and world
-   coordinates, using a coordinate hash and noise instead of the sequential
-   `rnd()`. Caves and ore veins crossing chunk borders must match on both
-   sides.
-2. **Vertical axis.** Unbounded horizontally; the sky is the top. Depth below
-   may be bounded or very deep. `geothermalGradient` becomes a function of world
-   Y instead of an array of length `H`.
-3. **Window border.** Liquids and heat must not leak out: freeze cells outside
-   the window.
-4. **State outside the material arrays.** `dmgList`, anchored objects in
-   `objects.js`, fog (`seen`, `fogVal`), hot chunks (`hotA`, `hotB`), market and
-   parcels either store world coordinates or shift with the window.
-5. **Persistence.** Modified chunks stay in the store; untouched chunks are
-   regenerated from the seed.
+Done:
 
-## Implementation order
+1. **Generation.** `buildChunk(seed, cx, cy)` depends only on the seed and
+   world coordinates; features crossing chunk borders match on both sides.
+2. **Horizontal window.** `originX` maps local to world X. `shiftWindow` moves
+   it by whole chunks, saving leaving columns and loading entering ones.
+   `shiftMargin()` is the larger of a constant and half the visible width plus
+   the frozen edge strip plus one chunk, capped inside the window; `setZoom`
+   keeps an integral zoom with the visible width below what the cap allows
+   (re-applied when the canvas resizes and after the world is generated), so
+   the frozen strip is never on screen.
+3. **Window border.** `EDGE_FREEZE` cells on each side do not simulate.
+4. **Per-chunk state.** A stored chunk carries `mat`, `shade`, `life`, `temp`
+   and its belt direction codes. Belts stay per-cell data in `beltCells`.
+5. **Dirty tracking.** `dirtyT` marks 16x16 tiles that were modified: cell
+   writes (`setCell`, `paintCell`, `swapCells`), direct tool writes (the torch
+   calls `markDirty`), gas life countdown, burning and latent-heat life changes,
+   and tiles left above ambient temperature by the thermal pass. Hot tiles
+   (`hotA`/`hotB`) are separate and do not imply modified. A leaving chunk is
+   stored only if a tile of it is dirty or it holds belts; otherwise it is
+   regenerated from the seed on re-entry.
+6. **Fog.** Every leaving chunk with seen cells leaves a 64-byte slice in
+   `fogStore`, dirty or not; it is pasted back on re-entry, so caves stay
+   mapped. Fog alone never makes a chunk dirty. `seenCount` counts the window
+   only, so the explored % is relative to the window.
+7. **Loose objects.** Objects that leave the window move to `shelvedObjects`
+   with world X and come back when their column is in the window again, lifted
+   out of solid terrain if needed. At most `SHELF_MAX` are kept; the oldest is dropped when the shelf is full.
+8. **Cargo pad.** `cargoPad` is in world coordinates; `padLocal()` converts.
+   Calling the drone needs the pad inside the window; a drone in flight whose
+   pad has left the window turns back and refunds the fee.
+9. **Damage.** `dmg` and `dmgT` shift with the window and `dmgList` is rebuilt.
+10. **Hot tiles.** Entering columns are marked hot.
+11. **Surface.** `windowSurf` caches the surface row, shifts with the window
+    and `surfaceTop` is recomputed from it on every shift.
 
-1. `generateChunk` plus horizontal window shifting with `originX` / `originY`,
-   materials only.
-2. Fog, objects, hot chunks, damage list.
-3. Persistence of modified chunks.
-4. Vertical extension.
+Remaining:
 
-Before step 1, restore `WORLD_W` / `WORLD_H` to a window-sized value.
+1. **Persistence.** `chunkStore` lives in memory only. Saving it (and the
+   shelved objects and pad) to disk is not done.
+2. **Vertical axis.** Unbounded horizontally; depth is still bounded by
+   `WORLD_H`. `geothermalGradient` is still an array of length `H`.
+3. **Fog slices.** `fogStore` grows by 64 bytes per visited chunk and is never
+   pruned.

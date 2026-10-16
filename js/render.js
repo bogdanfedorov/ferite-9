@@ -29,7 +29,7 @@ function resizeCanvas() {
   cv.width = Math.max(320, window.innerWidth | 0);
   cv.height = Math.max(240, window.innerHeight | 0);
   ctx.imageSmoothingEnabled = false;
-  allocBuffers();
+  setZoom(view.zoom);
 }
 
 function allocBuffers() {
@@ -46,7 +46,8 @@ function allocBuffers() {
 }
 
 function setZoom(z) {
-  view.zoom = Math.max(3, Math.min(9, z));
+  const floor = Math.ceil(Math.max(3, cv.width / maxViewCells()));
+  view.zoom = Math.max(floor, Math.min(9, Math.round(z)));
   allocBuffers();
 }
 
@@ -243,11 +244,12 @@ function drawDamage() {
 }
 
 function drawDrone() {
-  if (market.drone <= 0 || !cargoPad) return;
+  const pad = padLocal();
+  if (market.drone <= 0 || !pad) return;
   const z = view.zoom;
   const lift = Math.abs(1 - (2 * market.drone) / DRONE_TRIP);
-  const cx = sx(cargoPad.x + cargoPad.w / 2),
-    cy = sy(cargoPad.y - 3 - lift * 36);
+  const cx = sx(pad.x + pad.w / 2),
+    cy = sy(pad.y - 3 - lift * 36);
   const w = 6 * z,
     h = 2 * z;
   ctx.fillStyle = uiHex('sand');
@@ -256,7 +258,7 @@ function drawDrone() {
   ctx.fillRect(cx - w / 2 - z, cy - h / 2 - z * 0.6, w + 2 * z, Math.max(1, z * 0.4));
   if (lift > 0.12) return;
   ctx.fillStyle = uiRgba('sand', 0.25);
-  ctx.fillRect(sx(cargoPad.x), cy + h / 2, cargoPad.w * z, sy(cargoPad.y + cargoPad.h) - cy - h / 2);
+  ctx.fillRect(sx(pad.x), cy + h / 2, pad.w * z, sy(pad.y + pad.h) - cy - h / 2);
 }
 
 function drawObjects() {

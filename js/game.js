@@ -123,7 +123,6 @@ function followWindow(lx, maxChunks) {
   shiftObjects(dx);
   shiftCamera(dx);
   endBuildDrag();
-  eachPiece('shiftWorld', dx);
 }
 
 function step() {
@@ -280,7 +279,7 @@ function enterWorld(room) {
   const sp = room
     ? generateTestRoom(seed, WORLD_W, WORLD_H)
     : generateWorld(seed, WORLD_W, WORLD_H);
-  allocBuffers();
+  setZoom(view.zoom);
   spawnPlayer(sp.spawnX, sp.spawnY);
   view.camX = player.x - view.vw / 2;
   view.camY = player.y - view.vh / 2;

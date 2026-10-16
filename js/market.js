@@ -39,9 +39,10 @@ function priceOf(good) {
 
 function sweepPad(take) {
   const counts = {};
-  if (!cargoPad) return counts;
-  for (let y = cargoPad.y; y < cargoPad.y + cargoPad.h; y++) {
-    for (let x = cargoPad.x; x < cargoPad.x + cargoPad.w; x++) {
+  const pad = padLocal();
+  if (!pad) return counts;
+  for (let y = pad.y; y < pad.y + pad.h; y++) {
+    for (let x = pad.x; x < pad.x + pad.w; x++) {
       if (!inBounds(x, y)) continue;
       const group = CARGO[mat[y * W + x]];
       if (!GOOD_OF[group]) continue;
@@ -76,6 +77,11 @@ function callDrone() {
     play('denied');
     return;
   }
+  if (!padInWindow()) {
+    transmit(t('msg.padFar'), NOTICE);
+    play('denied');
+    return;
+  }
   if (market.money < DRONE_FEE) {
     transmit(tf('msg.cantAfford', { cost: DRONE_FEE }), NOTICE);
     play('denied');
@@ -87,8 +93,17 @@ function callDrone() {
   play('launch');
 }
 
+function abortDrone() {
+  market.money += DRONE_FEE;
+  market.drone = 0;
+  transmit(t('msg.droneAbort'), NOTICE);
+  play('denied');
+}
+
 function tickMarket() {
   if (market.drone <= 0) return;
   market.drone--;
-  if (market.drone === DRONE_TRIP >> 1) deliverPad();
+  if (market.drone !== DRONE_TRIP >> 1) return;
+  if (padInWindow()) deliverPad();
+  else abortDrone();
 }

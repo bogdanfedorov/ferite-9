@@ -1,6 +1,9 @@
 var objects = [];
+var shelvedObjects = [];
 
 var OBJ_MAX = 16;
+var OBJ_LIFT = 48;
+var SHELF_MAX = 8;
 var IMPACT_STEAM = matId('smoke');
 var OBJ_GRAV = 0.03;
 var OBJ_MAXV = 1.4;
@@ -314,13 +317,48 @@ function stepObjects(targetX, targetY) {
   }
 }
 
+function shelveObject(o) {
+  if (o === heldObject) heldObject = null;
+  o.held = false;
+  o.x = worldX(o.x);
+  if (shelvedObjects.length >= SHELF_MAX) shelvedObjects.shift();
+  shelvedObjects.push(o);
+}
+
+function unshelveObject(o, lx) {
+  let y = o.y;
+  const top = Math.max(0, y - OBJ_LIFT);
+  while (y > top && objBlocked(o, lx, y)) y--;
+  if (objBlocked(o, lx, y)) return false;
+  o.x = lx;
+  o.y = y;
+  o.vx = 0;
+  o.vy = 0;
+  o.rest = 0;
+  return true;
+}
+
 function shiftObjects(dx) {
-  for (let k = 0; k < objects.length; k++) objects[k].x -= dx;
-  objects = objects.filter((o) => o.x >= 0 && o.x < W);
-  if (heldObject && objects.indexOf(heldObject) < 0) heldObject = null;
+  const inside = [];
+  for (let k = 0; k < objects.length; k++) {
+    const o = objects[k];
+    o.x -= dx;
+    if (o.x >= 0 && o.x < W) inside.push(o);
+    else shelveObject(o);
+  }
+  const shelved = [];
+  for (let k = 0; k < shelvedObjects.length; k++) {
+    const o = shelvedObjects[k];
+    const lx = localX(o.x);
+    if (lx >= 0 && lx < W && unshelveObject(o, lx)) inside.push(o);
+    else shelved.push(o);
+  }
+  shelvedObjects = shelved;
+  objects = inside;
 }
 
 function resetObjects() {
   objects.length = 0;
+  shelvedObjects.length = 0;
   heldObject = null;
 }
