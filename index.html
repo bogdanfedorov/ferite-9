@@ -16,7 +16,6 @@
 <div id="hud">
 
   <div class="left-stack">
-    <!-- Позивний і стан модуля -->
     <section class="panel idplate">
       <h2 class="eyebrow"><span data-i18n="ui.module">Модуль</span>
         <span class="hint" data-i18n="ui.parcel">посилка</span></h2>
@@ -47,7 +46,6 @@
       </dl>
     </section>
 
-    <!-- Шкала температур — лише в режимі теплової карти -->
     <section class="panel heat-legend hidden" id="heat-legend">
       <h2 class="eyebrow" data-i18n="ui.heatLegend">температура, °C</h2>
       <div class="scale"><div class="scale-mark" id="probe-mark"></div></div>
@@ -55,32 +53,26 @@
     </section>
   </div>
 
-  <!-- Термощуп біля курсора -->
   <div class="probe-chip hidden" id="probe-chip">
     <span class="pc-mat" id="probe-mat">—</span>
     <span class="pc-temp"><span id="probe-t">22</span> °C</span>
   </div>
 
-  <!-- Ціль -->
   <div class="right-stack">
     <section class="panel goal-panel">
       <h2 class="eyebrow"><span data-i18n="ui.cargo">Вантаж на орбіту</span></h2>
-      <!-- рядки будуються з квестової дороги, див. js/quest.js -->
       <ul class="goal-list" id="goal-list"></ul>
       <button id="launch" class="launch" disabled data-i18n="ui.launch">Спорядити шатл</button>
     </section>
   </div>
 
-  <!-- Канал зв'язку з ЦУПом -->
   <aside class="comms hidden" id="comms">
     <p class="comms-from" id="comms-from">ЦУП · КАНАЛ 7</p>
     <p class="comms-text" id="comms-text"></p>
   </aside>
 
-  <!-- Підказка -->
   <div class="tipbar"><span id="tip"></span></div>
 
-  <!-- Панель будівництва -->
   <div class="buildwrap">
     <nav class="pickbar hidden" id="bodybar">
       <button class="shape active" data-body="belt" data-i18n="body.belt">стрічка</button>
@@ -113,7 +105,6 @@
     </nav>
   </div>
 
-  <!-- Термінал збирання модуля -->
   <div class="screen boot hidden" id="boot">
     <div class="term">
       <header class="term-bar">
@@ -128,7 +119,6 @@
     </div>
   </div>
 
-  <!-- Стартовий екран -->
   <div class="screen" id="intro">
     <div class="screen-card">
       <div class="lang-switch card-lang"></div>
@@ -150,7 +140,6 @@
     </div>
   </div>
 
-  <!-- Довідка -->
   <div class="screen hidden" id="help">
     <div class="screen-card">
       <div class="lang-switch card-lang"></div>
@@ -170,7 +159,6 @@
     </div>
   </div>
 
-  <!-- Налаштування -->
   <div class="screen hidden" id="settings">
     <div class="screen-card">
       <p class="kicker" data-i18n="set.kicker">Налаштування</p>
@@ -230,7 +218,6 @@
     </div>
   </div>
 
-  <!-- Перемога -->
   <div class="screen hidden" id="win">
     <div class="screen-card">
       <p class="kicker" data-i18n="win.kicker">Вантаж прийнято</p>
