@@ -63,7 +63,7 @@ function screenToWorld(px, py) {
 
 function drawWorldBitmap() {
   var vw = view.vw, vh = view.vh, ox = view.ox, oy = view.oy;
-  var gw = glowCv.width, gh = glowCv.height;
+  var gw = glowCv.width;
   glowPix.fill(0);
 
   for (var y = 0; y < vh; y++) {
