@@ -20,7 +20,6 @@ var FLOW_REACH_DECADE = 0.8;
 var FLOW_VISC_REF = 0.001;
 var FLOW_REACH_MIN = 1;
 var FLOW_REACH_MAX = 6;
-var FUEL_TICKS_PER_MJ = 8.7;
 var LOOK = { PLAIN: 0, FLAME: 1, PULSE: 2 };
 
 var MATS = [];
@@ -31,10 +30,10 @@ var EDGE_ID = 0;
 
 var STATE, DENS, HARD, RELAX, EMITS, HEAT_COEF, RAD_COEF;
 var HOT_T, HOT_INTO, COLD_T, COLD_INTO, LATENT;
-var BREAK_INTO, SETTLE_INTO, LIFE_BASE, LIFE_RND, EXPIRE_INTO, EXPIRE_P;
-var BURN_EVERY, BURN_INTO, FLOW_REACH, SHIMMER, CARGO, FUEL_TICKS;
+var BREAK_INTO, LIFE_BASE, LIFE_RND, EXPIRE_INTO, EXPIRE_P;
+var BURN_EVERY, BURN_INTO, FLOW_REACH, SHIMMER, CARGO;
 var OPEN, MOVABLE, BLOCKING, RIGID, ISVOID, FLUID, MOLTEN, POROUS;
-var GRIPS, CARRIES, GLOW, FIXED, MINEABLE, REACTIVE;
+var GRIPS, GLOW, FIXED, MINEABLE, REACTIVE;
 var REACT_INTO, REACT_T, REACT_GIVES, REACT_GIVES_T;
 
 function camelName(name) {
@@ -111,7 +110,6 @@ function allocMaterialTables(n) {
   LATENT = new Uint16Array(n);
 
   BREAK_INTO = new Uint8Array(n);
-  SETTLE_INTO = new Uint8Array(n);
   LIFE_BASE = new Uint16Array(n);
   LIFE_RND = new Uint16Array(n);
   EXPIRE_INTO = new Uint8Array(n);
@@ -121,7 +119,6 @@ function allocMaterialTables(n) {
   FLOW_REACH = new Uint8Array(n);
   SHIMMER = new Uint8Array(n);
   CARGO = new Array(n);
-  FUEL_TICKS = new Uint16Array(n);
 
   OPEN = new Uint8Array(n);
   MOVABLE = new Uint8Array(n);
@@ -132,7 +129,6 @@ function allocMaterialTables(n) {
   MOLTEN = new Uint8Array(n);
   POROUS = new Uint8Array(n);
   GRIPS = new Uint8Array(n);
-  CARRIES = new Uint8Array(n);
   GLOW = new Uint8Array(n);
   FIXED = new Uint8Array(n);
   MINEABLE = new Uint8Array(n);
@@ -168,7 +164,6 @@ function fillMaterialCell(rec) {
   SHIMMER[id] = rec.look === 'flame' ? LOOK.FLAME
     : (rec.look === 'pulse' ? LOOK.PULSE : LOOK.PLAIN);
   CARGO[id] = rec.cargo || '';
-  FUEL_TICKS[id] = rec.fuel ? Math.round(rec.fuel * FUEL_TICKS_PER_MJ) : 0;
 
   var hot = transitionUp(rec);
   HOT_T[id] = hot ? hot.at : 0;
@@ -178,7 +173,6 @@ function fillMaterialCell(rec) {
   COLD_INTO[id] = cold ? matId(cold.into) : 0;
 
   BREAK_INTO[id] = rec.breaksInto ? matId(rec.breaksInto) : 0;
-  SETTLE_INTO[id] = rec.settlesInto ? matId(rec.settlesInto) : 0;
 
   var life = rec.life === undefined ? 0 : rec.life;
   LIFE_BASE[id] = typeof life === 'number' ? life : life[0];
@@ -200,7 +194,6 @@ function fillMaterialCell(rec) {
   FIXED[id] = state === MT.STRUCTURE || HARD[id] < 0 ? 1 : 0;
   POROUS[id] = rec.porous ? 1 : 0;
   GRIPS[id] = rec.grips ? 1 : 0;
-  CARRIES[id] = rec.carries ? 1 : 0;
   GLOW[id] = rec.glow ? 1 : 0;
 }
 

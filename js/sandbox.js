@@ -149,7 +149,6 @@ function tickTestRoom(frame) {
 function generateTestRoom(seed, w, h) {
   if (w > 0 && h > 0 && (w !== W || h !== H)) {
     resizeGrid(w, h);
-    resizeFactory();
   }
   srand(seed);
   sandbox.bins.length = 0;

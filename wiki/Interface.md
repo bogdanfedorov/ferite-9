@@ -5,7 +5,7 @@ The HUD sits in the corners so the middle of the screen stays the game.
 - **top left, the module**: callsign, hull integrity and jetpack fuel (bars go
   green, yellow, red), and below them — only in heat map mode — the temperature
   scale;
-- **top right, production**: power grid and cargo to orbit. A disabled shuttle
+- **top right, cargo to orbit**: what the shift still owes. A disabled shuttle
   button says what exactly is missing;
 - **bottom left, the Mission Control channel**; bottom right, the utility
   buttons (help, sound, settings, language); bottom centre, the build panel;

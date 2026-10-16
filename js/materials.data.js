@@ -88,7 +88,6 @@ var MATERIAL_DATA = [
     thermalConductivity: 0.3,
     heatCapacity: 1260,
     hardness: 22,
-    fuel: 30,
     ignite: { at: 420, into: 'ember' }
   },
   {
@@ -101,7 +100,6 @@ var MATERIAL_DATA = [
     thermalConductivity: 0.35,
     heatCapacity: 1260,
     hardness: 30,
-    fuel: 30,
     breaksInto: 'coal',
     ignite: { at: 500, into: 'ember' }
   },
@@ -179,7 +177,6 @@ var MATERIAL_DATA = [
     latentHeat: 247,
     hardness: 2,
     freeze: { at: 850, into: 'iron' },
-    settlesInto: 'iron',
     reacts: [{ with: 'water', into: 'iron', at: 420, gives: 'steam', givesAt: 240 }]
   },
   {
@@ -195,7 +192,6 @@ var MATERIAL_DATA = [
     latentHeat: 250,
     hardness: 2,
     freeze: { at: 880, into: 'glass' },
-    settlesInto: 'glass',
     reacts: [{ with: 'water', into: 'glass', at: 420, gives: 'steam', givesAt: 240 }]
   },
   {
@@ -250,10 +246,8 @@ var MATERIAL_DATA = [
     heatCapacity: 1100,
     hardness: 8,
     emits: 1500,
-    fuel: 25,
     life: 255,
-    burn: { every: 6, into: 'slag' },
-    settlesInto: 'coal'
+    burn: { every: 6, into: 'slag' }
   },
   {
     name: 'glass',
@@ -304,27 +298,6 @@ var MATERIAL_DATA = [
     hardness: 14,
     cargo: 'iron',
     melt: { at: 1500, into: 'melt_iron' }
-  },
-  {
-    name: 'machine',
-    state: 'structure',
-    color: [42, 52, 66],
-    grain: 6,
-    density: 3000,
-    thermalConductivity: 15,
-    heatCapacity: 600,
-    hardness: -1
-  },
-  {
-    name: 'pipe',
-    state: 'structure',
-    carries: true,
-    color: [58, 70, 86],
-    grain: 6,
-    density: 3000,
-    thermalConductivity: 20,
-    heatCapacity: 600,
-    hardness: -1
   },
   {
     name: 'belt',

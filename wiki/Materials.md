@@ -50,7 +50,7 @@ engine derives from it:
 | `liquid` | down | sideways by viscosity | no | no |
 | `gas` | rises | sideways | no | no |
 | `solid` | — | — | yes | yes |
-| `structure` | — | — | yes | no, machines own it |
+| `structure` | — | — | yes | no, the builder owns it |
 
 The predicate tables `OPEN`, `MOVABLE`, `BLOCKING`, `RIGID`, `FLUID`, `FIXED`
 and `MINEABLE` are filled from the state, so simulation code asks
@@ -72,7 +72,6 @@ them — see [the thermal model](#thermal-model).
 | `emissivity` | 0…1 | share of black-body radiation from an exposed face, default 0.9, always 0 for gases |
 | `latentHeat` | kJ/kg | heat given off while freezing, holds a melt liquid at its freezing point |
 | `viscosity` | Pa·s | how far a liquid spreads sideways per step |
-| `fuel` | MJ/kg | burn time in a generator; anything above zero is fuel |
 
 Bulk densities are used for powders (loose sand, not quartz), and effective
 high-temperature conductivities for glowing beds and melts, where radiation
@@ -88,11 +87,9 @@ flame and melts 3, molten iron 35.
 | `look` | `flame` flickers with the cell's remaining life, `pulse` breathes like lava |
 | `hardness` | drill units per cell; `0` cannot be drilled, `-1` is indestructible |
 | `breaksInto` | what the drill leaves behind, two cells broken give one cell of spoil |
-| `settlesInto` | what a melt hardens into while riding a pipe |
 | `cargo` | delivery group: `iron` covers both iron and scrap, so the pad and the belt accept either |
 | `porous` | a melt sinks through it — embers, coal, slag |
 | `grips` | cargo does not slide off it sideways — the belt deck |
-| `carries` | machine logistics route through it — the pipe |
 | `life` | ticks before a gas or a bed burns out, `[base, random]` or a flat number |
 
 ## Transitions
@@ -177,7 +174,6 @@ units and the pass rate:
 | `AMBIENT_FLOW`, `RELAX_MIN/MAX` | the background drift and its bounds |
 | `CELL_SIZE`, `RAD_VIEW`, `EMISSIVITY` | radiation: 2 cm cells, how much of the sky a face sees |
 | `LATENT_STEP` | degrees per pass a melt sheds while freezing |
-| `FUEL_TICKS_PER_MJ` | generator burn time per MJ/kg of fuel |
 
 Changing one of those retunes every material at once and keeps them in the same
 relation to each other. Changing a material's `thermalConductivity` retunes that

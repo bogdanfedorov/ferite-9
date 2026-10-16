@@ -250,6 +250,12 @@ function resetCargo() {
   for (var i = 0; i < d.length; i++) cargo[d[i].key] = 0;
 }
 
+function cargoTotal() {
+  var n = 0;
+  for (var key in cargo) n += cargo[key];
+  return n;
+}
+
 function tickCargoPad() {
   for (var y = cargoPad.y; y < cargoPad.y + cargoPad.h; y++) {
     for (var x = cargoPad.x; x < cargoPad.x + cargoPad.w; x++) {
@@ -298,7 +304,6 @@ function deposits(n) {
 function generateWorld(seed, w, h) {
   if (w > 0 && h > 0 && (w !== W || h !== H)) {
     resizeGrid(w, h);
-    resizeFactory();
   }
   srand(seed);
   var VOID = VOID_ID;

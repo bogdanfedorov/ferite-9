@@ -61,16 +61,8 @@
     <span class="pc-temp"><span id="probe-t">22</span> °C</span>
   </div>
 
-  <!-- Живлення + ціль -->
+  <!-- Ціль -->
   <div class="right-stack">
-    <section class="panel grid-panel hidden" id="grid-panel">
-      <h2 class="eyebrow"><span data-i18n="ui.grid">Мережа</span>
-        <span class="stat" id="net-stat">норма</span></h2>
-      <div class="meter"><div class="meter-fill" id="pw-fill"></div></div>
-      <p class="readout"><span id="pw-use">0</span> / <span id="pw-cap">15</span>
-        <span data-i18n="ui.kw">кВт</span></p>
-    </section>
-
     <section class="panel goal-panel">
       <h2 class="eyebrow"><span data-i18n="ui.cargo">Вантаж на орбіту</span></h2>
       <!-- рядки будуються з квестової дороги, див. js/quest.js -->
@@ -246,8 +238,8 @@
       <p class="lede" id="win-text"></p>
       <dl class="scoreboard">
         <div><dt data-i18n="win.time">Час зміни</dt><dd class="mono" id="w-time">—</dd></div>
-        <div><dt data-i18n="win.parts">Частинок перероблено</dt><dd class="mono" id="w-parts">—</dd></div>
-        <div><dt data-i18n="win.mach">Машин зведено</dt><dd class="mono" id="w-mach">—</dd></div>
+        <div><dt data-i18n="win.cargo">Вантажу на майданчику</dt><dd class="mono" id="w-cargo">—</dd></div>
+        <div><dt data-i18n="win.drilled">Клітинок пробурено</dt><dd class="mono" id="w-drilled">—</dd></div>
         <div><dt data-i18n="win.lost">Посилок списано</dt><dd class="mono" id="w-lost">—</dd></div>
       </dl>
       <button class="cta" id="keep" data-i18n="win.cta">Лишитись у шахті</button>
@@ -268,7 +260,6 @@
 <script src="js/world.js"></script>
 <script src="js/objects.js"></script>
 <script src="js/build.js"></script>
-<script src="js/machines.js"></script>
 <script src="js/sandbox.js"></script>
 <script src="js/player.js"></script>
 <script src="js/render.js"></script>

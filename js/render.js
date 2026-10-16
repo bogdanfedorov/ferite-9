@@ -176,93 +176,6 @@ function drawWorldBitmap() {
   ctx.restore();
 }
 
-function drawPipes() {
-  var z = view.zoom;
-  for (var n = 0; n < pipeList.length; n++) {
-    var i = pipeList[n];
-    if (!CARRIES[mat[i]]) continue;
-    var x = i % W, y = (i / W) | 0;
-    if (x < view.ox - 1 || y < view.oy - 1 || x > view.ox + view.vw || y > view.oy + view.vh) continue;
-    var px = sx(x), py = sy(y);
-    ctx.fillStyle = '#222c38';
-    ctx.fillRect(px, py, z, z);
-    ctx.fillStyle = '#3d4b5d';
-    ctx.fillRect(px, py + z * 0.15, z, z * 0.2);
-    var item = pipeItem[i];
-    if (item) {
-      ctx.fillStyle = 'rgb(' + palR[item] + ',' + palG[item] + ',' + palB[item] + ')';
-      ctx.fillRect(px + z * 0.22, py + z * 0.38, z * 0.56, z * 0.46);
-    }
-  }
-}
-
-function drawMachines() {
-  var z = view.zoom;
-  for (var n = 0; n < machines.length; n++) {
-    var m = machines[n];
-    if (!m) continue;
-    var px = sx(m.x), py = sy(m.y), pw = m.w * z, ph = m.h * z;
-    if (px + pw < -20 || py + ph < -20 || px > cv.width + 20 || py > cv.height + 20) continue;
-
-    var powered = power.sat > 0.99 || m.kind === KIND.GENERATOR;
-    ctx.fillStyle = '#141c27';
-    ctx.fillRect(px, py, pw, ph);
-    ctx.fillStyle = '#1d2836';
-    ctx.fillRect(px + 1, py + 1, pw - 2, ph * 0.34);
-    ctx.strokeStyle = m.active && powered ? '#4d6274' : '#2b3949';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(px + 0.5, py + 0.5, pw - 1, ph - 1);
-
-    var cx = px + pw / 2, cy = py + ph / 2;
-
-    if (m.kind === KIND.PUMP) {
-      ctx.fillStyle = m.active ? uiHex('sand') : '#5b6879';
-      ctx.beginPath();
-      ctx.moveTo(cx - pw * 0.26, cy - ph * 0.2);
-      ctx.lineTo(cx + pw * 0.26, cy - ph * 0.2);
-      ctx.lineTo(cx, cy + ph * 0.26);
-      ctx.closePath();
-      ctx.fill();
-      if (m.beamT > 0 && m.beam >= 0) {
-        var bxw = m.beam % W, byw = (m.beam / W) | 0;
-        ctx.strokeStyle = uiRgba('sand', m.beamT / 10);
-        ctx.lineWidth = Math.max(1, z * 0.3);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(sx(bxw + 0.5), sy(byw + 0.5));
-        ctx.stroke();
-      }
-    } else if (m.kind === KIND.GENERATOR) {
-      ctx.fillStyle = m.burn > 0 ? uiHex('aqua') : '#4a5769';
-      ctx.beginPath();
-      ctx.moveTo(cx + pw * 0.1, cy - ph * 0.3);
-      ctx.lineTo(cx - pw * 0.16, cy + ph * 0.04);
-      ctx.lineTo(cx + pw * 0.02, cy + ph * 0.04);
-      ctx.lineTo(cx - pw * 0.06, cy + ph * 0.32);
-      ctx.lineTo(cx + pw * 0.2, cy - ph * 0.04);
-      ctx.lineTo(cx + pw * 0.02, cy - ph * 0.04);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#0d131b';
-      ctx.fillRect(px + 2, py + ph - 5, pw - 4, 3);
-      ctx.fillStyle = uiHex('aqua');
-      ctx.fillRect(px + 2, py + ph - 5, (pw - 4) * (m.burn / (m.burnMax || 1)), 3);
-    } else if (m.kind === KIND.SILO) {
-      ctx.strokeStyle = '#7d8ea3';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cx - pw * 0.24, cy - ph * 0.24, pw * 0.48, ph * 0.48);
-      ctx.fillStyle = uiHex('aqua');
-      ctx.fillRect(cx - pw * 0.24, cy + ph * 0.04, pw * 0.48, ph * 0.2);
-    }
-
-    // індикатор живлення
-    if (DEF[m.kind].draw > 0) {
-      ctx.fillStyle = power.sat > 0.99 ? uiHex('ok') : (power.sat > 0.5 ? uiHex('hazard') : uiHex('danger'));
-      ctx.fillRect(px + pw - 4, py + 2, 2, 2);
-    }
-  }
-}
-
 /* Тріщини на клітинках, які зараз гризе бур. */
 function drawDamage() {
   var z = view.zoom;
@@ -504,45 +417,25 @@ function drawPlayer() {
   ctx.fillRect(px - 1, py + ph + 3, (pw + 2) * (player.fuel / 100), 2);
 }
 
-function drawGhost(tool, wx, wy, affordable) {
+function drawGhost(tool, wx, wy) {
+  if (tool === 'drill' || tool === 'hand') return;
   var z = view.zoom;
-  if (tool === 'drill' || tool === 'hand') return;   // ці інструменти мають власні позначки
-  var d = null, kind = -1;
-  for (var k = 0; k < DEF.length; k++) if (DEF[k].key === tool) { d = DEF[k]; kind = k; }
-
-  if (tool === 'dismantle') {
-    ctx.strokeStyle = uiRgba('rust', 0.9);
-    ctx.lineWidth = 1;
-    ctx.strokeRect(sx(Math.floor(wx)) + 0.5, sy(Math.floor(wy)) + 0.5, z - 1, z - 1);
-    return;
-  }
-  var w = d ? d.w : (tool === 'ignite' ? 3 : 1), h = d ? d.h : (tool === 'ignite' ? 3 : 1);
-  var gx = Math.floor(wx - w / 2), gy = Math.floor(wy - h / 2);
+  var size = tool === 'ignite' ? 3 : 1;
+  var gx = Math.floor(wx - size / 2), gy = Math.floor(wy - size / 2);
   var dx = wx - player.x, dy = wy - player.y;
   var inReach = Math.sqrt(dx * dx + dy * dy) < REACH + 8;
   var spotMat = matAt(Math.floor(wx), Math.floor(wy));
-  var free = d ? areaFree(gx, gy, w, h)
-    : (tool === 'ignite' || tool === 'pipe' ? STATE[spotMat] !== MT.STRUCTURE
-      : !BLOCKING[spotMat]);
-  var ok = affordable && inReach && free;
+  var free = tool === 'ignite' ? STATE[spotMat] !== MT.STRUCTURE : !BLOCKING[spotMat];
+  var ok = inReach && free;
 
   ctx.save();
   ctx.globalAlpha = 0.5;
   ctx.fillStyle = ok ? uiHex('aqua') : uiHex('danger');
-  ctx.fillRect(sx(gx), sy(gy), w * z, h * z);
+  ctx.fillRect(sx(gx), sy(gy), size * z, size * z);
   ctx.restore();
   ctx.strokeStyle = ok ? uiRgba('ok', 0.9) : uiRgba('danger', 0.9);
   ctx.lineWidth = 1;
-  ctx.strokeRect(sx(gx) + 0.5, sy(gy) + 0.5, w * z - 1, h * z - 1);
-
-  if (kind === KIND.PUMP) {
-    ctx.strokeStyle = uiRgba('sand', 0.35);
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.arc(sx(gx + w / 2), sy(gy + h / 2), DEF[KIND.PUMP].reach * z, 0, 6.284);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  ctx.strokeRect(sx(gx) + 0.5, sy(gy) + 0.5, size * z - 1, size * z - 1);
 }
 
 var vignette = null;
@@ -614,14 +507,12 @@ function drawRoomBins(mouseWorld) {
   ctx.restore();
 }
 
-function render(tool, mouseWorld, affordable) {
+function render(tool, mouseWorld) {
   updateCamera();
   drawWorldBitmap();
   drawDamage();
   drawCargoPad();
   drawBelts();
-  drawPipes();
-  drawMachines();
   drawObjects();
   drawHook();
   drawPlayer();
@@ -629,7 +520,7 @@ function render(tool, mouseWorld, affordable) {
   if (tool === 'hand') drawGrabHint(mouseWorld[0], mouseWorld[1]);
   if (sandbox.on) drawRoomBins(mouseWorld);
   if (!roomButtonAt(mouseWorld[0], mouseWorld[1])) {
-    drawGhost(tool, mouseWorld[0], mouseWorld[1], affordable);
+    drawGhost(tool, mouseWorld[0], mouseWorld[1]);
   }
   drawVignette();
 }

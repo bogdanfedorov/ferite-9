@@ -22,7 +22,6 @@ const FILES = [
   'js/world.js',
   'js/objects.js',
   'js/build.js',
-  'js/machines.js',
   'js/sandbox.js',
   'js/player.js',
   'js/render.js',

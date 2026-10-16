@@ -1,7 +1,7 @@
 # Test room
 
 A second way into the world, next to **Descend into the shaft** on the start
-screen: **Test room**. It is a flat sandbox for trying substances and machines
+screen: **Test room**. It is a flat sandbox for trying substances and structures
 out without the shift hanging over you.
 
 ## What is different

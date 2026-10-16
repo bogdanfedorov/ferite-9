@@ -88,8 +88,7 @@ which is what cools a pour down to where it can freeze — gases have zero
 emissivity, a flame is transparent. What is left is a slow drift toward the
 geothermal background, 18 °C at the top to 64 °C near the bottom.
 
-Heat sources pin themselves: embers 1500 °C, lava 1250 °C, fire 760 °C, plus a
-running generator. Phase transitions are named for what they are — `melt`,
+Heat sources pin themselves: embers 1500 °C, lava 1250 °C, fire 760 °C. Phase transitions are named for what they are — `melt`,
 `boil`, `ignite`, `freeze`, `condense` — and a melt holds at its freezing point
 while it gives off its latent heat, 60 passes for iron. Diffusion runs on 16×16
 thermal chunks; a chunk that has settled to the background is skipped until a
@@ -132,11 +131,6 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
   repours whichever one has run out, which is what keeps fire lit and melts
   molten. Both worlds are reached through `enterWorld(room)` in `js/game.js`:
   the start screen and the World section of the settings panel call it.
-- Logistics — pump, pipes, storage, generator — is off the build panel, but the
-  code in `js/machines.js` is intact: a pump only draws what it has a physical
-  path to, pipes find their own route, molten metal freezes into ingots inside a
-  pipe. To bring it back, put the slots back into `index.html`; the power panel
-  shows up on its own as soon as one machine exists on the map.
 - Adding a substance is appending one entry to the list in
   `js/materials.data.js`. There is no enum of ids, no `switch` and no call site
   to update: the id is the position in the list, materials point at each other
@@ -147,26 +141,18 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
 - Gas lifetime is a material field: `life: [150, 100]` on steam means 150 ticks
   plus up to 100 random, `life: 255` on embers is flat. `setCell` reads
   `LIFE_BASE` / `LIFE_RND` and no longer names any substance.
-- What molten cargo hardens into on the way is `settlesInto` — molten iron to
-  iron, molten glass to glass, embers to coal. `settled()` is one table read.
 - Substance-specific behaviour is a property, not a branch. A melt sinks through
-  anything `porous`, cargo stays on anything that `grips`, machine logistics
-  route through whatever `carries`, the generator burns whatever has a `fuel`
-  value and burns it for that long, the cargo pad accepts by `cargo` group so
-  scrap and ingot count as the same delivery. Water quenching lava is a
-  `reacts` entry in the table, read as a pair lookup in the thermal pass.
-- A machine is described in one place. `defMachine(KIND.PUMP, {...})` carries
-  size, power draw, reach and `cost` together and fills `DEF` and `COSTS`;
-  `defPart('pipe', ...)` does the same for the build-tool costs that are not
-  machines. Costs are written by material name — `[['rock', 60]]` — and resolved
-  to ids at load.
+  anything `porous`, cargo stays on anything that `grips`, the cargo pad
+  accepts by `cargo` group so scrap and ingot count as the same delivery.
+  Water quenching lava is a `reacts` entry in the table, read as a pair lookup
+  in the thermal pass.
 - Material predicates are lookup tables, not type comparisons. The registry
   fills `OPEN` (void or gas), `MOVABLE` (powder or liquid), `BLOCKING` (powder,
   solid or structure), `RIGID` (solid or structure), `FIXED` (structure or
   indestructible) and `MINEABLE` (drillable solid) from the `state`, so
   `if (OPEN[m])` replaces every hand-written `m === EMPTY || m === STEAM`.
 - World size is a parameter: `generateWorld(seed, w, h)` reallocates every grid
-  array, the fog and thermal chunk grids, and the machine buffers, then lays the
+  array and the fog and thermal chunk grids, then lays the
   world out in proportions rather than fixed depths. `WORLD_W` / `WORLD_H` in
   `js/world.js` are the defaults the game passes. Call `allocBuffers()` after a
   size change so the viewport clamps to the new width. At 480×320 generation is
@@ -224,7 +210,6 @@ the only place material colours reach `palR/palG/palB`.
 | `js/world.js` | grid, generation, particle simulation, heat field, phase transitions |
 | `js/objects.js` | portable objects: grab, drag, hit, drop back into the grid |
 | `js/build.js` | belts: frame, iron feeding, cargo movement |
-| `js/machines.js` | pumps, pipes, cargo routing, power grid |
 | `js/sandbox.js` | the test room: flat world, a bin per material, restocking |
 | `js/player.js` | driller physics, timed drilling, grapple |
 | `js/render.js` | world raster, heat map, glow, vector overlays |

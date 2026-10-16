@@ -4,7 +4,7 @@
    5 ticks, ferrite 4, iron 7. Cracks on a cell show the work done so far.
    It does not touch liquids at all — the beam goes straight through water and
    lava to the rock behind them. Liquid does not vanish when you build either:
-   masonry, a pipe or a machine pushes it into the nearest free cell, and if
+   masonry pushes it into the nearest free cell, and if
    there is nowhere to push it, you cannot build there.
 2. **Dig the furnace out of stone**: drill a niche with a narrow mouth. Stone
    holds heat and air carries it away, so solid walls matter.
@@ -43,11 +43,6 @@ block the drift immediately.
 There is no inventory at all. The shift goal is delivered physically: the
 **cargo pad** by the airlock takes the iron scrap and cullet the module brings
 to it. Anything that falls inside its bounds is picked up by orbit at once.
-
-## Logistics is temporarily gone
-
-The pump, pipes, storage and generator are off the build panel — the focus right
-now is manual smelting.
 
 Shift goal: 10 iron and 8 glass on the cargo pad.
 

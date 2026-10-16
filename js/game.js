@@ -12,6 +12,7 @@
   var msg = '', msgT = 0;
   var launched = false;
   var igniteCd = 0;
+  var drilled = 0;
 
   /* ---------- звук ---------- */
   var actx = null;
@@ -32,11 +33,10 @@
   /* ---------- HUD ---------- */
   var el = {};
   function grab() {
-    ['pw-fill', 'pw-use', 'pw-cap', 'net-stat',
-      'goal-list', 'launch', 'tip', 'intro', 'help', 'settings', 'win', 'buildbar', 'bodybar', 'shapebar', 'grid-panel',
+    ['goal-list', 'launch', 'tip', 'intro', 'help', 'settings', 'win', 'buildbar', 'bodybar', 'shapebar',
       'probe-chip', 'probe-mat', 'probe-t', 'probe-mark', 'heat-legend',
       'hp-num', 'hp-fill', 'fuel-num', 'fuel-fill', 'vital-hp', 'vital-fuel',
-      'w-time', 'w-parts', 'w-mach', 'w-lost', 'slot-belt'].forEach(function (id) {
+      'w-time', 'w-cargo', 'w-drilled', 'w-lost', 'slot-belt'].forEach(function (id) {
         el[id] = document.getElementById(id);
       });
   }
@@ -102,15 +102,6 @@
   function updateHud(wpt) {
     var i;
     updatePlate();
-    setVal('pw-use', power.use);
-    setVal('pw-cap', power.cap);
-    var ratio = power.cap > 0 ? Math.min(1, power.use / power.cap) : 0;
-    el['pw-fill'].style.width = (ratio * 100) + '%';
-    el['pw-fill'].classList.toggle('over', power.sat < 0.999);
-    setVal('net-stat', t(power.sat > 0.999 ? 'ui.gridOk' : (power.sat > 0.6 ? 'ui.gridLow' : 'ui.gridOver')));
-    el['net-stat'].className = 'stat' + (power.sat > 0.999 ? '' : (power.sat > 0.6 ? ' low' : ' out'));
-
-    // стан модуля
     setMeter('hp', player.hp);
     setMeter('fuel', player.fuel);
 
@@ -126,10 +117,7 @@
       if (want[i].event && cargo[want[i].key]) loreEvent(want[i].event);
     }
     if (player.dryTank) loreEvent('dry_tank', { alarm: true, hold: 5200 });
-    // пісок довго гріється і не тече — підказуємо, що його треба закопати в жар
     if (nearHotOf('sand') > 6000 && !producedOf('melt_glass')) loreEvent('glass_hint', { hold: 6000 });
-
-    el['grid-panel'].classList.toggle('hidden', machines.length === 0);
 
     updateProbe(wpt);
 
@@ -263,12 +251,10 @@
       }, 900);
     }
     if (hook.state === 'set') loreEvent('first_hook');
-    if (power.sat < 0.999) loreEvent('overload', { alarm: true, hold: 4600 });
 
     var wpt = screenToWorld(mouse.x, mouse.y);
     player.drilling = false;
 
-    // рука: тримаємо матеріал, поки затиснута ЛКМ і вибрана сама рука
     if (heldObject && !(mouse.left && tool === 'hand')) {
       releaseObject();
       beep(300, 0.05, 'square', 0.02);
@@ -297,6 +283,7 @@
     } else if (mouse.left) {
       if (tool === 'drill') {
         var got = drillAt(wpt[0], wpt[1]);
+        drilled += got;
         if (got && simFrame % 5 === 0) beep(170 + (simFrame % 5) * 22, 0.03, 'square', 0.013);
       } else if (tool === 'ignite') {
         tryUse(wpt[0], wpt[1]);
@@ -309,11 +296,8 @@
     updateFog();
 
     simulate();
-    // предмет у руці тягнеться до курсора, але не далі витягнутого маніпулятора
     var grip = clampToReach(wpt[0], wpt[1]);
     stepObjects(grip[0], grip[1]);
-    tickMachines();
-    tickPipes();
     if ((simFrame & 7) === 0) tickCargoPad();
     tickBuild(simFrame);
     if (sandbox.on) tickTestRoom(simFrame);
@@ -337,7 +321,7 @@
     } else acc = 0;
 
     var wpt = screenToWorld(mouse.x, mouse.y);
-    render(tool, wpt, true);        // інструменти нічого не коштують: складу немає
+    render(tool, wpt);
     if (++hudTick % 6 === 0) updateHud(wpt);
   }
 
@@ -349,7 +333,6 @@
       var c = e.code;
       keys.shift = e.shiftKey;
       if (boot.active) {
-        // поки триває збирання, клавіші належать терміналу
         if (c === 'Space' || c === 'Enter') e.preventDefault();
         bootKey(c);
         return;
@@ -374,11 +357,6 @@
         heatView = !heatView;
         el['heat-legend'].classList.toggle('hidden', !heatView);
         say(t(heatView ? 'msg.heatOn' : 'msg.heatOff'));
-      }
-      if (act === 'fuel') {
-        var n = manualFuel(player.x, player.y);
-        if (n) { say(tf('msg.fueled', { n: n })); beep(480, 0.1, 'triangle', 0.035); }
-        else say(t('msg.noFuel'));
       }
       if (c === 'KeyR' && tool === 'belt') {
         cycleBuildShape();
@@ -515,8 +493,8 @@
       paused = true;
       var sec = Math.floor(elapsed / 1000);
       el['w-time'].textContent = Math.floor(sec / 60) + ':' + ('0' + (sec % 60)).slice(-2);
-      el['w-parts'].textContent = stats.processed;
-      el['w-mach'].textContent = stats.built;
+      el['w-cargo'].textContent = cargoTotal();
+      el['w-drilled'].textContent = drilled;
       el['w-lost'].textContent = SOL.deaths;
       document.getElementById('win-text').textContent = SOL.deaths
         ? tf('win.textLosses', { sol: solName(), n: SOL.deaths })
@@ -566,7 +544,7 @@
     sandbox.bins.length = 0;
     launched = false;
     elapsed = 0;
-    resetFactory();
+    drilled = 0;
     resetQuest();
     resetObjects();
     resetBuild();

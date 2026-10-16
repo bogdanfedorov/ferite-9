@@ -21,8 +21,7 @@ get a random line from the mocking pool with the loss statistics attached. Every
 death increments the drop number; after the tenth, Mission Control ships a new
 hull revision.
 
-Besides deaths the channel comments on firsts: masonry, the pump, the first coal
-catching, the first melt, the first ingot, glass, a sagging power grid and cargo
-being ready.
+Besides deaths the channel comments on firsts: masonry, the first coal catching,
+the first melt, the first ingot, glass and cargo being ready.
 
 Next: [[Assembly terminal]].

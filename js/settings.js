@@ -50,7 +50,6 @@ var KEY_BINDS = [
   { id: 'slot3', def: ['Digit3'] },
   { id: 'slot4', def: ['Digit4'] },
   { id: 'heat', def: ['KeyT'] },
-  { id: 'fuel', def: ['KeyF'] },
   { id: 'mute', def: ['KeyM'] },
   { id: 'help', def: ['KeyH'] },
   { id: 'settings', def: ['KeyO'] }
