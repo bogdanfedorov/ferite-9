@@ -511,8 +511,10 @@ function fillCaveFloor(seed, cx, cy) {
   const S = CHUNK_SIZE;
   const x0 = cx * S,
     y0 = cy * S;
+  const floorTop = H - CAVE_FLOOR_MARGIN + 1;
+  if (y0 + S <= floorTop) return;
   const blobs = blobsNear(seed, cx, cy);
-  for (let wy = Math.max(y0, H - CAVE_FLOOR_MARGIN + 1); wy < Math.min(y0 + S, H); wy++) {
+  for (let wy = Math.max(y0, floorTop); wy < Math.min(y0 + S, H); wy++) {
     for (let wx = x0; wx < Math.min(x0 + S, W); wx++) {
       const surf = surfaceAt(seed, wx);
       if (wy < surf + 16 || !isCaveAt(seed, wx, wy)) continue;
@@ -522,7 +524,8 @@ function fillCaveFloor(seed, cx, cy) {
   }
 }
 
-function stampWorld(seed) {  const cw = Math.ceil(W / CHUNK_SIZE),
+function stampWorld(seed) {
+  const cw = Math.ceil(W / CHUNK_SIZE),
     ch = Math.ceil(H / CHUNK_SIZE);
   for (let cy = 0; cy < ch; cy++) {
     for (let cx = 0; cx < cw; cx++) {
