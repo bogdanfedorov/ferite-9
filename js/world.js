@@ -27,8 +27,6 @@ var seen;
 var fogVal;
 var seenCount = 0;
 
-function isSeen(x, y) { return seen[(y >> FSHIFT) * FCW + (x >> FSHIFT)] === 1; }
-
 function revealChunk(cx, cy) {
   if (cx < 0 || cy < 0 || cx >= FCW || cy >= FCH) return;
   var i = cy * FCW + cx;
@@ -143,8 +141,6 @@ function fbm(x, y, s, oct) {
 
 function inBounds(x, y) { return x >= 0 && y >= 0 && x < W && y < H; }
 function idx(x, y) { return y * W + x; }
-function getMat(index) { return mat[index] }
-function getMatByCords(x, y) { return mat[idx(x, y)] }
 function matAt(x, y) { return inBounds(x, y) ? mat[y * W + x] : EDGE_ID; }
 function tempAt(x, y) { return inBounds(x, y) ? temp[y * W + x] : 22; }
 

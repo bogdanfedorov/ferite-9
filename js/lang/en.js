@@ -1,9 +1,6 @@
 regLang('en', {
   'ui.module': 'Unit',
   'ui.parcel': 'parcel',
-  'ui.stock': 'Stock',
-  'ui.stockHint': 'click — what to pour',
-  'ui.probe': 'Heat probe',
   'ui.cargo': 'Cargo for orbit',
   'ui.launch': 'Load the shuttle',
   'ui.losses': 'losses',
@@ -11,16 +8,8 @@ regLang('en', {
   'ui.hp': 'Integrity',
   'ui.fuel': 'Fuel',
   'ui.help': 'help',
-  'ui.sound': 'sound',
   'ui.heatLegend': 'temperature, °C',
   'ui.settings': 'settings',
-
-  'matGen.rock': 'stone',
-  'matGen.sand': 'sand',
-  'matGen.coal': 'coal',
-  'matGen.ferrite': 'ferrite',
-  'matGen.iron': 'iron',
-  'matGen.glass': 'glass',
 
   'mat.gravel': 'gravel',
   'mat.hardpan': 'packed earth',
@@ -28,9 +17,6 @@ regLang('en', {
   'mat.oreSeam': 'ferrite vein',
   'mat.ironScrap': 'iron scrap',
   'mat.cullet': 'cullet',
-  'matGen.gravel': 'gravel',
-  'matGen.ironScrap': 'iron scrap',
-  'matGen.cullet': 'cullet',
   'key.lmb': 'LMB',
   'key.rmb': 'RMB',
   'unit.cell': ['cell', 'cells'],
@@ -67,11 +53,9 @@ regLang('en', {
   'tool.build.cost': 'free',
 
   'tip.drill': 'LMB — break rock: it spills loose right there · RMB — grapple',
-  'tip.wall': 'LMB — lay stone · hold and drag to wall up a furnace',
   'tip.ignite': 'LMB on coal — set it alight · embers hold 1500 °C',
   'tip.hand': 'Hold LMB on loose material to scoop a handful of it alone · let go and it settles back into the ground',
   'tip.build': 'Pick what to place and which shape · hold LMB and drag · Shift — even line or square · R — shape',
-  'tip.build': 'LMB — place "{tool}" · RMB — grapple',
 
   'body.belt': 'belt',
   'body.wall': 'wall',
@@ -83,9 +67,6 @@ regLang('en', {
   'shape.rect': 'rectangle',
 
   'msg.tooFar': 'Out of reach — fly closer',
-  'msg.noRock': 'Out of stone',
-  'msg.noLiquidSpace': 'The liquid has nowhere to go',
-  'msg.noStock': 'Not in stock: {mat}',
   'msg.nothingToGrab': 'Bare hands will not take packed rock — break it with the drill first',
   'msg.beltLocked': 'The builder is not unlocked yet — close the quota first',
   'msg.beltShort': 'That is a stub, not a line — drag further',
@@ -342,7 +323,6 @@ regLang('en', {
 
   'event.intro': 'Control "Sol" on the line. You are {sol}, a research unit. Shift quota: 60 iron and 40 glass onto the cargo pad by the airlock. You have no stock — everything travels in your hands. The previous parcels did not close it.',
   'event.first_hook': 'The grapple holds. Later revisions will get the same one. If there are later revisions.',
-  'event.first_wall': 'Masonry started. Stone holds heat, air carries it off. Build it sealed.',
   'event.first_ember': 'The coal has caught. 1500 °C. Keep the fingers you do not have well clear.',
   'event.first_melt': 'Ferrite is running. Control is officially surprised.',
   'event.first_iron': 'First ingot in stock. Orbit would like 59 more.',

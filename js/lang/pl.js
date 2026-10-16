@@ -1,9 +1,6 @@
 regLang('pl', {
   'ui.module': 'Moduł',
   'ui.parcel': 'przesyłka',
-  'ui.stock': 'Magazyn',
-  'ui.stockHint': 'klik — co sypać',
-  'ui.probe': 'Sonda cieplna',
   'ui.cargo': 'Ładunek na orbitę',
   'ui.launch': 'Załadować wahadłowiec',
   'ui.losses': 'straty',
@@ -11,16 +8,8 @@ regLang('pl', {
   'ui.hp': 'Sprawność',
   'ui.fuel': 'Paliwo',
   'ui.help': 'pomoc',
-  'ui.sound': 'dźwięk',
   'ui.heatLegend': 'temperatura, °C',
   'ui.settings': 'ustawienia',
-
-  'matGen.rock': 'kamienia',
-  'matGen.sand': 'piasku',
-  'matGen.coal': 'węgla',
-  'matGen.ferrite': 'ferrytu',
-  'matGen.iron': 'żelaza',
-  'matGen.glass': 'szkła',
 
   'mat.gravel': 'żwir',
   'mat.hardpan': 'zbita ziemia',
@@ -28,9 +17,6 @@ regLang('pl', {
   'mat.oreSeam': 'żyła ferrytu',
   'mat.ironScrap': 'okruch żelaza',
   'mat.cullet': 'stłuczka szklana',
-  'matGen.gravel': 'żwiru',
-  'matGen.ironScrap': 'okruchu żelaza',
-  'matGen.cullet': 'stłuczki szklanej',
   'key.lmb': 'LPM',
   'key.rmb': 'PPM',
   'unit.cell': ['komórka', 'komórki', 'komórek'],
@@ -67,11 +53,9 @@ regLang('pl', {
   'tool.build.cost': 'za darmo',
 
   'tip.drill': 'LPM — krusz skałę: rozsypie się sypka na miejscu · PPM — hak',
-  'tip.wall': 'LPM — kłaść kamień · przytrzymaj i prowadź, aby wymurować piec',
   'tip.ignite': 'LPM na węgiel — podpalić · żar trzyma 1500 °C',
   'tip.hand': 'Przytrzymaj LPM na sypkim — w garści tylko to, na co celujesz · puść, a od razu wsypie się w podłoże',
   'tip.build': 'Wybierz co stawiasz i jaki kształt · przytrzymaj LPM i prowadź · Shift — równa linia lub kwadrat · R — kształt',
-  'tip.build': 'LPM — postawić „{tool}" · PPM — hak',
 
   'body.belt': 'taśma',
   'body.wall': 'ściana',
@@ -83,9 +67,6 @@ regLang('pl', {
   'shape.rect': 'prostokąt',
 
   'msg.tooFar': 'Za daleko — podleć bliżej',
-  'msg.noRock': 'Skończył się kamień',
-  'msg.noLiquidSpace': 'Ciecz nie ma dokąd ustąpić',
-  'msg.noStock': 'Brak w magazynie: {mat}',
   'msg.nothingToGrab': 'Gołymi rękami skały nie weźmiesz — najpierw pokrusz ją wiertłem',
   'msg.beltLocked': 'Budowniczy jeszcze niedostępny — najpierw zamknij limit',
   'msg.beltShort': 'To nie linia, tylko kikut — prowadź dalej',
@@ -342,7 +323,6 @@ regLang('pl', {
 
   'event.intro': 'Centrum „Sol" na łączach. Jesteś {sol}, moduł badawczy. Norma zmiany: 60 żelaza i 40 szkła na płytę ładunkową przy śluzie. Magazynu nie masz — wszystko nosisz w rękach. Poprzednie przesyłki jej nie zamknęły.',
   'event.first_hook': 'Hak trzyma. Następne rewizje dostaną taki sam. O ile będą następne.',
-  'event.first_wall': 'Murowanie ruszyło. Kamień trzyma ciepło, powietrze je wynosi. Muruj szczelnie.',
   'event.first_ember': 'Węgiel się zajął. 1500 °C. Palce, których nie masz, trzymaj z daleka.',
   'event.first_melt': 'Ferryt popłynął. Centrum jest oficjalnie zdziwione.',
   'event.first_iron': 'Pierwsza sztaba w magazynie. Orbita prosi o jeszcze 59.',

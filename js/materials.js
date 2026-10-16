@@ -48,12 +48,6 @@ function matId(name) {
 
 function matLabel(id) { return t(MATS[id].labelKey); }
 
-function matAmount(id) {
-  var key = MATS[id].amountKey;
-  var v = t(key);
-  return v === key ? matLabel(id) : v;
-}
-
 function heatResponse(rec) {
   var s = HEAT_STEP / (rec.density * rec.heatCapacity);
   return s > HEAT_RESPONSE_MAX ? HEAT_RESPONSE_MAX : s;
@@ -241,7 +235,6 @@ function buildMaterials(list) {
     if (MAT[rec.name] !== undefined) throw new Error('duplicate material: ' + rec.name);
     rec.id = i;
     rec.labelKey = 'mat.' + camelName(rec.name);
-    rec.amountKey = 'matGen.' + camelName(rec.name);
     MATS[i] = rec;
     MAT[rec.name] = i;
     if (rec.isVoid) VOID_ID = i;

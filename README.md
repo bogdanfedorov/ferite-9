@@ -178,8 +178,8 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
   0.55 ms per step and 0.7 MB of grid, 153 600 cells 1.4 ms and 2.6 MB, 614 400
   cells 3.5 ms and 10.5 MB.
 - The quest road is a plain list in `js/quest.js`. A stage says what the pad
-  accepts and what closing it unlocks; the goal panel is built from that
-  description, so the next stage — dock, mortar, furnace — needs no HTML or HUD
+  accepts; closing it unlocks the builder (`js/game.js`). The goal panel is
+  built from that description, so the next stage — dock, mortar, furnace — needs no HTML or HUD
   edits. A goal names a `cargo` group, so every substance tagged with it counts
   towards it — scrap and ingot both deliver `iron` — and `label` is the name the
   row shows. Cargo counters are built from the stage, so a third goal needs no
@@ -223,7 +223,7 @@ the only place material colours reach `palR/palG/palB`.
 | `js/materials.data.js` | the material list: one entry per substance, plain data |
 | `js/materials.js` | material registry: ids, predicates, heat coefficients, transitions |
 | `js/settings.js` | settings store, key bindings, colour-blind palettes, the settings panel |
-| `js/quest.js` | the quest road: what the shift must deliver and what it unlocks |
+| `js/quest.js` | the quest road: what the shift must deliver |
 | `js/lore.js` | module callsign, Mission Control channel, death and event lines |
 | `js/world.js` | grid, generation, particle simulation, heat field, phase transitions |
 | `js/objects.js` | portable objects: grab, drag, hit, drop back into the grid |
