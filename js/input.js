@@ -55,7 +55,7 @@ function toggleHeat() {
 }
 
 function cycleShapeKey() {
-  if (!BODIES[game.tool] || shapesOfBody().length < 2) return;
+  if (!isBuilding(game.tool) || shapesOfBuilding().length < 2) return;
   cycleBuildShape();
   refreshShapeBar();
   say(tf('msg.buildShape', { shape: t(`shape.${buildShape}`) }));

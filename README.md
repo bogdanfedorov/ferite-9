@@ -187,15 +187,12 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
   and lifetime for generation, `moveCell` carries a cell and its temperature
   into another and leaves void behind, and `openNear` searches rings outward
   for the nearest open cell.
-- Tools live in `TOOL_LIST` (`js/toolbelt.js`) and behave per `TOOLS`
-  (`js/game.js`); build tools share one spec and differ only by their entry in
-  `BODIES` (`js/build.js`). A built thing is a cell of one material, never an
-  object: a belt cell is the `belt` material plus a direction code in the
-  `beltCells` map (index → direction), and the belt pass reads that map, not a
-  list of belts. The start opens drill, hand and pickup zone; every
-  other tool is bought in the E menu for the price in `TOOL_COST`
-  (`js/market.js`). An opened tool drops into the first free cell of the 8-cell
-  hotbar; the E menu moves tools between cells.
+- Tools and buildings are *pieces*: one file each under `js/PlayerInteract/`,
+  registered with `regTool` / `regBuilding` into `PIECES`. Shapes live in
+  `js/lib/Shape.js`. A built thing is a cell of one material, never an object.
+  Full guide: [ARCHITECTURE.md](ARCHITECTURE.md). Pieces without a `cost` are
+  open at the start; the rest are bought (and levelled up) in the E menu. An
+  opened tool drops into the first free cell of the 8-cell hotbar.
 - The market is one plain table, `GOODS` in `js/market.js`: a `cargo` group
   name, a base price, and a half-life in minutes. `priceOf(good)` is a pure
   function of `game.elapsed`, so a price needs no state and a new good is one
@@ -241,19 +238,19 @@ the only place material colours reach `palR/palG/palB`.
 | `js/materials.data.js` | the material list: one entry per substance, plain data |
 | `js/materials.js` | material registry: ids, predicates, heat coefficients, transitions |
 | `js/settings.js` | settings store, key bindings, colour-blind palettes, the settings panel |
-| `js/market.js` | goods, prices over time, the drone, tool prices |
+| `js/market.js` | goods, prices over time, the drone |
 | `js/lore.js` | module callsign, Mission Control channel, death and event lines |
 | `js/world.js` | grid, generation, particle simulation, heat field, phase transitions |
 | `js/objects.js` | portable objects: grab, drag, hit, drop back into the grid |
-| `js/build.js` | build bodies: pickup zone, belts, walls; drag shape detection, zone removal, belt cell movement |
+| `js/lib/Shape.js` | `SHAPES`: line, slope, rect, circle → cell pools |
+| `js/PlayerInteract/` | `Registry.js`, `Build.js`, `Toolbelt.js`, `Tools/*`, `Buildings/*` — see ARCHITECTURE.md |
 | `js/sandbox.js` | the test room: flat world, a bin per material, restocking |
 | `js/player.js` | driller physics, timed drilling |
 | `js/render.js` | world raster, heat map, glow, vector overlays |
 | `js/sound.js` | `SOUNDS` table of named tones, `play(name)` |
 | `js/hud.js` | DOM cache, meters, market panel, probe chip, shape bar, message line and `say` |
-| `js/toolbelt.js` | which tools are open, the 8-cell hotbar and the E menu |
 | `js/input.js` | keyboard and mouse state, key actions, shape bar clicks |
-| `js/game.js` | `game` state, `TOOLS` table, milestones, step and frame loop, screens |
+| `js/game.js` | `game` state, milestones, step and frame loop, screens |
 | `main.go` · `Makefile` | Go launcher: game inside the exe, own window, no cgo |
 | `electron/main.js` | main process of the Electron build |
 | `tools/build-app.js` | concat, minify and obfuscate into `app/bundle.js` |

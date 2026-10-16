@@ -7,8 +7,6 @@ var GOODS = [
   { key: 'glass', base: 64, half: 16, event: 'first_glass' }
 ];
 
-var TOOL_COST = { ignite: 60, wall: 120, belt: 240 };
-
 var PRICE_FLOOR = 0.15;
 var START_MONEY = 25;
 var ROOM_MONEY = 9999;
@@ -93,18 +91,4 @@ function tickMarket() {
   if (market.drone <= 0) return;
   market.drone--;
   if (market.drone === DRONE_TRIP >> 1) deliverPad();
-}
-
-function buyTool(name) {
-  const cost = TOOL_COST[name];
-  if (market.money < cost) {
-    say(tf('msg.cantAfford', { cost: cost }));
-    play('denied');
-    return;
-  }
-  market.money -= cost;
-  openTool(name);
-  say(tf('msg.bought', { tool: t(`tool.${name}`) }));
-  play('unlock');
-  renderToolbelt();
 }

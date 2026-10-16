@@ -6,28 +6,9 @@ const Obfuscator = require('javascript-obfuscator');
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'app');
 
-const FILES = [
-  'js/i18n.js',
-  'js/lang/uk.js',
-  'js/lang/en.js',
-  'js/lang/pl.js',
-  'js/materials.data.js',
-  'js/materials.js',
-  'js/settings.js',
-  'js/lore.js',
-  'js/world.js',
-  'js/objects.js',
-  'js/build.js',
-  'js/sandbox.js',
-  'js/market.js',
-  'js/player.js',
-  'js/render.js',
-  'js/sound.js',
-  'js/hud.js',
-  'js/toolbelt.js',
-  'js/input.js',
-  'js/game.js'
-];
+const FILES = [...fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').matchAll(/<script src="(js\/[^"]+)">/g)].map(
+  (m) => m[1]
+);
 
 const OBFUSCATOR_OPTIONS = {
   compact: true,

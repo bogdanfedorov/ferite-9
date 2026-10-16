@@ -238,28 +238,6 @@ function drawDamage() {
   }
 }
 
-function drawCargoPad() {
-  if (!cargoPad) return;
-  const z = view.zoom;
-  const px = sx(cargoPad.x),
-    py = sy(cargoPad.y);
-  const pw = cargoPad.w * z,
-    ph = cargoPad.h * z;
-  if (px + pw < 0 || py + ph < 0 || px > cv.width || py > cv.height) return;
-
-  ctx.save();
-  ctx.globalAlpha = 0.5 + Math.sin(simFrame * 0.04) * 0.12;
-  ctx.strokeStyle = uiRgba('sand', 0.9);
-  ctx.lineWidth = 1;
-  ctx.setLineDash([Math.max(3, z * 0.6), Math.max(3, z * 0.5)]);
-  ctx.strokeRect(px + 0.5, py + 0.5, pw - 1, ph - 1);
-  ctx.setLineDash([]);
-  ctx.restore();
-
-  ctx.fillStyle = uiRgba('sand', 0.22);
-  ctx.fillRect(px, py + ph - Math.max(2, z * 0.25), pw, Math.max(2, z * 0.25));
-}
-
 function drawDrone() {
   if (market.drone <= 0 || !cargoPad) return;
   const z = view.zoom;
@@ -322,29 +300,6 @@ function drawObjects() {
   }
 }
 
-function drawGrabHint(wx, wy) {
-  if (heldObject) return;
-  const cx = Math.floor(wx),
-    cy = Math.floor(wy);
-  const dx = wx - player.x,
-    dy = wy - player.y;
-  if (Math.sqrt(dx * dx + dy * dy) > REACH) return;
-
-  const only = grabTargetAt(cx, cy);
-  if (!only) return;
-  const pick = grabPick(cx, cy, only);
-  const z = view.zoom;
-  ctx.strokeStyle = uiRgba('sandLit', 0.95);
-  ctx.fillStyle = uiRgba('sandLit', 0.28);
-  ctx.lineWidth = 1;
-  for (let k = 0; k < pick.length; k++) {
-    const px = sx(pick[k][0]),
-      py = sy(pick[k][1]);
-    ctx.fillRect(px, py, z, z);
-    ctx.strokeRect(px + 0.5, py + 0.5, z - 1, z - 1);
-  }
-}
-
 function drawFlowArrow(cx, cy, dx, dy, color) {
   const z = view.zoom;
   const n = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -367,73 +322,6 @@ function drawFlowArrow(cx, cy, dx, dy, color) {
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-}
-
-var ARROW_EVERY = 3;
-
-function drawBelts() {
-  const z = view.zoom;
-  if (z < 2) return;
-  for (const [i, code] of beltCells) {
-    const x = i % W,
-      y = (i / W) | 0;
-    const px = sx(x),
-      py = sy(y);
-    if (px + z < 0 || py + z < 0 || px > cv.width || py > cv.height) continue;
-    ctx.fillStyle = uiRgba('sandLit', 0.55);
-    ctx.fillRect(px, py, z, Math.max(1, z * 0.3));
-    if (x % ARROW_EVERY === 0) {
-      drawFlowArrow(x + 0.5, y + 0.5, beltDx(code), beltDy(code), uiRgba('sand', 0.9));
-    }
-  }
-}
-
-function drawErasePreview(cells) {
-  const z = view.zoom;
-  const first = cells[0],
-    last = cells[cells.length - 1];
-  for (let k = 0; k < cells.length; k++) {
-    const c = cells[k];
-    ctx.fillStyle = uiRgba('danger', removableAt(c.x, c.y) ? 0.5 : 0.14);
-    ctx.fillRect(sx(c.x), sy(c.y), z, z);
-  }
-  ctx.strokeStyle = uiRgba('danger', 0.9);
-  ctx.lineWidth = 1;
-  ctx.strokeRect(
-    sx(first.x) + 0.5,
-    sy(first.y) + 0.5,
-    (last.x - first.x + 1) * z - 1,
-    (last.y - first.y + 1) * z - 1
-  );
-}
-
-function drawBuildPreview() {
-  if (!buildFrom || !buildTo) return;
-  const plan = buildPlan(buildFrom, buildTo);
-  if (!plan.cells.length) return;
-  if (buildErase) {
-    drawErasePreview(plan.cells);
-    return;
-  }
-
-  const body = activeBody();
-  const tint = buildVerdict(plan) === 'ok' ? body.tint.ok : body.tint.bad;
-  const z = view.zoom;
-  ctx.fillStyle = uiRgba(tint, 0.22);
-  ctx.strokeStyle = uiRgba(tint, 0.85);
-  ctx.lineWidth = 1;
-
-  for (let k = 0; k < plan.cells.length; k++) {
-    const c = plan.cells[k];
-    ctx.fillRect(sx(c.x), sy(c.y), z, z);
-    ctx.strokeRect(sx(c.x) + 0.5, sy(c.y) + 0.5, z - 1, z - 1);
-  }
-
-  if (!body.arrows) return;
-  for (let k = 0; k < plan.cells.length; k++) {
-    const c = plan.cells[k];
-    if (c.x % ARROW_EVERY === 0) drawFlowArrow(c.x + 0.5, c.y + 0.5, plan.dx, plan.dy, uiRgba(tint, 0.9));
-  }
 }
 
 function drawPlayer() {
@@ -492,16 +380,17 @@ function drawPlayer() {
 }
 
 function drawGhost(tool, wx, wy) {
-  if (tool === 'drill' || tool === 'hand') return;
+  const ghost = PIECES[tool].ghost;
+  if (!ghost) return;
   const z = view.zoom;
-  const size = tool === 'ignite' ? 3 : 1;
+  const size = ghost.size;
   const gx = Math.floor(wx - size / 2),
     gy = Math.floor(wy - size / 2);
   const dx = wx - player.x,
     dy = wy - player.y;
   const inReach = Math.sqrt(dx * dx + dy * dy) < REACH + 8;
   const spotMat = matAt(Math.floor(wx), Math.floor(wy));
-  const free = tool === 'ignite' ? STATE[spotMat] !== MT.STRUCTURE : !BLOCKING[spotMat];
+  const free = ghost.free ? ghost.free(spotMat) : !BLOCKING[spotMat];
   const ok = inReach && free;
 
   ctx.save();
@@ -599,13 +488,11 @@ function render(tool, mouseWorld) {
   updateCamera();
   drawWorldBitmap();
   drawDamage();
-  drawCargoPad();
+  drawPieces();
   drawDrone();
-  drawBelts();
   drawObjects();
   drawPlayer();
-  if (BODIES[tool]) drawBuildPreview();
-  if (tool === 'hand') drawGrabHint(mouseWorld[0], mouseWorld[1]);
+  if (PIECES[tool].overlay) PIECES[tool].overlay(mouseWorld);
   if (sandbox.on) drawRoomBins(mouseWorld);
   if (!roomButtonAt(mouseWorld[0], mouseWorld[1])) {
     drawGhost(tool, mouseWorld[0], mouseWorld[1]);

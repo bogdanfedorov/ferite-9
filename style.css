@@ -525,6 +525,17 @@ body{
   display:grid;gap:3px;justify-items:start;text-align:left;
   padding:10px 12px 11px;
 }
+.inv-tool{grid-template-columns:auto 1fr;column-gap:8px;align-items:center}
+.inv-tool .scost,.inv-tool .slvl,.inv-tool .sup{grid-column:1 / -1}
+.sicon{font-size:15px;color:var(--sand);line-height:1}
+.slvl{font-family:var(--f-mono);font-size:10px;color:var(--sand)}
+.slvl:empty,.sup:empty{display:none}
+.sup{
+  font-family:var(--f-mono);font-size:10px;color:var(--ok);
+  border:1px solid var(--edge);padding:2px 6px;cursor:pointer;
+}
+.sup:hover{border-color:var(--sand)}
+.sup.poor{color:var(--danger);cursor:not-allowed}
 .inv-tool:hover{background:var(--panel-2)}
 .inv-tool.active{box-shadow:inset 0 2px 0 var(--sand)}
 .inv-tool.picked{background:linear-gradient(180deg,#26211a,#1b1710);box-shadow:inset 0 0 0 1px var(--sand)}

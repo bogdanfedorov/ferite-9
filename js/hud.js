@@ -170,7 +170,7 @@ function updateHud(wpt) {
 }
 
 function refreshShapeBar() {
-  const allowed = BODIES[game.tool] ? shapesOfBody() : [];
+  const allowed = isBuilding(game.tool) ? shapesOfBuilding() : [];
   el.shapebar.classList.toggle('hidden', allowed.length < 2);
   const shapes = el.shapebar.children;
   for (let k = 0; k < shapes.length; k++) {
@@ -178,4 +178,17 @@ function refreshShapeBar() {
     shapes[k].classList.toggle('hidden', allowed.indexOf(name) < 0);
     shapes[k].classList.toggle('active', name === buildShape);
   }
+}
+
+function buildShapeBar() {
+  const bar = el.shapebar;
+  bar.innerHTML = '';
+  for (const name in SHAPES) {
+    const b = document.createElement('button');
+    b.className = 'shape';
+    b.dataset.shape = name;
+    b.setAttribute('data-i18n', `shape.${name}`);
+    bar.appendChild(b);
+  }
+  applyI18n(bar);
 }

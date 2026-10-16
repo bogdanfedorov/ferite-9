@@ -1,14 +1,5 @@
 var SOUNDS = {
-  pickDrill: { freq: 420, dur: 0.05, wave: 'square', vol: 0.025 },
   pickTool: { freq: 620, dur: 0.05, wave: 'square', vol: 0.025 },
-  pickShape: { freq: 500, dur: 0.05, wave: 'square', vol: 0.02 },
-  drill: { freq: 170, dur: 0.03, wave: 'square', vol: 0.013 },
-  grab: { freq: 640, dur: 0.05, wave: 'triangle', vol: 0.025 },
-  drop: { freq: 300, dur: 0.05, wave: 'square', vol: 0.02 },
-  ignite: { freq: 320, dur: 0.14, wave: 'sawtooth', vol: 0.035 },
-  fizzle: { freq: 150, dur: 0.14, wave: 'sawtooth', vol: 0.035 },
-  built: { freq: 560, dur: 0.07, wave: 'triangle', vol: 0.03 },
-  removed: { freq: 220, dur: 0.08, wave: 'square', vol: 0.025 },
   denied: { freq: 150, dur: 0.12, wave: 'sawtooth', vol: 0.03 },
   roomReset: { freq: 560, dur: 0.06, wave: 'triangle', vol: 0.03 },
   unlock: { freq: 680, dur: 0.16, wave: 'triangle', vol: 0.04 },
@@ -22,6 +13,10 @@ var SOUNDS = {
   volume: { freq: 520, dur: 0.05, wave: 'triangle', vol: 0.03 },
   grabSize: { freq: 600, dur: 0.05, wave: 'triangle', vol: 0.025 }
 };
+
+function addSounds(defs) {
+  Object.assign(SOUNDS, defs);
+}
 
 var audio = null;
 

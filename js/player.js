@@ -25,29 +25,11 @@ var player = {
 
 var REACH = 32;
 var JET_EXHAUST = matId('smoke');
-var TORCH_FLAME = matId('fire');
-var TORCH_TEMP = 500;
-var spoil = {};
-var DRILL_RADIUS = 2.4;
-var DRILL_POWER = 9;
 var FALL_SAFE = 30;
 var FUEL_BURN_RATE = 0.5;
 var JETPAK_POWER = 0.062;
 var FOOT_POWER = 0.05;
 var WATER_RESISTANCE = 0.6;
-
-var drillOffsets = (() => {
-  const out = [];
-  const r = Math.ceil(DRILL_RADIUS);
-  for (let y = -r; y <= r; y++) {
-    for (let x = -r; x <= r; x++) {
-      const d = Math.sqrt(x * x + y * y);
-      if (d <= DRILL_RADIUS) out.push([x, y, d]);
-    }
-  }
-  out.sort((a, b) => a[2] - b[2]);
-  return out;
-})();
 
 function resetVitals() {
   player.vx = player.vy = 0;
@@ -265,89 +247,4 @@ function clampToReach(tx, ty, anchor) {
   const d = Math.sqrt(dx * dx + dy * dy);
   if (d > REACH) return [ax + (dx / d) * REACH, ay + (dy / d) * REACH];
   return [tx, ty];
-}
-
-function drillableAt(x, y) {
-  if (!inBounds(x, y)) return false;
-  const m = mat[y * W + x];
-  return MINEABLE[m] === 1;
-}
-
-function drillAt(tx, ty) {
-  const p = clampToReach(tx, ty);
-  const cx = Math.round(p[0]),
-    cy = Math.round(p[1]);
-  player.drilling = true;
-  player.aimX = cx;
-  player.aimY = cy;
-
-  let budget = DRILL_POWER;
-  let broken = 0,
-    splash = 0;
-
-  for (let n = 0; n < drillOffsets.length; n++) {
-    const x = cx + drillOffsets[n][0],
-      y = cy + drillOffsets[n][1];
-    if (!inBounds(x, y)) continue;
-    const i = y * W + x;
-    const m = mat[i];
-    if (!drillableAt(x, y)) continue;
-
-    let portion;
-    if (budget > 0) portion = budget;
-    else if (splash < 3) {
-      portion = DRILL_POWER * 0.25;
-      splash++;
-    } else break;
-
-    const ct = temp[i];
-    if (ct > 260) {
-      player.hp -= (ct - 260) * 0.009;
-      player.lastTemp = ct;
-      if (player.hp <= 0) player.deathCause = 'hotdrill';
-    }
-
-    const need = HARD[m] - dmg[i];
-    if (portion >= need) {
-      setCell(x, y, VOID_ID);
-      const loose = BREAK_INTO[m];
-      if (loose) {
-        spoil[loose] = (spoil[loose] || 0) + 1;
-        if (spoil[loose] >= 2) {
-          spoil[loose] -= 2;
-          dropLoose(x, y, loose, ct);
-        }
-      }
-      broken++;
-      if (budget > 0) budget -= need;
-    } else {
-      markDamage(i);
-      dmg[i] += portion;
-      if (budget > 0) budget = 0;
-    }
-  }
-  return broken;
-}
-
-function igniteAt(tx, ty) {
-  const p = clampToReach(tx, ty);
-  const cx = Math.round(p[0]),
-    cy = Math.round(p[1]);
-  let lit = 0;
-  for (let y = cy - 1; y <= cy + 1; y++) {
-    for (let x = cx - 1; x <= cx + 1; x++) {
-      if (!inBounds(x, y)) continue;
-      const i = y * W + x;
-      const m = mat[i];
-      const point = HOT_T[m];
-      if (ISVOID[m]) {
-        setCellHot(x, y, TORCH_FLAME, EMITS[TORCH_FLAME]);
-        lit++;
-      } else if (point > 0 && point <= TORCH_TEMP) {
-        temp[i] = point + 80;
-        lit++;
-      } else if (temp[i] < TORCH_TEMP) temp[i] = TORCH_TEMP;
-    }
-  }
-  return lit;
 }

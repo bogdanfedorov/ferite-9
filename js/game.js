@@ -1,29 +1,7 @@
 var game = {
   tool: 'drill',
   paused: true,
-  elapsed: 0,
-  igniteCd: 0
-};
-
-var BUILD_REPORTS = {
-  belt: { text: 'msg.beltDone', sound: 'built' },
-  wall: { text: 'msg.wallDone', sound: 'built' },
-  removed: { text: 'msg.structRemoved', sound: 'removed' },
-  nothing: { text: 'msg.nothingToRemove', sound: null },
-  pad: { text: 'msg.padDone', sound: 'built' },
-  big: { text: 'msg.padBig', sound: 'denied' },
-  room: { text: 'msg.beltRoom', sound: 'denied' }
-};
-
-var BUILD_TOOL = { sound: 'pickTool', use: buildUse };
-
-var TOOLS = {
-  drill: { sound: 'pickDrill', hold: drillHold },
-  hand: { sound: 'pickTool', grips: true, press: handPress },
-  ignite: { sound: 'pickTool', hold: igniteHold },
-  pad: BUILD_TOOL,
-  belt: BUILD_TOOL,
-  wall: BUILD_TOOL
+  elapsed: 0
 };
 
 var MILESTONES = [
@@ -53,11 +31,11 @@ function selectTool(name) {
     return;
   }
   game.tool = name;
-  if (BODIES[name]) setBuildBody(name);
+  if (PIECES[name].select) PIECES[name].select();
   endBuildDrag();
   renderToolbelt();
   refreshShapeBar();
-  play(TOOLS[name].sound);
+  play(PIECES[name].sound);
 }
 
 function selectSlot(i) {
@@ -68,6 +46,10 @@ function selectSlot(i) {
 function invSlot(i) {
   if (placePicked(i)) play('pickTool');
   renderToolbelt();
+}
+
+function invUpgrade(name) {
+  upgradePiece(name);
 }
 
 function invTool(name) {
@@ -86,59 +68,8 @@ function toggleInventory() {
   toggleScreen('inventory');
 }
 
-function reportBuild(outcome) {
-  const report = BUILD_REPORTS[outcome];
-  say(t(report.text));
-  if (report.sound) play(report.sound);
-}
-
-function drillHold(wpt) {
-  const got = drillAt(wpt[0], wpt[1]);
-  if (got && simFrame % 5 === 0) play('drill');
-}
-
-function handPress(wpt) {
-  if (heldObject) return;
-  const g = clampToReach(wpt[0], wpt[1]);
-  const gx = Math.floor(g[0]),
-    gy = Math.floor(g[1]);
-  const only = grabTargetAt(gx, gy);
-  if (only && takeObject(gx, gy, only)) play('grab');
-  else say(t('msg.nothingToGrab'));
-}
-
-function igniteHold(wpt) {
-  const dx = wpt[0] - player.x,
-    dy = wpt[1] - player.y;
-  if (Math.sqrt(dx * dx + dy * dy) > REACH + 8) {
-    say(t('msg.tooFar'));
-    return;
-  }
-  if (game.igniteCd > 0) return;
-  game.igniteCd = 12;
-  const lit = igniteAt(wpt[0], wpt[1]);
-  play(lit ? 'ignite' : 'fizzle');
-  if (!lit) say(t('msg.noIgnite'));
-}
-
-function buildUse(wpt) {
-  const mouse = input.mouse;
-  buildEven = input.keys.shift;
-  if (!buildFrom) {
-    if (mouse.pressed) startBuildDrag(wpt[0], wpt[1], false);
-    else if (mouse.rightPressed && activeBody().erasable) startBuildDrag(wpt[0], wpt[1], true);
-    return;
-  }
-  if (buildErase ? mouse.right : mouse.left) {
-    buildTo = wpt;
-    return;
-  }
-  reportBuild(finishBuild(buildFrom, buildTo));
-  endBuildDrag();
-}
-
 function useTool(wpt) {
-  const spec = TOOLS[game.tool],
+  const spec = PIECES[game.tool],
     mouse = input.mouse;
   if (spec.use) spec.use(wpt);
   else if (!mouse.left) {
@@ -181,13 +112,12 @@ function checkMilestones() {
 
 function step() {
   const mouse = input.mouse;
-  if (game.igniteCd > 0) game.igniteCd--;
   if (updatePlayer(input.keys) === 'respawn') respawn();
   checkMilestones();
 
   const wpt = screenToWorld(mouse.x, mouse.y);
   player.drilling = false;
-  if (heldObject && !(mouse.left && TOOLS[game.tool].grips)) {
+  if (heldObject && !(mouse.left && PIECES[game.tool].grips)) {
     releaseObject();
     play('drop');
   }
@@ -204,7 +134,7 @@ function step() {
   const grip = clampToReach(wpt[0], wpt[1]);
   stepObjects(grip[0], grip[1]);
   tickMarket();
-  tickBuild(simFrame);
+  tickPieces(simFrame);
   if (sandbox.on) tickTestRoom(simFrame);
   tickSay();
 }
@@ -310,6 +240,7 @@ function enterWorld(room) {
   game.elapsed = 0;
   resetMarket(room);
   resetObjects();
+  resetPieces();
   resetBuild();
   resetToolbelt(room);
   const seed = Date.now() & 0xffffff || 12345;
@@ -333,7 +264,8 @@ function startGame() {
   initLore();
   initRender();
   enterWorld(false);
-  buildToolbelt(selectSlot, invSlot, invTool);
+  buildToolbelt(selectSlot, invSlot, invTool, invUpgrade);
+  buildShapeBar();
   bindInput();
   bindScreens();
   updateHud([player.x, player.y]);
