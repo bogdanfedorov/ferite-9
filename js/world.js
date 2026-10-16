@@ -391,7 +391,7 @@ function regionRand(seed, rx, ry, salt) {
 }
 
 function geothermalAt(wy) {
-  return 18 + Math.max(0, wy) * (46 / REF_H);
+  return 18 + Math.min(Math.max(0, wy), REF_H) * (46 / REF_H);
 }
 
 function surfaceAt(seed, wx) {
@@ -470,11 +470,10 @@ function layerAt(wy, surf, sandD, panD) {
   return ROCK_ID;
 }
 
-function generateChunk(seed, cx, cy, caveFloor) {
+function generateChunk(seed, cx, cy) {
   const S = CHUNK_SIZE;
   const chunk_mat = new Uint8Array(CHUNK_AREA).fill(VOID_ID);
   const chunk_shade = new Uint8Array(CHUNK_AREA);
-  const floorY = caveFloor === undefined ? Infinity : caveFloor;
   const blobs = blobsNear(seed, cx, cy);
   const x0 = cx * S,
     y0 = cy * S;
@@ -486,7 +485,7 @@ function generateChunk(seed, cx, cy, caveFloor) {
     for (let y = 0; y < S; y++) {
       const wy = y0 + y;
       let m = layerAt(wy, surf, sandD, panD);
-      if (m !== VOID_ID && wy >= surf + 16 && wy <= floorY && isCaveAt(seed, wx, wy)) m = VOID_ID;
+      if (m !== VOID_ID && wy >= surf + 16 && isCaveAt(seed, wx, wy)) m = VOID_ID;
       chunk_mat[y * S + x] = applyBlobs(seed, blobs, wx, wy, m);
       chunk_shade[y * S + x] = (hash2(wx, wy, seed + 999) * 256) | 0;
     }
@@ -508,12 +507,28 @@ function stampChunk(chunk, cx, cy) {
   }
 }
 
-function stampWorld(seed) {
-  const caveFloor = H - CAVE_FLOOR_MARGIN;
-  const cw = Math.ceil(W / CHUNK_SIZE),
+function fillCaveFloor(seed, cx, cy) {
+  const S = CHUNK_SIZE;
+  const x0 = cx * S,
+    y0 = cy * S;
+  const blobs = blobsNear(seed, cx, cy);
+  for (let wy = Math.max(y0, H - CAVE_FLOOR_MARGIN + 1); wy < Math.min(y0 + S, H); wy++) {
+    for (let wx = x0; wx < Math.min(x0 + S, W); wx++) {
+      const surf = surfaceAt(seed, wx);
+      if (wy < surf + 16 || !isCaveAt(seed, wx, wy)) continue;
+      const base = layerAt(wy, surf, sandDepthAt(seed, wx), hardpanDepthAt(seed, wx));
+      paintCell(wy * W + wx, applyBlobs(seed, blobs, wx, wy, base));
+    }
+  }
+}
+
+function stampWorld(seed) {  const cw = Math.ceil(W / CHUNK_SIZE),
     ch = Math.ceil(H / CHUNK_SIZE);
   for (let cy = 0; cy < ch; cy++) {
-    for (let cx = 0; cx < cw; cx++) stampChunk(generateChunk(seed, cx, cy, caveFloor), cx, cy);
+    for (let cx = 0; cx < cw; cx++) {
+      stampChunk(generateChunk(seed, cx, cy), cx, cy);
+      fillCaveFloor(seed, cx, cy);
+    }
   }
 }
 
