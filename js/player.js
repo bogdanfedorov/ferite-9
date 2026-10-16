@@ -42,13 +42,14 @@ function resetVitals() {
 }
 
 function arrivalHeight() {
+  const sx = localX(player.spawnX);
   let rise = 0;
-  while (rise < ARRIVAL_DROP && !boxBlocked(player.spawnX, player.spawnY - rise - 1)) rise++;
+  while (rise < ARRIVAL_DROP && !boxBlocked(sx, player.spawnY - rise - 1)) rise++;
   return rise;
 }
 
 function moveToSpawn() {
-  player.x = player.spawnX;
+  player.x = localX(player.spawnX);
   player.y = player.spawnY - arrivalHeight();
   player.vx = 0;
   player.vy = 0;
@@ -62,8 +63,12 @@ function floorBelow(x, y) {
   return fy;
 }
 
+function shiftPlayer(dx) {
+  player.x -= dx;
+}
+
 function spawnPlayer(x, y) {
-  player.spawnX = x;
+  player.spawnX = worldX(x);
   player.spawnY = floorBelow(Math.round(x), y) - player.h / 2;
   clearAirlock();
   moveToSpawn();
@@ -72,8 +77,9 @@ function spawnPlayer(x, y) {
 }
 
 function clearAirlock() {
-  const x0 = spanStart(player.spawnX, player.w) - 2,
-    x1 = spanEnd(player.spawnX, player.w) + 2;
+  const sx = localX(player.spawnX);
+  const x0 = spanStart(sx, player.w) - 2,
+    x1 = spanEnd(sx, player.w) + 2;
   const y0 = spanStart(player.spawnY, player.h) - ARRIVAL_DROP,
     y1 = spanEnd(player.spawnY, player.h);
   for (let y = y0; y <= y1; y++) {
@@ -251,8 +257,6 @@ function updatePlayer(keys) {
   if (player.hp > 100) player.hp = 100;
   if (player.hp <= 0) {
     resetVitals();
-    clearAirlock();
-    moveToSpawn();
     return 'respawn';
   }
   return null;

@@ -63,6 +63,10 @@ function updateCamera() {
   view.oy = Math.floor(view.camY);
 }
 
+function shiftCamera(dx) {
+  view.camX -= dx;
+}
+
 function sx(wx) {
   return (wx - view.camX) * view.zoom;
 }

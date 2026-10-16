@@ -314,6 +314,12 @@ function stepObjects(targetX, targetY) {
   }
 }
 
+function shiftObjects(dx) {
+  for (let k = 0; k < objects.length; k++) objects[k].x -= dx;
+  objects = objects.filter((o) => o.x >= 0 && o.x < W);
+  if (heldObject && objects.indexOf(heldObject) < 0) heldObject = null;
+}
+
 function resetObjects() {
   objects.length = 0;
   heldObject = null;
