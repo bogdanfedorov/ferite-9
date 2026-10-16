@@ -81,8 +81,15 @@ function makeIdbBackend(name) {
           if (!db.objectStoreNames.contains(DB_STORES[k])) db.createObjectStore(DB_STORES[k]);
         }
       };
-      rq.onsuccess = () => resolve(rq.result);
+      rq.onsuccess = () => {
+        rq.result.onversionchange = () => {
+          rq.result.close();
+          opening = null;
+        };
+        resolve(rq.result);
+      };
       rq.onerror = () => reject(rq.error);
+      rq.onblocked = () => reject(new Error('database upgrade blocked'));
     });
     return opening;
   };
@@ -133,8 +140,14 @@ function diskFailed() {
     for (const [key, v] of tier.spill) tier.mem.set(key, v);
     tier.spill.clear();
     tier.sent.clear();
+    tier.disk.clear();
     tier.over.clear();
   }
+  const waiting = [Array.from(chunkTier.reading.keys()), Array.from(fogTier.reading.keys())];
+  chunkTier.reading.clear();
+  fogTier.reading.clear();
+  for (let k = 0; k < waiting[0].length; k++) chunkMissing(waiting[0][k]);
+  for (let k = 0; k < waiting[1].length; k++) fogMissing(waiting[1][k]);
 }
 
 function tierInRam(tier, key) {

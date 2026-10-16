@@ -121,15 +121,24 @@ Done:
 
 Remaining:
 
+0. **Disk failure loses spilled edits.** If IndexedDB fails (open error, blocked
+   upgrade, write error), the store turns the disk layer off. Entries that were
+   still in memory or waiting to be written stay in memory, but everything that was
+   only on disk is treated as lost: the index is cleared and those chunks are
+   regenerated from the seed. A blocked upgrade fails over the same way instead of
+   hanging, and an older connection closes itself on a version change.
+
 1. **Game-level save is not wired.** The game has no save mechanism (only
    settings and language in `localStorage`). `saveWorld` / `resumeWorld` store
    and restore the terrain only; nothing calls them yet, and the Go build could
    not resume anyway (see 13). Inventory, market,
    player, loose objects, the cargo pad and belts outside the window are not
    part of a save, and a resumed world has no spawn shelter.
-2. **Placeholder race.** In the rare case a chunk is needed before its read
-   completes, edits made to the placeholder in that short time are overwritten
-   when the stored chunk arrives (or overwrite it, if the chunk left first).
+2. **Placeholder race.** A placeholder (an unbuilt chunk, or one generated
+   while its disk read is pending) is never written to disk. If a chunk with a
+   pending read leaves the window before the read lands, its edits are dropped and
+   the disk copy wins; edits made to it in that short time are also overwritten
+   when the stored chunk arrives. Fog is merged instead of dropped.
 3. **Zoom floor.** With a 320-cell window, the minimum integral zoom is raised so
    the view is at most 224 cells tall: about 5 on a 1080p screen, 10 on a 4K
    screen (above the usual maximum of 9). The floor is authoritative.

@@ -656,6 +656,14 @@ function chunkDirty(lx, ly) {
   return false;
 }
 
+function clearChunkDirty(lx, ly) {
+  const T = CHUNK_SIZE >> TCSHIFT;
+  for (let r = 0; r < T; r++) {
+    const t = ((ly >> TCSHIFT) + r) * TCW + (lx >> TCSHIFT);
+    dirtyT.fill(0, t, t + T);
+  }
+}
+
 function setChunkDirty(lx, ly) {
   const T = CHUNK_SIZE >> TCSHIFT;
   for (let r = 0; r < T; r++) {
@@ -673,13 +681,13 @@ function saveChunk(cx, cy, lx, ly, belts, leaving) {
   const key = chunkKey(cx, cy);
   const slice = copyFogOut(lx, ly);
   const fogPending = leaving ? pendingFog.delete(key) : pendingFog.has(key);
-  if (slice && fogPending && leaving) {
+  if (slice && fogPending) {
     const held = fogMerge.get(key);
     fogMerge.set(key, held ? orSlice(held, slice) : slice);
-  } else if (slice && !fogPending) tierPut(fogTier, key, slice);
+  } else if (slice) tierPut(fogTier, key, slice);
   const unbuilt = leaving ? deferredKeys.delete(key) : deferredKeys.has(key);
   const waiting = leaving ? pendingChunks.delete(key) : pendingChunks.has(key);
-  if (!leaving && (unbuilt || waiting)) return;
+  if (unbuilt || waiting) return;
   if (!belts && !chunkDirty(lx, ly)) return;
   const ch = copyChunkOut(lx, ly);
   ch.belts = belts;
@@ -789,7 +797,8 @@ function streamWorld() {
     deferredQueue.sort((a, b) => keyDistance(a) - keyDistance(b));
     deferredSort = false;
   }
-  for (let built = 0; built < BUILD_PER_FRAME && deferredQueue.length; ) {
+  let built = 0;
+  while (built < BUILD_PER_FRAME && deferredQueue.length) {
     const key = deferredQueue.shift();
     if (!deferredKeys.delete(key)) continue;
     const lx = keyCx(key) * CHUNK_SIZE - originX,
@@ -799,10 +808,11 @@ function streamWorld() {
     pasteChunk(stored || buildChunk(windowSeed, keyCx(key), keyCy(key)), lx, ly);
     if (stored && stored.belts) beltsIn(stored.belts, lx, ly);
     if (stored) setChunkDirty(lx, ly);
+    else clearChunkDirty(lx, ly);
     markChunkHot(lx, ly);
     built++;
   }
-  if (shelvedObjects.length) unshelveObjects();
+  if (built && shelvedObjects.length) unshelveObjects();
 }
 
 function chunkInWindow(lx, ly) {
@@ -829,6 +839,7 @@ function chunkArrived(key) {
   if (stored.belts) beltsIn(stored.belts, lx, ly);
   setChunkDirty(lx, ly);
   markChunkHot(lx, ly);
+  if (shelvedObjects.length) unshelveObjects();
 }
 
 function chunkMissing(key) {
