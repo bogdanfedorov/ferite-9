@@ -5,7 +5,7 @@ var player = {
   fuel: 100, hp: 100, heat: 22, dryTank: false,
   drilling: false, aimX: 0, aimY: 0,
   spawnX: 0, spawnY: 0,
-  deathCause: 'heat', 
+  deathCause: 'heat',
   fallFrom: 0, fallDrop: 0, buried: 0, lastTemp: 22
 };
 
@@ -24,9 +24,9 @@ var DRILL_RADIUS = 2.4;
 var DRILL_POWER = 9;
 var HOOK_SPEED = 1.9;
 var HOOK_RANGE = 58;
-var FALL_SAFE = 30;  
+var FALL_SAFE = 30;
 var FUEL_BURN_RATE = 0.5;
-var JETPAK_POWER =  0.062;
+var JETPAK_POWER = 0.062;
 var FOOT_POWER = 0.05;
 var WATER_RESISTANCE = 0.6;
 
@@ -43,12 +43,22 @@ var drillOffsets = (function () {
   return out;
 })();
 
-function spawnPlayer(x, y) {
-  player.x = x; player.y = y;
-  player.spawnX = x; player.spawnY = y;
+function resetVitals() {
   player.vx = player.vy = 0;
   player.hp = 100; player.fuel = 100; player.dryTank = false;
-  player.fallFrom = y; player.fallDrop = 0; player.buried = 0;
+  player.buried = 0;
+}
+
+function moveToSpawn() {
+  player.x = player.spawnX; player.y = player.spawnY;
+  player.fallFrom = player.y;
+}
+
+function spawnPlayer(x, y) {
+  player.spawnX = x; player.spawnY = y;
+  moveToSpawn();
+  resetVitals();
+  player.fallDrop = 0;
   hook.state = 'idle';
 }
 
@@ -66,17 +76,12 @@ function clearAirlock() {
   }
 }
 
-function getPixelRange(cx, width) {
-  return [
-    Math.floor(cx - width / 2),
-    Math.floor(cx + width / 2 - 0.01),
-  ];
-}
+function spanStart(c, size) { return Math.floor(c - size / 2); }
+function spanEnd(c, size) { return Math.floor(c + size / 2 - 0.01); }
 
 function boxBlocked(cx, cy) {
-  var [x0, x1] = getPixelRange(cx,player.w)
-  var [y0, y1] = getPixelRange(cy,player.h)
-
+  var x0 = spanStart(cx, player.w), x1 = spanEnd(cx, player.w);
+  var y0 = spanStart(cy, player.h), y1 = spanEnd(cy, player.h);
   for (var y = y0; y <= y1; y++) {
     for (var x = x0; x <= x1; x++) {
       if (!inBounds(x, y)) return true;
@@ -87,9 +92,8 @@ function boxBlocked(cx, cy) {
 }
 
 function sampleEnv() {
-  var [x0, x1] = getPixelRange(player.x,player.w)
-  var [y0, y1] = getPixelRange(player.y,player.h)
-
+  var x0 = spanStart(player.x, player.w), x1 = spanEnd(player.x, player.w);
+  var y0 = spanStart(player.y, player.h), y1 = spanEnd(player.y, player.h);
   var liquid = false, hottest = 0, n = 0, sum = 0;
   for (var y = y0; y <= y1; y++) {
     for (var x = x0; x <= x1; x++) {
@@ -256,15 +260,9 @@ function updatePlayer(keys, reeling) {
 
   if (player.hp > 100) player.hp = 100;
   if (player.hp <= 0) {
-    player.hp = 100;
-    player.fuel = 100;
-    player.dryTank = false;
-    player.buried = 0;
+    resetVitals();
     clearAirlock();
-    player.x = player.spawnX; player.y = player.spawnY;
-    player.fallFrom = player.y;
-    player.vx = player.vy = 0;
-    player.fuel = 100;
+    moveToSpawn();
     releaseHook();
     return 'respawn';
   }
@@ -299,7 +297,7 @@ function drillAt(tx, ty) {
     if (!inBounds(x, y)) continue;
     var i = y * W + x;
     var m = mat[i];
-    if (!drillableAt(x, y)) continue;   
+    if (!drillableAt(x, y)) continue;
 
     var portion;
     if (budget > 0) portion = budget;

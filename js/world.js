@@ -282,13 +282,13 @@ function cargoTotal() {
 }
 
 function tickCargoPad() {
+  var want = questDeliver();
   for (var y = cargoPad.y; y < cargoPad.y + cargoPad.h; y++) {
     for (var x = cargoPad.x; x < cargoPad.x + cargoPad.w; x++) {
       if (!inBounds(x, y)) continue;
       var m = mat[y * W + x];
       var group = CARGO[m];
       if (!group) continue;
-      var want = questDeliver();
       for (var c = 0; c < want.length; c++) {
         if (want[c].key !== group) continue;
         cargo[group]++;
