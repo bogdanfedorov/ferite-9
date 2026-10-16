@@ -5,7 +5,8 @@ var FOG_CACHE_MAX = 512;
 var KEY_SPAN = 1048576;
 var KEY_BIAS = 524288;
 var DB_NAME = 'ferit9.world';
-var DB_STORES = ['chunks', 'fog', 'meta'];
+var DB_STORES = ['chunks', 'fog', 'chunks_live', 'fog_live', 'meta'];
+var DB_VERSION = 2;
 
 function makeTier(name, memMax, cacheMax) {
   return {
@@ -17,7 +18,8 @@ function makeTier(name, memMax, cacheMax) {
     sent: new Map(),
     cache: new Map(),
     reading: new Map(),
-    disk: new Set()
+    disk: new Set(),
+    over: new Map()
   };
 }
 
@@ -27,6 +29,14 @@ var diskBackend = null;
 var diskEpoch = 0;
 var diskChain = Promise.resolve();
 var flushQueued = false;
+var storeLayer = 'base';
+var storeResumable = originIsStable();
+
+function originIsStable() {
+  if (typeof location === 'undefined') return true;
+  const loopback = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return !(location.protocol === 'http:' && loopback && location.port !== '');
+}
 
 function chunkKey(cx, cy) {
   return (cx + KEY_BIAS) * KEY_SPAN + (cy + KEY_BIAS);
@@ -50,14 +60,26 @@ function idbTx(db, stores, mode, work) {
   });
 }
 
+function clearStores(opening, names) {
+  return opening.then((db) =>
+    idbTx(db, names, 'readwrite', (tx) => {
+      for (let k = 0; k < names.length; k++) tx.objectStore(names[k]).clear();
+      return null;
+    })
+  );
+}
+
 function makeIdbBackend(name) {
   let opening = null;
   const open = () => {
     if (opening) return opening;
     opening = new Promise((resolve, reject) => {
-      const rq = indexedDB.open(name, 1);
+      const rq = indexedDB.open(name, DB_VERSION);
       rq.onupgradeneeded = () => {
-        for (let k = 0; k < DB_STORES.length; k++) rq.result.createObjectStore(DB_STORES[k]);
+        const db = rq.result;
+        for (let k = 0; k < DB_STORES.length; k++) {
+          if (!db.objectStoreNames.contains(DB_STORES[k])) db.createObjectStore(DB_STORES[k]);
+        }
       };
       rq.onsuccess = () => resolve(rq.result);
       rq.onerror = () => reject(rq.error);
@@ -79,13 +101,8 @@ function makeIdbBackend(name) {
       open().then((db) =>
         idbTx(db, [store], 'readonly', (tx) => tx.objectStore(store).getAllKeys())
       ),
-    clear: () =>
-      open().then((db) =>
-        idbTx(db, DB_STORES, 'readwrite', (tx) => {
-          for (let k = 0; k < DB_STORES.length; k++) tx.objectStore(DB_STORES[k]).clear();
-          return null;
-        })
-      )
+    clear: () => clearStores(open(), DB_STORES),
+    clearNamed: (names) => clearStores(open(), names)
   };
 }
 
@@ -94,6 +111,13 @@ function setDiskBackend(backend) {
 }
 
 if (typeof indexedDB !== 'undefined') setDiskBackend(makeIdbBackend(DB_NAME));
+
+function storeStartup() {
+  const backend = diskBackend;
+  if (backend && !storeResumable) diskRun(() => backend.clear()).catch(diskFailed);
+}
+
+storeStartup();
 
 function diskRun(work) {
   const p = diskChain.then(work);
@@ -109,6 +133,7 @@ function diskFailed() {
     for (const [key, v] of tier.spill) tier.mem.set(key, v);
     tier.spill.clear();
     tier.sent.clear();
+    tier.over.clear();
   }
 }
 
@@ -160,52 +185,79 @@ function flushSpill() {
   return Promise.all([tierFlush(chunkTier), tierFlush(fogTier)]);
 }
 
-function tierFlush(tier) {
+function tierOnDisk(tier, key) {
+  return tier.over.has(key) || tier.disk.has(key);
+}
+
+function tierDiskName(tier, key) {
+  return tier.over.has(key) ? tier.name + '_live' : tier.name;
+}
+
+function tierFlush(tier, toBase) {
   const backend = diskBackend;
   const batch = [];
   for (const [key, v] of tier.spill) {
-    if (tier.sent.get(key) !== v) batch.push([key, v]);
+    if (toBase || tier.sent.get(key) !== v) batch.push([key, v]);
   }
   if (!backend || !batch.length) return Promise.resolve();
   const epoch = diskEpoch;
+  const base = toBase || storeLayer === 'base';
+  const name = base ? tier.name : tier.name + '_live';
   for (let k = 0; k < batch.length; k++) tier.sent.set(batch[k][0], batch[k][1]);
-  return diskRun(() => backend.put(tier.name, batch)).then(() => {
+  return diskRun(() => backend.put(name, batch)).then(() => {
     if (epoch !== diskEpoch) return;
     for (let k = 0; k < batch.length; k++) {
       const key = batch[k][0];
       if (tier.sent.get(key) === batch[k][1]) tier.sent.delete(key);
       if (tier.spill.get(key) === batch[k][1]) tier.spill.delete(key);
-      tier.disk.add(key);
+      if (base) {
+        tier.disk.add(key);
+        tier.over.delete(key);
+      } else tier.over.set(key, batch[k][1]);
     }
     if (tier.spill.size) scheduleFlush();
   }, diskFailed);
 }
 
+function tierMissing(tier, key) {
+  tier.disk.delete(key);
+  tier.over.delete(key);
+  if (tier === chunkTier) chunkMissing(key);
+  else fogMissing(key);
+}
+
 function tierWaiting(tier, key) {
-  if (!diskBackend || !tier.disk.has(key) || tierInRam(tier, key)) return false;
+  if (!diskBackend || !tierOnDisk(tier, key) || tierInRam(tier, key)) return false;
   tierRead(tier, key);
   return true;
 }
 
 function tierRead(tier, key) {
   const backend = diskBackend;
-  const skip = !backend || !tier.disk.has(key) || tier.reading.has(key) || tierInRam(tier, key);
+  const skip = !backend || !tierOnDisk(tier, key) || tier.reading.has(key) || tierInRam(tier, key);
   if (skip) return Promise.resolve();
   const epoch = diskEpoch;
   const token = {};
   tier.reading.set(key, token);
-  return backend.get(tier.name, key).then(
+  return backend.get(tierDiskName(tier, key), key).then(
     (v) => {
       if (tier.reading.get(key) !== token) return;
       tier.reading.delete(key);
-      if (epoch !== diskEpoch || v === undefined) return;
+      if (epoch !== diskEpoch) return;
+      if (v === undefined) {
+        tierMissing(tier, key);
+        return;
+      }
       tier.cache.set(key, v);
       if (tier === chunkTier) chunkArrived(key);
       else fogArrived(key);
       tierTrimCache(tier);
     },
     () => {
-      if (tier.reading.get(key) === token) tier.reading.delete(key);
+      if (tier.reading.get(key) !== token) return;
+      tier.reading.delete(key);
+      if (tier === chunkTier) chunkMissing(key);
+      else fogMissing(key);
     }
   );
 }
@@ -217,8 +269,13 @@ function tierTrimCache(tier) {
   }
 }
 
+function storeHasDisk() {
+  return chunkTier.disk.size + chunkTier.over.size + fogTier.disk.size + fogTier.over.size > 0;
+}
+
 function storeReset() {
   diskEpoch++;
+  storeLayer = 'base';
   const tiers = [chunkTier, fogTier];
   for (let k = 0; k < tiers.length; k++) {
     const tier = tiers[k];
@@ -228,6 +285,7 @@ function storeReset() {
     tier.cache.clear();
     tier.reading.clear();
     tier.disk.clear();
+    tier.over.clear();
   }
   const backend = diskBackend;
   if (backend) diskRun(() => backend.clear()).catch(diskFailed);
@@ -235,16 +293,21 @@ function storeReset() {
 
 function storeLoadIndex() {
   const backend = diskBackend;
-  if (!backend) return Promise.resolve(null);
+  if (!backend || !storeResumable) return Promise.resolve(null);
   const epoch = diskEpoch;
   const load = () =>
     Promise.all([backend.keys('chunks'), backend.keys('fog'), backend.get('meta', 'world')]);
-  return diskRun(load).then(([chunks, fog, meta]) => {
-    if (epoch !== diskEpoch) return null;
-    for (let k = 0; k < chunks.length; k++) chunkTier.disk.add(chunks[k]);
-    for (let k = 0; k < fog.length; k++) fogTier.disk.add(fog[k]);
-    return meta === undefined ? null : meta;
-  }, () => null);
+  return diskRun(load).then(
+    ([chunks, fog, meta]) => {
+      if (epoch !== diskEpoch || meta === undefined) return null;
+      for (let k = 0; k < chunks.length; k++) chunkTier.disk.add(chunks[k]);
+      for (let k = 0; k < fog.length; k++) fogTier.disk.add(fog[k]);
+      storeLayer = 'over';
+      diskRun(() => backend.clearNamed(['chunks_live', 'fog_live'])).catch(diskFailed);
+      return meta;
+    },
+    () => null
+  );
 }
 
 function storeWarm(keys) {
@@ -256,16 +319,49 @@ function storeWarm(keys) {
   return Promise.all(jobs);
 }
 
-function storeFlushAll(meta) {
+function tierMigrate(tier, backend, keys, epoch) {
+  if (!keys.length) return Promise.resolve();
+  const marks = keys.map((key) => tier.over.get(key));
+  const work = () =>
+    Promise.all(keys.map((key) => backend.get(tier.name + '_live', key))).then((values) => {
+      const pairs = [];
+      for (let k = 0; k < keys.length; k++) {
+        if (values[k] !== undefined) pairs.push([keys[k], values[k]]);
+      }
+      return backend.put(tier.name, pairs);
+    });
+  return diskRun(work).then(() => {
+    if (epoch !== diskEpoch) return;
+    for (let k = 0; k < keys.length; k++) {
+      if (tier.over.get(keys[k]) !== marks[k]) continue;
+      tier.over.delete(keys[k]);
+      tier.disk.add(keys[k]);
+    }
+  });
+}
+
+function storeSnapshot(meta) {
   const backend = diskBackend;
   if (!backend) return Promise.resolve(false);
-  const tiers = [chunkTier, fogTier];
-  for (let k = 0; k < tiers.length; k++) {
-    for (const [key, v] of tiers[k].mem) tiers[k].spill.set(key, v);
-    tiers[k].mem.clear();
-  }
   const epoch = diskEpoch;
-  return flushSpill()
-    .then(() => diskRun(() => backend.put('meta', [['world', meta]])))
-    .then(() => epoch === diskEpoch && diskBackend === backend, () => false);
+  const tiers = [chunkTier, fogTier];
+  const jobs = [];
+  for (let k = 0; k < tiers.length; k++) {
+    const tier = tiers[k];
+    for (const [key, v] of tier.mem) tier.spill.set(key, v);
+    tier.mem.clear();
+    const flush = tierFlush(tier, true);
+    const stale = Array.from(tier.over.keys()).filter((key) => !tier.spill.has(key));
+    jobs.push(flush, tierMigrate(tier, backend, stale, epoch));
+  }
+  storeLayer = 'over';
+  return Promise.all(jobs)
+    .then(() => {
+      if (diskBackend !== backend) throw new Error('disk layer lost');
+      return diskRun(() => backend.put('meta', [['world', meta]]));
+    })
+    .then(
+      () => epoch === diskEpoch && diskBackend === backend,
+      () => false
+    );
 }

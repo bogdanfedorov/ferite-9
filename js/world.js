@@ -21,8 +21,13 @@ var originY = 0;
 var infiniteX = false;
 var infiniteY = false;
 var windowSeed = 0;
-var pendingChunks = new Set();
+var pendingChunks = new Map();
 var pendingFog = new Set();
+var fogMerge = new Map();
+var deferredKeys = new Set();
+var deferredQueue = [];
+var deferredSort = false;
+var placeholders = new Map();
 var windowSurf;
 
 var simFrame = 0;
@@ -397,6 +402,9 @@ function beginWorld(seed, w, h, resume) {
   infiniteY = false;
   pendingChunks.clear();
   pendingFog.clear();
+  fogMerge.clear();
+  deferredKeys.clear();
+  deferredQueue.length = 0;
   if (!resume) storeReset();
 }
 
@@ -435,6 +443,8 @@ var WORLD_FLOOR = 99840;
 var SHIFT_MARGIN = 6 * CHUNK_SIZE;
 var SHIFT_MARGIN_Y = CHUNK_SIZE;
 var PREFETCH_RING = 2;
+var BUILD_PER_FRAME = 3;
+var NEAR_BUILD = 2 * CHUNK_SIZE;
 var FOG_CHUNK = CHUNK_SIZE >> FSHIFT;
 var EDGE_FREEZE = 16;
 var SAND_ID = matId('sand'),
@@ -654,12 +664,22 @@ function setChunkDirty(lx, ly) {
   }
 }
 
-function saveChunk(cx, cy, lx, ly, belts) {
+function orSlice(into, from) {
+  for (let i = 0; i < into.length; i++) into[i] |= from[i];
+  return into;
+}
+
+function saveChunk(cx, cy, lx, ly, belts, leaving) {
   const key = chunkKey(cx, cy);
   const slice = copyFogOut(lx, ly);
-  const fogPending = pendingFog.delete(key);
-  if (slice && !fogPending) tierPut(fogTier, key, slice);
-  pendingChunks.delete(key);
+  const fogPending = leaving ? pendingFog.delete(key) : pendingFog.has(key);
+  if (slice && fogPending && leaving) {
+    const held = fogMerge.get(key);
+    fogMerge.set(key, held ? orSlice(held, slice) : slice);
+  } else if (slice && !fogPending) tierPut(fogTier, key, slice);
+  const unbuilt = leaving ? deferredKeys.delete(key) : deferredKeys.has(key);
+  const waiting = leaving ? pendingChunks.delete(key) : pendingChunks.has(key);
+  if (!leaving && (unbuilt || waiting)) return;
   if (!belts && !chunkDirty(lx, ly)) return;
   const ch = copyChunkOut(lx, ly);
   ch.belts = belts;
@@ -674,11 +694,13 @@ function windowLeftChunk() {
   return originX >> CHUNK_SHIFT;
 }
 
-function saveColumn(cx, lx) {
+function saveColumn(cx, lx, keep) {
   const belts = beltsOutColumn(lx);
   const top = windowTopChunk();
   for (let r = 0; r < H >> CHUNK_SHIFT; r++) {
-    saveChunk(cx, top + r, lx, r * CHUNK_SIZE, belts.get(r) || null);
+    const own = belts.get(r) || null;
+    saveChunk(cx, top + r, lx, r * CHUNK_SIZE, own, !keep);
+    if (keep && own) beltsIn(own, lx, r * CHUNK_SIZE);
   }
 }
 
@@ -686,15 +708,52 @@ function saveRow(cy, ly) {
   const belts = beltsOutRow(ly);
   const left = windowLeftChunk();
   for (let c = 0; c < W >> CHUNK_SHIFT; c++) {
-    saveChunk(left + c, cy, c * CHUNK_SIZE, ly, belts.get(c) || null);
+    saveChunk(left + c, cy, c * CHUNK_SIZE, ly, belts.get(c) || null, true);
   }
+}
+
+function placeholderChunk(cy) {
+  const air = (cy + 1) * CHUNK_SIZE <= SURFACE_BASE;
+  if (placeholders.has(air)) return placeholders.get(air);
+  const m = air ? VOID_ID : ROCK_ID;
+  const ch = {
+    mat: new Uint8Array(CHUNK_AREA).fill(m),
+    shade: new Uint8Array(CHUNK_AREA),
+    life: new Uint8Array(CHUNK_AREA).fill(lifeOf(m)),
+    temp: new Float32Array(CHUNK_AREA).fill(geothermalAt(air ? 0 : SURFACE_BASE)),
+    belts: null
+  };
+  placeholders.set(air, ch);
+  return ch;
+}
+
+function chunkIsNear(lx, ly) {
+  const half = CHUNK_SIZE >> 1;
+  return (
+    Math.abs(lx + half - (W >> 1)) < NEAR_BUILD && Math.abs(ly + half - (H >> 1)) < NEAR_BUILD
+  );
+}
+
+function deferChunk(key) {
+  if (deferredKeys.has(key)) return;
+  deferredKeys.add(key);
+  deferredQueue.push(key);
+  deferredSort = true;
+}
+
+function missingChunk(key, cx, cy, lx, ly) {
+  const waiting = tierWaiting(chunkTier, key);
+  const near = chunkIsNear(lx, ly);
+  if (waiting) pendingChunks.set(key, !near);
+  if (near) return buildChunk(windowSeed, cx, cy);
+  if (!waiting) deferChunk(key);
+  return placeholderChunk(cy);
 }
 
 function loadChunk(cx, cy, lx, ly) {
   const key = chunkKey(cx, cy);
   const stored = tierTake(chunkTier, key);
-  if (!stored && tierWaiting(chunkTier, key)) pendingChunks.add(key);
-  pasteChunk(stored || buildChunk(windowSeed, cx, cy), lx, ly);
+  pasteChunk(stored || missingChunk(key, cx, cy, lx, ly), lx, ly);
   const slice = tierTake(fogTier, key);
   if (slice) pasteFog(slice, lx, ly);
   else if (tierWaiting(fogTier, key)) pendingFog.add(key);
@@ -711,6 +770,39 @@ function loadColumn(cx, lx) {
 function loadRow(cy, ly) {
   const left = windowLeftChunk();
   for (let c = 0; c < W >> CHUNK_SHIFT; c++) loadChunk(left + c, cy, c * CHUNK_SIZE, ly);
+}
+
+function keyDistance(key) {
+  const half = CHUNK_SIZE >> 1;
+  const dx = keyCx(key) * CHUNK_SIZE - originX + half - (W >> 1);
+  const dy = keyCy(key) * CHUNK_SIZE - originY + half - (H >> 1);
+  return Math.max(Math.abs(dx), Math.abs(dy));
+}
+
+function buildDeferred() {
+  while (deferredQueue.length) streamWorld();
+}
+
+function streamWorld() {
+  if (!deferredQueue.length) return;
+  if (deferredSort) {
+    deferredQueue.sort((a, b) => keyDistance(a) - keyDistance(b));
+    deferredSort = false;
+  }
+  for (let built = 0; built < BUILD_PER_FRAME && deferredQueue.length; ) {
+    const key = deferredQueue.shift();
+    if (!deferredKeys.delete(key)) continue;
+    const lx = keyCx(key) * CHUNK_SIZE - originX,
+      ly = keyCy(key) * CHUNK_SIZE - originY;
+    if (!chunkInWindow(lx, ly)) continue;
+    const stored = tierTake(chunkTier, key);
+    pasteChunk(stored || buildChunk(windowSeed, keyCx(key), keyCy(key)), lx, ly);
+    if (stored && stored.belts) beltsIn(stored.belts, lx, ly);
+    if (stored) setChunkDirty(lx, ly);
+    markChunkHot(lx, ly);
+    built++;
+  }
+  if (shelvedObjects.length) unshelveObjects();
 }
 
 function chunkInWindow(lx, ly) {
@@ -739,7 +831,20 @@ function chunkArrived(key) {
   markChunkHot(lx, ly);
 }
 
+function chunkMissing(key) {
+  const placeholder = pendingChunks.get(key);
+  pendingChunks.delete(key);
+  if (placeholder) deferChunk(key);
+}
+
 function fogArrived(key) {
+  const held = fogMerge.get(key);
+  if (held) {
+    fogMerge.delete(key);
+    const stored = tierTake(fogTier, key);
+    if (stored) orSlice(stored, held);
+    tierPut(fogTier, key, stored || held);
+  }
   if (!pendingFog.delete(key)) return;
   const lx = keyCx(key) * CHUNK_SIZE - originX,
     ly = keyCy(key) * CHUNK_SIZE - originY;
@@ -749,6 +854,17 @@ function fogArrived(key) {
   mergeFog(slice, lx, ly);
   seenCount = countSeen();
   markChunkHot(lx, ly);
+}
+
+function fogMissing(key) {
+  const held = fogMerge.get(key);
+  if (!held) {
+    pendingFog.delete(key);
+    return;
+  }
+  fogMerge.delete(key);
+  tierPut(fogTier, key, held);
+  if (pendingFog.has(key)) fogArrived(key);
 }
 
 function mergeFog(slice, lx, ly) {
@@ -763,7 +879,7 @@ function mergeFog(slice, lx, ly) {
 }
 
 function prefetchAround() {
-  if (!chunkTier.disk.size && !fogTier.disk.size) return;
+  if (!storeHasDisk()) return;
   const ring = PREFETCH_RING;
   const cols = W >> CHUNK_SHIFT,
     rows = H >> CHUNK_SHIFT;
@@ -939,6 +1055,37 @@ function shiftWindowY(dr) {
   prefetchAround();
 }
 
+function jumpWindow(dcx, dcy) {
+  const left = windowLeftChunk();
+  for (let k = 0; k < W >> CHUNK_SHIFT; k++) saveColumn(left + k, k * CHUNK_SIZE, false);
+  originX += dcx * CHUNK_SIZE;
+  originY += dcy * CHUNK_SIZE;
+  seen.fill(0);
+  fogVal.fill(0);
+  hotA.fill(1);
+  hotB.fill(1);
+  dirtyT.fill(0);
+  dmgList = [];
+  fillGeothermal();
+  fillSurface(windowSeed, 0, W);
+  const newLeft = windowLeftChunk();
+  for (let k = 0; k < W >> CHUNK_SHIFT; k++) loadColumn(newLeft + k, k * CHUNK_SIZE);
+  revealSurface(0, W, 0, H);
+  seenCount = countSeen();
+  surfaceTop = windowSurfaceTop() - originY;
+  prefetchAround();
+}
+
+function moveWindow(dcx, dcy) {
+  const full = Math.abs(dcx) >= W >> CHUNK_SHIFT || Math.abs(dcy) >= H >> CHUNK_SHIFT;
+  if (dcx && dcy && full) {
+    jumpWindow(dcx, dcy);
+    return;
+  }
+  shiftWindow(dcx);
+  shiftWindowY(dcy);
+}
+
 function maxShiftMargin() {
   return (W >> 1) - CHUNK_SIZE;
 }
@@ -1019,12 +1166,8 @@ function worldMeta() {
 
 function saveWorld() {
   const left = windowLeftChunk();
-  for (let k = 0; k < W >> CHUNK_SHIFT; k++) saveColumn(left + k, k * CHUNK_SIZE);
-  const flushed = storeFlushAll(worldMeta());
-  for (let k = 0; k < W >> CHUNK_SHIFT; k++) loadColumn(left + k, k * CHUNK_SIZE);
-  hotA.fill(1);
-  hotB.fill(1);
-  return flushed;
+  for (let k = 0; k < W >> CHUNK_SHIFT; k++) saveColumn(left + k, k * CHUNK_SIZE, true);
+  return storeSnapshot(worldMeta());
 }
 
 function resumeWorld() {
@@ -1034,7 +1177,8 @@ function resumeWorld() {
   });
 }
 
-function generateWorld(seed, w, h, resume) {
+function generateWorld(startSeed, w, h, resume) {
+  const seed = resume ? resume.seed : startSeed;
   beginWorld(seed, w, h, resume);
   originX = resume ? resume.originX : -(W >> 1);
   originY = resume ? resume.originY : 0;
@@ -1047,10 +1191,12 @@ function generateWorld(seed, w, h, resume) {
   surfaceTop = windowSurfaceTop() - originY;
 
   stampWorld(seed);
+  buildDeferred();
 
   if (resume) {
     finishWorld(null);
     revealSurface(0, W, 0, H);
+    seenCount = countSeen();
     return { spawnX: W >> 1, spawnY: H >> 1 };
   }
 

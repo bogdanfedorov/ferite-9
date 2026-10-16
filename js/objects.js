@@ -339,6 +339,19 @@ function unshelveObject(o, lx, ly) {
   return true;
 }
 
+function unshelveObjects() {
+  const shelved = [];
+  for (let k = 0; k < shelvedObjects.length; k++) {
+    const o = shelvedObjects[k];
+    const lx = localX(o.x),
+      ly = localY(o.y);
+    const placed = lx >= 0 && lx < W && ly >= 0 && ly < H && unshelveObject(o, lx, ly);
+    if (placed) objects.push(o);
+    else shelved.push(o);
+  }
+  shelvedObjects = shelved;
+}
+
 function shiftObjects(dx, dy) {
   const inside = [];
   for (let k = 0; k < objects.length; k++) {
@@ -348,17 +361,8 @@ function shiftObjects(dx, dy) {
     if (o.x >= 0 && o.x < W && o.y >= 0 && o.y < H) inside.push(o);
     else shelveObject(o);
   }
-  const shelved = [];
-  for (let k = 0; k < shelvedObjects.length; k++) {
-    const o = shelvedObjects[k];
-    const lx = localX(o.x),
-      ly = localY(o.y);
-    const placed = lx >= 0 && lx < W && ly >= 0 && ly < H && unshelveObject(o, lx, ly);
-    if (placed) inside.push(o);
-    else shelved.push(o);
-  }
-  shelvedObjects = shelved;
   objects = inside;
+  unshelveObjects();
 }
 
 function resetObjects() {

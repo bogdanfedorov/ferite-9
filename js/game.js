@@ -120,8 +120,7 @@ function followWindow(lx, ly, maxChunks) {
   if (!dcx && !dcy) return;
   const dx = dcx * CHUNK_SIZE,
     dy = dcy * CHUNK_SIZE;
-  shiftWindow(dcx);
-  shiftWindowY(dcy);
+  moveWindow(dcx, dcy);
   shiftPlayer(dx, dy);
   shiftObjects(dx, dy);
   shiftCamera(dx, dy);
@@ -174,6 +173,7 @@ function frame(now) {
     }
   } else loop.acc = 0;
 
+  streamWorld();
   const wpt = screenToWorld(input.mouse.x, input.mouse.y);
   render(game.tool, wpt);
   if (++loop.hudTick % 6 === 0) updateHud(wpt);

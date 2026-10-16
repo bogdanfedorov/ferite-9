@@ -93,25 +93,46 @@ Done:
     window. Fog slices arrive the same way and are merged into `seen`. A
     placeholder that leaves the window before the read arrives is not stored
     unless it was modified in between.
-12. **World save and resume.** `saveWorld()` writes every chunk and fog slice of
-    the window and a meta record (seed, origins) to IndexedDB. `resumeWorld()`
-    loads the index and meta and warms the window's chunks;
-    `generateWorld(seed, w, h, meta)` then rebuilds the same window. Starting a
-    new world wipes the disk store.
+12. **World save and resume.** `saveWorld()` writes a consistent snapshot: all
+    window chunks and fog slices go to the base object stores and the meta record
+    (seed, origins) is written last. After a snapshot, evictions go to separate
+    `*_live` overlay stores, and the next snapshot migrates the overlay into the
+    base, so a resume (`resumeWorld()` then `generateWorld(seed, w, h, meta)`, which
+    uses the seed from meta) sees exactly the last snapshot and never a mix of
+    versions; the overlay is discarded on resume. Starting a new world wipes the
+    disk store.
+13. **Stable origin.** The Go build serves the game on `127.0.0.1:<random port>/<token>/`
+    with a temporary browser profile removed on exit, so its IndexedDB never
+    survives a session. `storeResumable` is false for an http loopback origin with a
+    port; the store then clears the database at startup, spills only within the
+    session, and `resumeWorld()` returns null. Electron (`file://`) and normal
+    origins are resumable.
+14. **Spread generation.** Chunks that must be generated are built at once only
+    near the window centre (`NEAR_BUILD`); the rest get a cheap placeholder and are
+    queued nearest first, `BUILD_PER_FRAME` per frame (`streamWorld`, called from
+    the frame loop even when paused). A vertical or horizontal shift therefore
+    builds nothing synchronously, a respawn reloads the window once
+    (`jumpWindow`) with about 12 chunks built at once, and the initial world is
+    built fully before play. Placeholders are never stored; shelved objects are
+    retried as chunks are built.
+15. **Missing disk entries.** A read that finds nothing forgets the key and the
+    placeholder is generated. Fog of a chunk that leaves while its slice is still
+    being read is OR-merged with the stored slice when the read arrives.
 
 Remaining:
 
 1. **Game-level save is not wired.** The game has no save mechanism (only
    settings and language in `localStorage`). `saveWorld` / `resumeWorld` store
-   and restore the terrain only; nothing calls them yet. Inventory, market,
+   and restore the terrain only; nothing calls them yet, and the Go build could
+   not resume anyway (see 13). Inventory, market,
    player, loose objects, the cargo pad and belts outside the window are not
    part of a save, and a resumed world has no spawn shelter.
 2. **Placeholder race.** In the rare case a chunk is needed before its read
    completes, edits made to the placeholder in that short time are overwritten
    when the stored chunk arrives (or overwrite it, if the chunk left first).
 3. **Zoom floor.** With a 320-cell window, the minimum integral zoom is raised so
-   the view is at most 224 cells tall: about 5 on a 1080p screen, and above the
-   normal maximum of 9 on a very tall screen (the frozen strip is then visible).
+   the view is at most 224 cells tall: about 5 on a 1080p screen, 10 on a 4K
+   screen (above the usual maximum of 9). The floor is authoritative.
 4. **Depth limits.** The world ends at `WORLD_FLOOR` (99840 cells deep). Ore,
    coal and sand deposits stop at their original depth ranges; deeper chunks hold
    rock, caves and lava. Temperature below world Y 320 is constant.
