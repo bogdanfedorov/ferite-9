@@ -153,7 +153,7 @@ function rndInt(n) {
 function hash2(x, y, s) {
   let h = (x | 0) * 374761393 + (y | 0) * 668265263 + (s | 0) * 362437;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 function smooth(t) {
   return t * t * (3 - 2 * t);
@@ -336,10 +336,13 @@ function beginWorld(seed, w, h) {
   dmgList.length = 0;
   produced.fill(0);
   nearHot.fill(0);
-  for (let i = 0; i < LEN; i++) shade[i] = (rnd() * 256) | 0;
   seen.fill(0);
   fogVal.fill(0);
   seenCount = 0;
+}
+
+function randomizeShade() {
+  for (let i = 0; i < LEN; i++) shade[i] = (rnd() * 256) | 0;
 }
 
 function finishWorld(tempOf) {
@@ -366,15 +369,20 @@ function paintRect(x0, y0, x1, y1, m) {
 var CHUNK_SHIFT = 6,
   CHUNK_SIZE = 1 << CHUNK_SHIFT,
   CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+var REF_W = 480,
+  REF_H = 320;
 var SURFACE_BASE = 52;
+var CAVE_FLOOR_MARGIN = 14;
+var SAND_ID = matId('sand'),
+  HARDPAN_ID = matId('hardpan'),
+  ROCK_ID = matId('rock');
 var DEPOSIT_SLOTS = 3;
-var DEPOSIT_REF_W = 480;
 var DEPOSIT_KINDS = [
-  { mat: 'sand', n: 46, y0: 90, y1: 280, r0: 7, rn: 9, mask: ['rock', 'hardpan'] },
-  { mat: 'coal_seam', n: 44, y0: 105, y1: 280, r0: 5, rn: 7, mask: ['rock', 'hardpan'] },
-  { mat: 'ore_seam', n: 38, y0: 140, y1: 285, r0: 4, rn: 6, mask: ['rock', 'hardpan'] },
-  { mat: 'water', n: 16, y0: 120, y1: 240, r0: 5, rn: 6, mask: ['void'] },
-  { mat: 'lava', n: 12, y0: 260, y1: 300, r0: 4, rn: 7, mask: ['void', 'rock'] },
+  { id: SAND_ID, n: 46, y0: 90, y1: 280, r0: 7, rn: 9, mask: [ROCK_ID, HARDPAN_ID] },
+  { id: matId('coal_seam'), n: 44, y0: 105, y1: 280, r0: 5, rn: 7, mask: [ROCK_ID, HARDPAN_ID] },
+  { id: matId('ore_seam'), n: 38, y0: 140, y1: 285, r0: 4, rn: 6, mask: [ROCK_ID, HARDPAN_ID] },
+  { id: matId('water'), n: 16, y0: 120, y1: 240, r0: 5, rn: 6, mask: [VOID_ID] },
+  { id: matId('lava'), n: 12, y0: 260, y1: 300, r0: 4, rn: 7, mask: [VOID_ID, ROCK_ID] },
 ];
 var BLOB_REACH = 1.3;
 
@@ -383,7 +391,7 @@ function regionRand(seed, rx, ry, salt) {
 }
 
 function geothermalAt(wy) {
-  return 18 + Math.max(0, wy) * (46 / 320);
+  return 18 + Math.max(0, wy) * (46 / REF_H);
 }
 
 function surfaceAt(seed, wx) {
@@ -406,16 +414,10 @@ function isCaveAt(seed, wx, wy) {
   return (n > 0.47 && n < 0.565 && n2 > 0.33) || (n2 > 0.68 && n > 0.42 && n < 0.62);
 }
 
-function depositMatId(name) {
-  return name === 'void' ? VOID_ID : matId(name);
-}
-
 function regionBlobs(seed, rx, ry, k, out) {
   const kind = DEPOSIT_KINDS[k];
-  const perRegion = (kind.n * CHUNK_AREA) / (DEPOSIT_REF_W * (kind.y1 - kind.y0));
+  const perRegion = (kind.n * CHUNK_AREA) / (REF_W * (kind.y1 - kind.y0));
   const p = Math.min(1, perRegion / DEPOSIT_SLOTS);
-  const id = matId(kind.mat);
-  const mask = kind.mask.map(depositMatId);
   for (let s = 0; s < DEPOSIT_SLOTS; s++) {
     const salt = k * 16 + s * 4;
     if (regionRand(seed, rx, ry, salt) >= p) continue;
@@ -423,7 +425,7 @@ function regionBlobs(seed, rx, ry, k, out) {
     const y = ry * CHUNK_SIZE + ((regionRand(seed, rx, ry, salt + 2) * CHUNK_SIZE) | 0);
     if (y < kind.y0 || y >= kind.y1) continue;
     const r = kind.r0 + ((regionRand(seed, rx, ry, salt + 3) * kind.rn) | 0);
-    out.push({ id, mask, x, y, r, r2: r * r });
+    out.push({ id: kind.id, mask: kind.mask, x, y, r, r2: r * r });
   }
 }
 
@@ -463,15 +465,16 @@ function applyBlobs(seed, blobs, wx, wy, m) {
 function layerAt(wy, surf, sandD, panD) {
   if (wy < surf) return VOID_ID;
   const depth = wy - surf;
-  if (depth < sandD) return matId('sand');
-  if (depth < panD) return matId('hardpan');
-  return matId('rock');
+  if (depth < sandD) return SAND_ID;
+  if (depth < panD) return HARDPAN_ID;
+  return ROCK_ID;
 }
 
-function generateChunk(seed, cx, cy) {
+function generateChunk(seed, cx, cy, caveFloor) {
   const S = CHUNK_SIZE;
-  const mat = new Uint8Array(CHUNK_AREA).fill(VOID_ID);
-  const shade = new Uint8Array(CHUNK_AREA);
+  const chunk_mat = new Uint8Array(CHUNK_AREA).fill(VOID_ID);
+  const chunk_shade = new Uint8Array(CHUNK_AREA);
+  const floorY = caveFloor === undefined ? Infinity : caveFloor;
   const blobs = blobsNear(seed, cx, cy);
   const x0 = cx * S,
     y0 = cy * S;
@@ -483,12 +486,12 @@ function generateChunk(seed, cx, cy) {
     for (let y = 0; y < S; y++) {
       const wy = y0 + y;
       let m = layerAt(wy, surf, sandD, panD);
-      if (m !== VOID_ID && wy >= surf + 16 && isCaveAt(seed, wx, wy)) m = VOID_ID;
-      mat[y * S + x] = applyBlobs(seed, blobs, wx, wy, m);
-      shade[y * S + x] = (hash2(wx, wy, seed + 999) * 256) | 0;
+      if (m !== VOID_ID && wy >= surf + 16 && wy <= floorY && isCaveAt(seed, wx, wy)) m = VOID_ID;
+      chunk_mat[y * S + x] = applyBlobs(seed, blobs, wx, wy, m);
+      chunk_shade[y * S + x] = (hash2(wx, wy, seed + 999) * 256) | 0;
     }
   }
-  return { mat, shade };
+  return { mat: chunk_mat, shade: chunk_shade };
 }
 
 function stampChunk(chunk, cx, cy) {
@@ -506,10 +509,11 @@ function stampChunk(chunk, cx, cy) {
 }
 
 function stampWorld(seed) {
+  const caveFloor = H - CAVE_FLOOR_MARGIN;
   const cw = Math.ceil(W / CHUNK_SIZE),
     ch = Math.ceil(H / CHUNK_SIZE);
   for (let cy = 0; cy < ch; cy++) {
-    for (let cx = 0; cx < cw; cx++) stampChunk(generateChunk(seed, cx, cy), cx, cy);
+    for (let cx = 0; cx < cw; cx++) stampChunk(generateChunk(seed, cx, cy, caveFloor), cx, cy);
   }
 }
 
