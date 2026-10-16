@@ -18,8 +18,8 @@ var ROOM_BTN_H = 3;
 var ROOM_BTN_GAP = 4;
 
 function roomStock() {
-  var out = [];
-  for (var i = 0; i < MAT_COUNT; i++) {
+  const out = [];
+  for (let i = 0; i < MAT_COUNT; i++) {
     if (ISVOID[i] || i === EDGE_ID) continue;
     out.push(i);
   }
@@ -27,19 +27,21 @@ function roomStock() {
 }
 
 function roomLabelWidth(id) {
-  var key = MATS[id].labelKey;
-  var longest = MATS[id].name.length;
-  for (var code in LANGS) {
-    var v = LANGS[code][key];
+  const key = MATS[id].labelKey;
+  let longest = MATS[id].name.length;
+  for (const code in LANGS) {
+    const v = LANGS[code][key];
     if (typeof v === 'string' && v.length > longest) longest = v.length;
   }
   return Math.ceil(longest * ROOM_LABEL_CELLS) + ROOM_LABEL_PAD;
 }
 
 function roomBinWidths(stock, room) {
-  var wide = [], span = 0, i;
+  let wide = [],
+    span = 0,
+    i;
   for (i = 0; i < stock.length; i++) {
-    var w = roomLabelWidth(stock[i]);
+    let w = roomLabelWidth(stock[i]);
     if (w < ROOM_BIN_W) w = ROOM_BIN_W;
     wide.push(w);
     span += w + ROOM_BIN_GAP;
@@ -47,7 +49,7 @@ function roomBinWidths(stock, room) {
   span -= ROOM_BIN_GAP;
   if (span <= room) return wide;
 
-  var k = room / span;
+  const k = room / span;
   span = 0;
   for (i = 0; i < wide.length; i++) {
     wide[i] = Math.max(ROOM_BIN_W, Math.floor(wide[i] * k));
@@ -57,8 +59,8 @@ function roomBinWidths(stock, room) {
 }
 
 function roomBin(x, floorY, m, w) {
-  var wall = EDGE_ID;
-  var top = floorY - ROOM_BIN_H;
+  const wall = EDGE_ID;
+  const top = floorY - ROOM_BIN_H;
   paintRect(x - 1, top, x - 1, floorY, wall);
   paintRect(x + w, top, x + w, floorY, wall);
   paintRect(x, floorY, x + w - 1, floorY, wall);
@@ -72,8 +74,8 @@ function roomBinBox(b) {
 }
 
 function roomButtonRect(b) {
-  var x0 = b.x + ((b.w - ROOM_BTN_W) >> 1);
-  var y0 = b.top - ROOM_BTN_GAP - ROOM_BTN_H;
+  const x0 = b.x + ((b.w - ROOM_BTN_W) >> 1);
+  const y0 = b.top - ROOM_BTN_GAP - ROOM_BTN_H;
   return { x0: x0, y0: y0, x1: x0 + ROOM_BTN_W, y1: y0 + ROOM_BTN_H };
 }
 
@@ -83,22 +85,22 @@ function roomLabelY() {
 
 function roomButtonAt(wx, wy) {
   if (!sandbox.on) return null;
-  for (var i = 0; i < sandbox.bins.length; i++) {
-    var r = roomButtonRect(sandbox.bins[i]);
+  for (let i = 0; i < sandbox.bins.length; i++) {
+    const r = roomButtonRect(sandbox.bins[i]);
     if (wx >= r.x0 && wx < r.x1 && wy >= r.y0 && wy < r.y1) return sandbox.bins[i];
   }
   return null;
 }
 
 function roomKeepsClear(x, y) {
-  var half = player.w / 2 + 1, tall = player.h / 2 + 1;
-  return x > player.x - half && x < player.x + half
-    && y > player.y - tall && y < player.y + tall;
+  const half = player.w / 2 + 1,
+    tall = player.h / 2 + 1;
+  return x > player.x - half && x < player.x + half && y > player.y - tall && y < player.y + tall;
 }
 
 function roomStockLeft(b, box) {
-  for (var y = box.y0; y <= box.y1; y++) {
-    for (var x = box.x0; x <= box.x1; x++) {
+  for (let y = box.y0; y <= box.y1; y++) {
+    for (let x = box.x0; x <= box.x1; x++) {
       if (inBounds(x, y) && mat[y * W + x] === b.id) return true;
     }
   }
@@ -106,16 +108,16 @@ function roomStockLeft(b, box) {
 }
 
 function roomStableTemp(id) {
-  var warm = EMITS[id] > 0 ? EMITS[id] : ROOM_TEMP;
-  var floor = COLD_T[id] > 0 ? COLD_T[id] + ROOM_STABLE_MARGIN : 0;
+  const warm = EMITS[id] > 0 ? EMITS[id] : ROOM_TEMP;
+  const floor = COLD_T[id] > 0 ? COLD_T[id] + ROOM_STABLE_MARGIN : 0;
   return warm > floor ? warm : floor;
 }
 
 function roomRefill(b, wipe) {
-  var box = roomBinBox(b);
-  var warm = roomStableTemp(b.id);
-  for (var y = box.y0; y <= box.y1; y++) {
-    for (var x = box.x0; x <= box.x1; x++) {
+  const box = roomBinBox(b);
+  const warm = roomStableTemp(b.id);
+  for (let y = box.y0; y <= box.y1; y++) {
+    for (let x = box.x0; x <= box.x1; x++) {
       if (!inBounds(x, y) || roomKeepsClear(x, y)) continue;
       if (!wipe && !ISVOID[mat[y * W + x]]) continue;
       setCellHot(x, y, b.id, warm);
@@ -129,9 +131,9 @@ function roomResetBin(b) {
 }
 
 function tickTestRoom(frame) {
-  var count = sandbox.bins.length;
+  const count = sandbox.bins.length;
   if (!count || frame % ROOM_REFILL_EVERY) return;
-  var b = sandbox.bins[((frame / ROOM_REFILL_EVERY) | 0) % count];
+  const b = sandbox.bins[((frame / ROOM_REFILL_EVERY) | 0) % count];
   roomRefill(b, !roomStockLeft(b, roomBinBox(b)));
 }
 
@@ -142,10 +144,11 @@ function roomTemp(m) {
 function generateTestRoom(seed, w, h) {
   beginWorld(seed, w, h);
   sandbox.bins.length = 0;
-  var ROCK = matId('rock'), i;
+  let ROCK = matId('rock'),
+    i;
   for (i = 0; i < H; i++) geothermalGradient[i] = ROOM_TEMP;
 
-  var floorY = Math.round(H * ROOM_SKY);
+  const floorY = Math.round(H * ROOM_SKY);
   surfaceTop = floorY - ROOM_BIN_H - 24;
 
   paintRect(0, floorY + 1, W - 1, floorY + 8, ROCK);
@@ -156,22 +159,22 @@ function generateTestRoom(seed, w, h) {
   paintRect(0, H - 4, W - 1, H - 1, EDGE_ID);
   paintRect(0, floorY, W - 1, floorY, ROCK);
 
-  var stock = roomStock();
-  var room = W - 2 * ROOM_MARGIN - ROOM_APRON;
-  var wide = roomBinWidths(stock, room);
-  var span = 0;
+  const stock = roomStock();
+  const room = W - 2 * ROOM_MARGIN - ROOM_APRON;
+  const wide = roomBinWidths(stock, room);
+  let span = 0;
   for (i = 0; i < wide.length; i++) span += wide[i] + ROOM_BIN_GAP;
   span -= ROOM_BIN_GAP;
 
-  var start = Math.max(ROOM_MARGIN + ROOM_APRON, ((W - span) >> 1) + (ROOM_APRON >> 1));
-  var at = start;
+  const start = Math.max(ROOM_MARGIN + ROOM_APRON, ((W - span) >> 1) + (ROOM_APRON >> 1));
+  let at = start;
   for (i = 0; i < stock.length; i++) {
     roomBin(at, floorY, stock[i], wide[i]);
     at += wide[i] + ROOM_BIN_GAP;
   }
 
-  var padX = (W >> 1) - (ROOM_PAD_W >> 1);
-  var padY = floorY - ROOM_BIN_H - 16;
+  const padX = (W >> 1) - (ROOM_PAD_W >> 1);
+  const padY = floorY - ROOM_BIN_H - 16;
   paintRect(padX - 1, padY, padX - 1, padY + ROOM_PAD_H - 1, ROCK);
   paintRect(padX + ROOM_PAD_W, padY, padX + ROOM_PAD_W, padY + ROOM_PAD_H - 1, ROCK);
   paintRect(padX - 1, padY + ROOM_PAD_H, padX + ROOM_PAD_W, padY + ROOM_PAD_H, ROCK);

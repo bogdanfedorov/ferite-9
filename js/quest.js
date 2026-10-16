@@ -11,14 +11,20 @@ var QUEST = {
   ]
 };
 
-function questStage() { return QUEST.road[QUEST.at]; }
+function questStage() {
+  return QUEST.road[QUEST.at];
+}
 
-function questDeliver() { return questStage().deliver; }
+function questDeliver() {
+  return questStage().deliver;
+}
 
 function questDone() {
-  var d = questDeliver();
-  for (var i = 0; i < d.length; i++) if ((cargo[d[i].key] || 0) < d[i].need) return false;
+  const d = questDeliver();
+  for (let i = 0; i < d.length; i++) if ((cargo[d[i].key] || 0) < d[i].need) return false;
   return true;
 }
 
-function resetQuest() { QUEST.at = 0; }
+function resetQuest() {
+  QUEST.at = 0;
+}

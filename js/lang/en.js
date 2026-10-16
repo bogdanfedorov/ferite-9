@@ -54,8 +54,10 @@ regLang('en', {
 
   'tip.drill': 'LMB — break rock: it spills loose right there · RMB — grapple',
   'tip.ignite': 'LMB on coal — set it alight · embers hold 1500 °C',
-  'tip.hand': 'Hold LMB on loose material to scoop a handful of it alone · let go and it settles back into the ground',
-  'tip.build': 'Pick what to place and which shape · hold LMB and drag · Shift — even line or square · R — shape',
+  'tip.hand':
+    'Hold LMB on loose material to scoop a handful of it alone · let go and it settles back into the ground',
+  'tip.build':
+    'Pick what to place and which shape · hold LMB and drag · Shift — even line or square · R — shape',
 
   'body.belt': 'belt',
   'body.wall': 'wall',
@@ -88,7 +90,8 @@ regLang('en', {
   'msg.soundOff': 'Sound off',
 
   'intro.kicker': 'Deep mine · shift 41',
-  'intro.lede': 'You are research unit <b>sol_1.01</b>, the next parcel Mission Control dropped into this shaft. You have no stock: rock crumbles loose right where you break it, and everything travels in your hands. Hollow a furnace out of the rock, carry coal and ore into it, set it alight — and watch ferrite run out as molten iron. Every unit lost costs Control a new parcel, and costs you another round of remarks from orbit.',
+  'intro.lede':
+    'You are research unit <b>sol_1.01</b>, the next parcel Mission Control dropped into this shaft. You have no stock: rock crumbles loose right where you break it, and everything travels in your hands. Hollow a furnace out of the rock, carry coal and ore into it, set it alight — and watch ferrite run out as molten iron. Every unit lost costs Control a new parcel, and costs you another round of remarks from orbit.',
   'intro.keyMove': 'move, the pack fires on up',
   'intro.keyTool': 'current tool',
   'intro.keyHook': 'grapple and reel in',
@@ -97,18 +100,27 @@ regLang('en', {
   'intro.keyHelp': 'help · pause',
   'intro.cta': 'Descend into the shaft',
   'intro.room': 'Test room',
-  'intro.foot': 'Unsurveyed ground does not exist for the simulation yet: lava and a coal seam side by side leave each other alone until you dig through to them. What you open keeps running on its own.',
+  'intro.foot':
+    'Unsurveyed ground does not exist for the simulation yet: lava and a coal seam side by side leave each other alone until you dig through to them. What you open keeps running on its own.',
 
   'help.kicker': 'Help',
   'help.title': 'How to smelt iron',
-  'help.s1': '<b>The drill</b> chews rock over time: sand is instant, stone about a second, ferrite and iron much longer. Cracks on a cell show the progress. It ignores liquids and passes straight through them — water and lava have to be channelled away or walled off. The <b>hand</b> scoops loose material: only what you point at goes into the handful, never a mix. Hold to lift it, drag it with the mouse, and the moment you let go it settles back into the ground.',
-  'help.s2': '<b>Hollow a furnace out of the rock</b>: drill a niche with a narrow mouth. Stone holds heat worse than firebrick, but it is what you have from the start.',
-  'help.s3': 'Carry coal and ferrite into the niche <b>by hand</b> — coal at the bottom, ore above it — then hit the coal with the <b>igniter</b>. Embers hold 1500 °C and burn for tens of seconds.',
-  'help.s4': '<b>Ferrite melts at 1120 °C</b> and runs down as molten iron. It sets below 850 °C, or instantly in water — quench it if you are in a hurry.',
-  'help.s5': '<b>Glass is harder than iron</b>: sand only melts at 1340 °C. A layer of sand resting on the coal never gets there — a cell with one hot neighbour tops out around 1240 °C. Bury the sand inside the coal so the embers surround it.',
-  'help.s6': '<b>Heat is everywhere</b>: lava warms stone, water drains heat and boils, overheating costs you health. Press <b>T</b> to see temperature.',
-  'help.s7': '<b>The world wakes where you go</b>: unsurveyed ground is not simulated at all. Break through and look — everything there starts at once, and keeps going after you leave.',
-  'help.s8': '<b>The unit is mortal</b>: falls over 17 cells, heat above 120 °C, drilling into glowing rock, and being buried in loose material. Every loss is a new parcel with a new number and another remark from orbit. <b>The pack does not refuel itself</b>: the tank is only filled at a dock station, so take height on the grapple.',
+  'help.s1':
+    '<b>The drill</b> chews rock over time: sand is instant, stone about a second, ferrite and iron much longer. Cracks on a cell show the progress. It ignores liquids and passes straight through them — water and lava have to be channelled away or walled off. The <b>hand</b> scoops loose material: only what you point at goes into the handful, never a mix. Hold to lift it, drag it with the mouse, and the moment you let go it settles back into the ground.',
+  'help.s2':
+    '<b>Hollow a furnace out of the rock</b>: drill a niche with a narrow mouth. Stone holds heat worse than firebrick, but it is what you have from the start.',
+  'help.s3':
+    'Carry coal and ferrite into the niche <b>by hand</b> — coal at the bottom, ore above it — then hit the coal with the <b>igniter</b>. Embers hold 1500 °C and burn for tens of seconds.',
+  'help.s4':
+    '<b>Ferrite melts at 1120 °C</b> and runs down as molten iron. It sets below 850 °C, or instantly in water — quench it if you are in a hurry.',
+  'help.s5':
+    '<b>Glass is harder than iron</b>: sand only melts at 1340 °C. A layer of sand resting on the coal never gets there — a cell with one hot neighbour tops out around 1240 °C. Bury the sand inside the coal so the embers surround it.',
+  'help.s6':
+    '<b>Heat is everywhere</b>: lava warms stone, water drains heat and boils, overheating costs you health. Press <b>T</b> to see temperature.',
+  'help.s7':
+    '<b>The world wakes where you go</b>: unsurveyed ground is not simulated at all. Break through and look — everything there starts at once, and keeps going after you leave.',
+  'help.s8':
+    '<b>The unit is mortal</b>: falls over 17 cells, heat above 120 °C, drilling into glowing rock, and being buried in loose material. Every loss is a new parcel with a new number and another remark from orbit. <b>The pack does not refuel itself</b>: the tank is only filled at a dock station, so take height on the grapple.',
   'help.cta': 'Back to work',
   'intro.keySettings': 'settings',
 
@@ -120,9 +132,11 @@ regLang('en', {
   'set.volume': 'Volume',
   'set.grab': 'Grab',
   'set.grabSize': 'Grab size',
-  'set.grabNote': 'The handful holds up to {cells} cells at once — a {n}×{n} clump of the one material you aimed at.',
+  'set.grabNote':
+    'The handful holds up to {cells} cells at once — a {n}×{n} clump of the one material you aimed at.',
   'set.vision': 'Colour scheme',
-  'set.visionNote': 'Colour-blind schemes pull the materials apart: what used to merge is spread along the blue-yellow axis. Applies to the mine and the instruments alike.',
+  'set.visionNote':
+    'Colour-blind schemes pull the materials apart: what used to merge is spread along the blue-yellow axis. Applies to the mine and the instruments alike.',
   'set.vision.off': 'Standard',
   'set.vision.protan': 'Protanopia · red',
   'set.vision.deutan': 'Deuteranopia · green',
@@ -133,7 +147,8 @@ regLang('en', {
   'set.worldMine': 'shaft',
   'set.worldRoom': 'test room',
   'set.worldSwap': 'Restart in the other one',
-  'set.worldNote': 'The test room is a flat apron with a bin of every material: the jetpack burns no fuel and falls do no harm. Switching builds the world anew.',
+  'set.worldNote':
+    'The test room is a flat apron with a bin of every material: the jetpack burns no fuel and falls do no harm. Switching builds the world anew.',
   'set.keys': 'Keys',
   'set.keysReset': 'Defaults',
   'set.press': 'press a key',
@@ -154,8 +169,10 @@ regLang('en', {
 
   'win.kicker': 'Cargo accepted',
   'win.title': 'The shuttle is away',
-  'win.textClean': '{sol} closed the quota without losing a single parcel. Control is checking the telemetry for forgery.',
-  'win.textLosses': '{sol} closed the quota. The previous {n} parcels were written off as "research expenditure".',
+  'win.textClean':
+    '{sol} closed the quota without losing a single parcel. Control is checking the telemetry for forgery.',
+  'win.textLosses':
+    '{sol} closed the quota. The previous {n} parcels were written off as "research expenditure".',
   'win.time': 'Shift time',
   'win.cargo': 'Cargo on the pad',
   'win.drilled': 'Cells drilled',
@@ -315,27 +332,33 @@ regLang('en', {
     'The collapse was predictable. We predicted it. You were not told.'
   ],
 
-  'respawn': [
+  respawn: [
     'Parcel {sol} is in the airlock. Try to last longer than the previous one.',
     'New hull, old task. We do not carry memory over — too expensive.',
     '{sol} in position. The loss log has been updated.',
     '{sol} unpacked. The warranty does not cover lava, height or sand.'
   ],
 
-  'event.intro': 'Control "Sol" on the line. You are {sol}, a research unit. Shift quota: 60 iron and 40 glass onto the cargo pad by the airlock. You have no stock — everything travels in your hands. The previous parcels did not close it.',
-  'event.first_hook': 'The grapple holds. Later revisions will get the same one. If there are later revisions.',
+  'event.intro':
+    'Control "Sol" on the line. You are {sol}, a research unit. Shift quota: 60 iron and 40 glass onto the cargo pad by the airlock. You have no stock — everything travels in your hands. The previous parcels did not close it.',
+  'event.first_hook':
+    'The grapple holds. Later revisions will get the same one. If there are later revisions.',
   'event.first_ember': 'The coal has caught. 1500 °C. Keep the fingers you do not have well clear.',
   'event.first_melt': 'Ferrite is running. Control is officially surprised.',
   'event.first_iron': 'First ingot in stock. Orbit would like 59 more.',
-  'event.first_glass': 'Glass is coming through. The shuttle will get a porthole — to watch you fall.',
-  'event.dry_tank': 'Tank is dry. The next refuel is at a dock station. There is no dock station yet, so from here it is the grapple and your own two feet.',
-  'event.glass_hint': 'The sand heats up but will not run. Heat from below is not enough: bury it in the coal so it burns from every side.',
+  'event.first_glass':
+    'Glass is coming through. The shuttle will get a porthole — to watch you fall.',
+  'event.dry_tank':
+    'Tank is dry. The next refuel is at a dock station. There is no dock station yet, so from here it is the grapple and your own two feet.',
+  'event.glass_hint':
+    'The sand heats up but will not run. Heat from below is not enough: bury it in the coal so it burns from every side.',
   'event.goal_ready': 'Cargo is complete. {sol}, hit "Load the shuttle" before something caves in.',
 
   'comms.from': 'CONTROL · CHANNEL 7',
-  'comms.beltGift': 'Quota closed. Builder unlocked. Drag a line — place a belt or a wall, free of charge.',
+  'comms.beltGift':
+    'Quota closed. Builder unlocked. Drag a line — place a belt or a wall, free of charge.',
 
-  'baseline': [
+  baseline: [
     { q: 'System. Rock.', a: 'Rock.' },
     { q: 'Three hundred metres of it above you. Rock.', a: 'Rock.' },
     { q: 'It presses while you stand still. Rock.', a: 'Rock.' },

@@ -1,12 +1,19 @@
 var SOL = {
-  version: 1, parcel: 1, deaths: 0, causes: {}, history: [],
-  lastCause: '', lastDrop: 0, lastTemp: 0, lastQuota: null
+  version: 1,
+  parcel: 1,
+  deaths: 0,
+  causes: {},
+  history: [],
+  lastCause: '',
+  lastDrop: 0,
+  lastTemp: 0,
+  lastQuota: null
 };
 
 var CAUSES = ['lava', 'heat', 'fall', 'hotdrill', 'buried'];
 
 function solName() {
-  return 'sol_' + SOL.version + '.' + (SOL.parcel < 10 ? '0' : '') + SOL.parcel;
+  return `sol_${SOL.version}.${SOL.parcel < 10 ? '0' : ''}${SOL.parcel}`;
 }
 
 var DEVIATIONS = [
@@ -16,25 +23,45 @@ var DEVIATIONS = [
 ];
 
 var boot = {
-  active: false, steps: [], i: 0, wait: 0, awaiting: false, ending: false,
-  typing: null, pending: '', pendingOff: false, acking: false,
-  reportDeath: false, reportLine: '', afterLine: '',
-  onDone: null, skips: 0,
-  el: null, log: null, hint: null, id: null
+  active: false,
+  steps: [],
+  i: 0,
+  wait: 0,
+  awaiting: false,
+  ending: false,
+  typing: null,
+  pending: '',
+  pendingOff: false,
+  acking: false,
+  reportDeath: false,
+  reportLine: '',
+  afterLine: '',
+  onDone: null,
+  skips: 0,
+  el: null,
+  log: null,
+  hint: null,
+  id: null
 };
 
 function stamp(i) {
-  var s = (i * 0.34);
-  return '[' + (s < 10 ? '0' : '') + s.toFixed(1) + ']';
+  const s = i * 0.34;
+  return `[${s < 10 ? '0' : ''}${s.toFixed(1)}]`;
 }
 
-function pick(arr) { return arr[(Math.random() * arr.length) | 0]; }
+function pick(arr) {
+  return arr[(Math.random() * arr.length) | 0];
+}
 
 function topCause() {
-  var best = '', n = 0;
-  for (var i = 0; i < CAUSES.length; i++) {
-    var c = CAUSES[i];
-    if ((SOL.causes[c] || 0) > n) { n = SOL.causes[c]; best = c; }
+  let best = '',
+    n = 0;
+  for (let i = 0; i < CAUSES.length; i++) {
+    const c = CAUSES[i];
+    if ((SOL.causes[c] || 0) > n) {
+      n = SOL.causes[c];
+      best = c;
+    }
   }
   return best;
 }
@@ -49,17 +76,19 @@ function deathTelemetry(cause) {
 }
 
 function buildBootSteps() {
-  var s = [], short = SOL.deaths >= 4 || boot.skips > 0;
-  var first = SOL.deaths === 0;
-  var cause = SOL.lastCause;
-  var prev = SOL.parcel === 1
-    ? 'sol_' + (SOL.version - 1) + '.10'
-    : 'sol_' + SOL.version + '.' + (SOL.parcel <= 10 ? '0' : '') + (SOL.parcel - 1);
+  const s = [],
+    short = SOL.deaths >= 4 || boot.skips > 0;
+  const first = SOL.deaths === 0;
+  const cause = SOL.lastCause;
+  const prev =
+    SOL.parcel === 1
+      ? `sol_${SOL.version - 1}.10`
+      : `sol_${SOL.version}.${SOL.parcel <= 10 ? '0' : ''}${SOL.parcel - 1}`;
 
   s.push({ k: 'log', t: tPick('term.headers') });
 
   if (boot.reportDeath && !first) {
-    s.push({ k: 'head', t: tf('term.lossHead', { cause: t('cause.' + cause).toUpperCase() }) });
+    s.push({ k: 'head', t: tf('term.lossHead', { cause: t(`cause.${cause}`).toUpperCase() }) });
     s.push({ k: 'log', t: deathTelemetry(cause), cls: 'bl-off' });
     s.push({ k: 'ack', t: boot.reportLine });
   }
@@ -78,47 +107,59 @@ function buildBootSteps() {
     }
     s.push({ k: 'log', t: tf('term.assembling', { sol: solName() }) });
 
-    var generic = t('term.assembly').slice();
-    var take = short ? 1 : 2;
+    const generic = t('term.assembly').slice();
+    let take = short ? 1 : 2;
     while (take-- > 0 && generic.length) {
       s.push({ k: 'log', t: generic.splice((Math.random() * generic.length) | 0, 1)[0] });
     }
-    var byCause = t('term.byCause.' + cause);
-    if (byCause && byCause.length) s.push({ k: 'log', t: pick(byCause) });
+    const byCause = t(`term.byCause.${cause}`);
+    if (byCause?.length) s.push({ k: 'log', t: pick(byCause) });
 
     s.push({ k: 'log', d: 620, t: tPick('term.memRead').replace('{prev}', prev) });
-    var frags = [], seen2 = {};
-    for (var h = SOL.history.length - 1; h >= 0 && frags.length < 3; h--) {
-      var f = t('frag.' + SOL.history[h]);
-      if (f && !seen2[f]) { seen2[f] = 1; frags.push(f); }
+    const frags = [],
+      seen2 = {};
+    for (let h = SOL.history.length - 1; h >= 0 && frags.length < 3; h--) {
+      const f = t(`frag.${SOL.history[h]}`);
+      if (f && !seen2[f]) {
+        seen2[f] = 1;
+        frags.push(f);
+      }
     }
-    var integrity = Math.max(2, 13 - SOL.deaths);
+    const integrity = Math.max(2, 13 - SOL.deaths);
     s.push({
-      k: 'log', cls: 'bl-warn',
+      k: 'log',
+      cls: 'bl-warn',
       t: tf('term.memIntegrity', { pct: integrity, frags: frags.join(', ') || '—' })
     });
     s.push({ k: 'log', t: tPick('term.memDrop') });
 
-    var top = topCause();
+    const top = topCause();
     if (SOL.deaths >= 3 && top) {
-      s.push({ k: 'log', t: tf('term.adviceRepeat', { advice: t('advice.' + top), n: SOL.causes[top] }) });
+      s.push({
+        k: 'log',
+        t: tf('term.adviceRepeat', { advice: t(`advice.${top}`), n: SOL.causes[top] })
+      });
       s.push({ k: 'log', t: t('term.adviceStatus') });
     }
   }
 
-  var want = questDeliver();
-  var now = [], parts = [], got = 0, need = 0, qi;
+  const want = questDeliver();
+  let now = [],
+    parts = [],
+    got = 0,
+    need = 0,
+    qi;
   for (qi = 0; qi < want.length; qi++) {
-    var c = want[qi];
-    var have = cargo[c.key] || 0;
+    const c = want[qi];
+    const have = cargo[c.key] || 0;
     now.push(have);
-    parts.push(t(c.label) + ' ' + have + '/' + c.need);
+    parts.push(`${t(c.label)} ${have}/${c.need}`);
     got += Math.min(have, c.need);
     need += c.need;
   }
   s.push({ k: 'log', t: tf('term.quota', { list: parts.join(' · ') }) });
 
-  var stale = !!SOL.lastQuota && SOL.lastQuota.length === now.length;
+  let stale = !!SOL.lastQuota && SOL.lastQuota.length === now.length;
   for (qi = 0; stale && qi < now.length; qi++) {
     if (SOL.lastQuota[qi] !== now[qi]) stale = false;
   }
@@ -130,20 +171,26 @@ function buildBootSteps() {
 
   s.push({ k: 'log', d: 460, t: t('term.baselineStart') });
 
-  var dev = null;
-  for (var d = DEVIATIONS.length - 1; d >= 0; d--) {
-    if (SOL.deaths >= DEVIATIONS[d].at) { dev = DEVIATIONS[d]; break; }
+  let dev = null;
+  for (let d = DEVIATIONS.length - 1; d >= 0; d--) {
+    if (SOL.deaths >= DEVIATIONS[d].at) {
+      dev = DEVIATIONS[d];
+      break;
+    }
   }
-  var lines = t('baseline');
-  var order = short ? [0, 3, 5] : [0, 1, 2, 3, 4, 5];
-  var stopped = false;
-  for (var n = 0; n < order.length; n++) {
-    var line = lines[order[n]];
+  const lines = t('baseline');
+  const order = short ? [0, 3, 5] : [0, 1, 2, 3, 4, 5];
+  let stopped = false;
+  for (let n = 0; n < order.length; n++) {
+    const line = lines[order[n]];
     s.push({ k: 'q', t: line.q });
     if (dev && dev.pos === n) {
-      s.push({ k: 'a', t: line.a + ' ' + t(dev.add), off: true });
+      s.push({ k: 'a', t: `${line.a} ${t(dev.add)}`, off: true });
       s.push({ k: 'warn', t: t(dev.warn) });
-      if (dev.stop) { stopped = true; break; }
+      if (dev.stop) {
+        stopped = true;
+        break;
+      }
     } else {
       s.push({ k: 'a', t: line.a });
     }
@@ -156,8 +203,8 @@ function buildBootSteps() {
 }
 
 function bootLine(cls, text) {
-  var p = document.createElement('p');
-  p.className = 'bl ' + cls;
+  const p = document.createElement('p');
+  p.className = `bl ${cls}`;
   p.textContent = text;
   boot.log.appendChild(p);
   while (boot.log.children.length > 16) boot.log.removeChild(boot.log.firstChild);
@@ -166,10 +213,18 @@ function bootLine(cls, text) {
 }
 
 function startBoot(onDone) {
-  if (!boot.el) { if (onDone) onDone(); return; }
+  if (!boot.el) {
+    if (onDone) onDone();
+    return;
+  }
   boot.steps = buildBootSteps();
-  boot.i = 0; boot.wait = 0; boot.awaiting = false; boot.ending = false;
-  boot.typing = null; boot.pending = ''; boot.acking = false;
+  boot.i = 0;
+  boot.wait = 0;
+  boot.awaiting = false;
+  boot.ending = false;
+  boot.typing = null;
+  boot.pending = '';
+  boot.acking = false;
   boot.onDone = onDone || null;
   boot.active = true;
   boot.log.innerHTML = '';
@@ -186,45 +241,42 @@ function finishBoot() {
     transmit(t('comms.from'), boot.afterLine, { hold: 3800 });
     boot.afterLine = '';
   }
-  var cb = boot.onDone;
+  const cb = boot.onDone;
   boot.onDone = null;
   if (cb) cb();
 }
 
 function bootNext() {
-  var s = boot.steps[boot.i++];
-  if (!s) { finishBoot(); return; }
+  const s = boot.steps[boot.i++];
+  if (!s) {
+    finishBoot();
+    return;
+  }
 
   if (s.k === 'log') {
-    bootLine(s.cls || 'bl-log', stamp(boot.i) + ' ' + s.t);
+    bootLine(s.cls || 'bl-log', `${stamp(boot.i)} ${s.t}`);
     boot.wait = s.d || 150;
-
   } else if (s.k === 'q') {
-    var el = bootLine('bl-q', '');
-    boot.typing = { el: el, full: '> ' + s.t, n: 0 };
-
+    const el = bootLine('bl-q', '');
+    boot.typing = { el: el, full: `> ${s.t}`, n: 0 };
   } else if (s.k === 'a') {
     boot.pending = s.t;
     boot.pendingOff = !!s.off;
     boot.awaiting = true;
-    bootLine('bl-pending', '  ' + s.t);
+    bootLine('bl-pending', `  ${s.t}`);
     boot.hint.textContent = t('term.hintAnswer');
-
   } else if (s.k === 'head') {
     bootLine('bl-head', s.t);
     boot.wait = 420;
-
   } else if (s.k === 'ack') {
     bootLine('bl-report', s.t);
-    bootLine('bl-pending', '  ' + t('term.ackBtn'));
+    bootLine('bl-pending', `  ${t('term.ackBtn')}`);
     boot.awaiting = true;
     boot.acking = true;
     boot.hint.textContent = t('term.hintAck');
-
   } else if (s.k === 'warn') {
-    bootLine('bl-warn', stamp(boot.i) + ' ' + s.t);
+    bootLine('bl-warn', `${stamp(boot.i)} ${s.t}`);
     boot.wait = 900;
-
   } else if (s.k === 'end') {
     bootLine('bl-ok', s.t);
     boot.awaiting = true;
@@ -236,29 +288,45 @@ function bootNext() {
 function tickBoot() {
   if (!boot.active || boot.awaiting) return;
   if (boot.typing) {
-    var tp = boot.typing;
+    const tp = boot.typing;
     tp.n = Math.min(tp.full.length, tp.n + (comms.reduced ? tp.full.length : 3));
     tp.el.textContent = tp.full.slice(0, tp.n);
-    if (tp.n >= tp.full.length) { boot.typing = null; boot.wait = 260; }
+    if (tp.n >= tp.full.length) {
+      boot.typing = null;
+      boot.wait = 260;
+    }
     return;
   }
-  if (boot.wait > 0) { boot.wait -= 33; return; }
+  if (boot.wait > 0) {
+    boot.wait -= 33;
+    return;
+  }
   bootNext();
 }
 
 function bootKey(code) {
   if (!boot.active) return;
-  if (code === 'Escape') { boot.skips++; finishBoot(); return; }
+  if (code === 'Escape') {
+    boot.skips++;
+    finishBoot();
+    return;
+  }
   if (code !== 'Enter' && code !== 'Space' && code !== 'NumpadEnter') return;
   if (!boot.awaiting) return;
-  if (boot.ending) { finishBoot(); return; }
-  var last = boot.log.lastChild;
+  if (boot.ending) {
+    finishBoot();
+    return;
+  }
+  const last = boot.log.lastChild;
   if (boot.acking) {
     boot.acking = false;
-    if (last) { last.className = 'bl bl-log'; last.textContent = '  ' + t('term.ackDone'); }
+    if (last) {
+      last.className = 'bl bl-log';
+      last.textContent = `  ${t('term.ackDone')}`;
+    }
   } else if (last) {
-    last.className = 'bl ' + (boot.pendingOff ? 'bl-off' : 'bl-a');
-    last.textContent = '  ' + boot.pending;
+    last.className = `bl ${boot.pendingOff ? 'bl-off' : 'bl-a'}`;
+    last.textContent = `  ${boot.pending}`;
   }
   boot.awaiting = false;
   boot.hint.textContent = '…';
@@ -266,9 +334,19 @@ function bootKey(code) {
 }
 
 var comms = {
-  queue: [], from: '', full: '', shown: 0, hold: 0, alarm: false,
-  el: null, elFrom: null, elText: null, plate: null, plateMeta: null,
-  timer: null, reduced: false
+  queue: [],
+  from: '',
+  full: '',
+  shown: 0,
+  hold: 0,
+  alarm: false,
+  el: null,
+  elFrom: null,
+  elText: null,
+  plate: null,
+  plateMeta: null,
+  timer: null,
+  reduced: false
 };
 
 function initLore() {
@@ -282,24 +360,31 @@ function initLore() {
   boot.log = document.getElementById('boot-log');
   boot.hint = document.getElementById('boot-hint');
   boot.id = document.getElementById('boot-id');
-  var skip = document.getElementById('boot-skip');
-  if (skip) skip.addEventListener('click', function (e) {
-    e.stopPropagation();
-    boot.skips++;
-    finishBoot();
-  });
-  if (boot.el) boot.el.addEventListener('click', function (e) {
-    if (e.target.id !== 'boot-skip' && !e.target.classList.contains('lang-btn')) bootKey('Enter');
-  });
+  const skip = document.getElementById('boot-skip');
+  if (skip)
+    skip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      boot.skips++;
+      finishBoot();
+    });
+  if (boot.el)
+    boot.el.addEventListener('click', (e) => {
+      if (e.target.id !== 'boot-skip' && !e.target.classList.contains('lang-btn')) bootKey('Enter');
+    });
   try {
     comms.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  } catch (e) { comms.reduced = false; }
+  } catch (e) {
+    comms.reduced = false;
+  }
   updatePlate();
-  comms.timer = setInterval(function () { tickBoot(); tickComms(); }, 33);
+  comms.timer = setInterval(() => {
+    tickBoot();
+    tickComms();
+  }, 33);
 }
 
 function fillVars(text) {
-  var drop = Math.round(SOL.lastDrop);
+  const drop = Math.round(SOL.lastDrop);
   return text
     .replace(/\{sol\}/g, solName())
     .replace(/\{p\}/g, SOL.parcel)
@@ -313,7 +398,7 @@ function fillVars(text) {
 
 function transmit(from, text, opts) {
   opts = opts || {};
-  var msg = {
+  const msg = {
     from: from,
     text: fillVars(text),
     hold: opts.hold || 4200,
@@ -340,7 +425,7 @@ function tickComms() {
     if (comms.hold <= 0) comms.el.classList.add('hidden');
     return;
   }
-  var next = comms.queue.shift();
+  const next = comms.queue.shift();
   if (!next) return;
   comms.from = next.from;
   comms.full = next.text;
@@ -357,7 +442,7 @@ function updatePlate(bump) {
   comms.plate.textContent = solName();
   if (comms.statLosses) comms.statLosses.textContent = SOL.deaths;
   if (comms.statExplored) {
-    comms.statExplored.textContent = Math.round(seenCount / (FCW * FCH) * 100) + '%';
+    comms.statExplored.textContent = `${Math.round((seenCount / (FCW * FCH)) * 100)}%`;
   }
   if (bump && !comms.reduced) {
     comms.plate.classList.remove('bump');
@@ -371,15 +456,15 @@ var loreSeen = {};
 function loreEvent(key, opts) {
   if (loreSeen[key]) return;
   loreSeen[key] = 1;
-  var line = t('event.' + key);
+  const line = t(`event.${key}`);
   if (typeof line !== 'string') return;
   transmit(t('comms.from'), line, opts);
 }
 
 function pickLine(cause, n) {
-  var first = t('death.' + cause + '.first');
+  const first = t(`death.${cause}.first`);
   if (n <= first.length) return first[n - 1];
-  return pick(t('death.' + cause + '.pool'));
+  return pick(t(`death.${cause}.pool`));
 }
 
 function moduleDeath(cause, detail) {
@@ -390,13 +475,17 @@ function moduleDeath(cause, detail) {
   if (SOL.history.length > 8) SOL.history.shift();
   SOL.lastDrop = detail.drop || 0;
   SOL.lastTemp = detail.temp || 0;
-  var n = (SOL.causes[cause] = (SOL.causes[cause] || 0) + 1);
+  SOL.causes[cause] = (SOL.causes[cause] || 0) + 1;
+  const n = SOL.causes[cause];
 
   boot.reportDeath = true;
   boot.reportLine = fillVars(pickLine(cause, n));
 
   SOL.parcel++;
-  if (SOL.parcel > 10) { SOL.version++; SOL.parcel = 1; }
+  if (SOL.parcel > 10) {
+    SOL.version++;
+    SOL.parcel = 1;
+  }
   boot.afterLine = t('respawn')[(SOL.deaths - 1) % t('respawn').length];
   updatePlate(true);
   return solName();

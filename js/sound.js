@@ -30,10 +30,11 @@ function beep(freq, dur, wave, vol) {
   if (settings.muted || settings.volume === 0) return;
   try {
     if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
-    var osc = audio.createOscillator(), gain = audio.createGain();
+    const osc = audio.createOscillator(),
+      gain = audio.createGain();
     osc.type = wave;
     osc.frequency.value = freq;
-    gain.gain.value = vol * settings.volume / 100;
+    gain.gain.value = (vol * settings.volume) / 100;
     gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
     osc.connect(gain);
     gain.connect(audio.destination);
@@ -45,6 +46,6 @@ function beep(freq, dur, wave, vol) {
 }
 
 function play(name) {
-  var s = SOUNDS[name];
+  const s = SOUNDS[name];
   beep(s.freq, s.dur, s.wave, s.vol);
 }

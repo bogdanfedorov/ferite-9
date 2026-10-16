@@ -41,8 +41,18 @@
     "win": {
       "icon": "build/icon.png",
       "target": [
-        { "target": "dir", "arch": ["x64"] },
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "artifactName": "${productName}-${version}-win-${arch}.${ext}"
     },
@@ -55,9 +65,24 @@
     "linux": {
       "icon": "build/icon.png",
       "target": [
-        { "target": "dir", "arch": ["x64"] },
-        { "target": "tar.gz", "arch": ["x64"] },
-        { "target": "AppImage", "arch": ["x64"] }
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "category": "Game",
       "synopsis": "Falling-sand mining and smelting sim",

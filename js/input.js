@@ -9,8 +9,12 @@ var KEY_ACTIONS = {
   heat: toggleHeat,
   shape: cycleShapeKey,
   mute: toggleMute,
-  help: function () { toggleScreen('help'); },
-  settings: function () { toggleScreen('settings'); }
+  help: () => {
+    toggleScreen('help');
+  },
+  settings: () => {
+    toggleScreen('settings');
+  }
 };
 
 function isMove(act) {
@@ -18,7 +22,7 @@ function isMove(act) {
 }
 
 function releaseMoves() {
-  for (var i = 0; i < MOVE_ACTIONS.length; i++) input.keys[MOVE_ACTIONS[i]] = false;
+  for (let i = 0; i < MOVE_ACTIONS.length; i++) input.keys[MOVE_ACTIONS[i]] = false;
 }
 
 function toggleMute() {
@@ -30,31 +34,31 @@ function toggleMute() {
 }
 
 function toggleHeat() {
-  heatView = !heatView;
-  el['heat-legend'].classList.toggle('hidden', !heatView);
-  say(t(heatView ? 'msg.heatOn' : 'msg.heatOff'));
+  const on = toggleHeatView();
+  el['heat-legend'].classList.toggle('hidden', !on);
+  say(t(on ? 'msg.heatOn' : 'msg.heatOff'));
 }
 
 function cycleShapeKey() {
   if (game.tool !== 'build') return;
   cycleBuildShape();
   refreshBuildBars();
-  say(tf('msg.buildShape', { shape: t('shape.' + buildShape) }));
+  say(tf('msg.buildShape', { shape: t(`shape.${buildShape}`) }));
   play('pickShape');
 }
 
 function selectSlot(act) {
-  var slot = el['buildbar'].children[+act.slice(4) - 1];
+  const slot = el.buildbar.children[+act.slice(4) - 1];
   if (slot) selectTool(slot.dataset.tool);
 }
 
 function onEscape() {
-  if (!el['help'].classList.contains('hidden')) toggleScreen('help');
+  if (!el.help.classList.contains('hidden')) toggleScreen('help');
   else selectTool('drill');
 }
 
 function onKeyDown(e) {
-  var c = e.code;
+  const c = e.code;
   input.keys.shift = e.shiftKey;
   if (boot.active) {
     if (c === 'Space' || c === 'Enter') e.preventDefault();
@@ -62,8 +66,8 @@ function onKeyDown(e) {
     return;
   }
   if (rebinding()) return;
-  var act = keyAction(c);
-  if (!el['settings'].classList.contains('hidden')) {
+  const act = keyAction(c);
+  if (!el.settings.classList.contains('hidden')) {
     if (c === 'Escape' || act === 'settings') toggleScreen('settings');
     return;
   }
@@ -77,13 +81,13 @@ function onKeyDown(e) {
 }
 
 function onKeyUp(e) {
-  var act = keyAction(e.code);
+  const act = keyAction(e.code);
   input.keys.shift = e.shiftKey;
   if (isMove(act)) input.keys[act] = false;
 }
 
 function trackMouse(canvas, e) {
-  var r = canvas.getBoundingClientRect();
+  const r = canvas.getBoundingClientRect();
   input.mouse.x = e.clientX - r.left;
   input.mouse.y = e.clientY - r.top;
   input.mouse.over = true;
@@ -91,7 +95,7 @@ function trackMouse(canvas, e) {
 }
 
 function onMouseDown(e) {
-  var mouse = input.mouse;
+  const mouse = input.mouse;
   if (e.button === 0) {
     mouse.left = true;
     mouse.pressed = true;
@@ -99,7 +103,7 @@ function onMouseDown(e) {
   }
   if (e.button === 2) {
     mouse.right = true;
-    var w = screenToWorld(mouse.x, mouse.y);
+    const w = screenToWorld(mouse.x, mouse.y);
     fireHook(w[0], w[1]);
     play('hook');
   }
@@ -123,32 +127,44 @@ function onMouseLeave() {
 }
 
 function bindCanvas() {
-  var canvas = document.getElementById('game');
-  canvas.addEventListener('mousemove', function (e) { trackMouse(canvas, e); });
+  const canvas = document.getElementById('game');
+  canvas.addEventListener('mousemove', (e) => {
+    trackMouse(canvas, e);
+  });
   canvas.addEventListener('mouseleave', onMouseLeave);
-  canvas.addEventListener('mousedown', function (e) {
+  canvas.addEventListener('mousedown', (e) => {
     trackMouse(canvas, e);
     onMouseDown(e);
   });
   window.addEventListener('mouseup', onMouseUp);
-  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-  canvas.addEventListener('wheel', function (e) {
+  canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    setZoom(view.zoom + (e.deltaY < 0 ? 1 : -1));
-  }, { passive: false });
+  });
+  canvas.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault();
+      setZoom(view.zoom + (e.deltaY < 0 ? 1 : -1));
+    },
+    { passive: false }
+  );
 }
 
 function onBarClick(bar, fn) {
-  var items = el[bar].children;
-  for (var i = 0; i < items.length; i++) {
-    (function (b) { b.addEventListener('click', function () { fn(b.dataset); }); })(items[i]);
+  const items = el[bar].children;
+  for (let i = 0; i < items.length; i++) {
+    ((b) => {
+      b.addEventListener('click', () => {
+        fn(b.dataset);
+      });
+    })(items[i]);
   }
 }
 
 function pickBody(data) {
   setBuildBody(data.body);
   refreshBuildBars();
-  say(tf('msg.buildBody', { body: t('body.' + buildBody) }));
+  say(tf('msg.buildBody', { body: t(`body.${buildBody}`) }));
   play('pickBody');
 }
 
@@ -162,7 +178,9 @@ function bindInput() {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   bindCanvas();
-  onBarClick('buildbar', function (data) { selectTool(data.tool); });
+  onBarClick('buildbar', (data) => {
+    selectTool(data.tool);
+  });
   onBarClick('bodybar', pickBody);
   onBarClick('shapebar', pickShape);
 }

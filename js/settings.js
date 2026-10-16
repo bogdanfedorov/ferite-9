@@ -21,7 +21,16 @@ var CVD_SPREAD = {
 var CVD_SAT = { protan: 1.35, deutan: 1.35, tritan: 1.3, contrast: 1.5 };
 
 var UI_NAMES = [
-  'sand', 'sandLit', 'rust', 'aqua', 'hazard', 'danger', 'dangerSoft', 'ok', 'flame', 'alarm'
+  'sand',
+  'sandLit',
+  'rust',
+  'aqua',
+  'hazard',
+  'danger',
+  'dangerSoft',
+  'ok',
+  'flame',
+  'alarm'
 ];
 
 var UI_BASE = {
@@ -76,7 +85,7 @@ var KEY_GLYPH = {
   BracketRight: ']',
   Backslash: '\\',
   Semicolon: ';',
-  Quote: '\'',
+  Quote: "'",
   Backquote: '`',
   Comma: ',',
   Period: '.',
@@ -95,60 +104,77 @@ var settings = {
 
 var keyMap = {};
 var onSettingsChange = null;
+
+function setSettingsHook(fn) {
+  onSettingsChange = fn;
+}
 var settingsStored = true;
 
 function defaultKeys() {
-  var out = {};
-  for (var i = 0; i < KEY_BINDS.length; i++) out[KEY_BINDS[i].id] = KEY_BINDS[i].def.slice();
+  const out = {};
+  for (let i = 0; i < KEY_BINDS.length; i++) out[KEY_BINDS[i].id] = KEY_BINDS[i].def.slice();
   return out;
 }
 
 function rebuildKeyMap() {
   keyMap = {};
-  for (var i = 0; i < KEY_BINDS.length; i++) {
-    var id = KEY_BINDS[i].id;
-    var list = settings.keys[id] || [];
-    for (var k = 0; k < list.length; k++) keyMap[list[k]] = id;
+  for (let i = 0; i < KEY_BINDS.length; i++) {
+    const id = KEY_BINDS[i].id;
+    const list = settings.keys[id] || [];
+    for (let k = 0; k < list.length; k++) keyMap[list[k]] = id;
   }
 }
 
-function keyAction(code) { return keyMap[code] || ''; }
+function keyAction(code) {
+  return keyMap[code] || '';
+}
 
 function keyLabel(code) {
   if (KEY_GLYPH[code]) return KEY_GLYPH[code];
   if (code.indexOf('Key') === 0) return code.slice(3);
   if (code.indexOf('Digit') === 0) return code.slice(5);
-  if (code.indexOf('Numpad') === 0) return 'Num' + code.slice(6);
+  if (code.indexOf('Numpad') === 0) return `Num${code.slice(6)}`;
   return code;
 }
 
 function bindText(spec) {
-  var ids = spec.split(',');
-  var out = [];
-  for (var i = 0; i < ids.length; i++) {
-    var list = settings.keys[ids[i]] || [];
+  const ids = spec.split(',');
+  const out = [];
+  for (let i = 0; i < ids.length; i++) {
+    const list = settings.keys[ids[i]] || [];
     if (ids.length === 1) {
-      for (var k = 0; k < list.length; k++) out.push(keyLabel(list[k]));
+      for (let k = 0; k < list.length; k++) out.push(keyLabel(list[k]));
     } else if (list.length) out.push(keyLabel(list[0]));
   }
   return out.length ? out.join(' ') : '—';
 }
 
 function clampInt(v, lo, hi, fallback) {
-  var n = Math.round(+v);
-  if (!isFinite(n)) return fallback;
-  return n < lo ? lo : (n > hi ? hi : n);
+  const n = Math.round(+v);
+  if (!Number.isFinite(n)) return fallback;
+  return n < lo ? lo : n > hi ? hi : n;
 }
 
 function loadSettings() {
   settings.keys = defaultKeys();
-  var raw = null;
-  try { raw = localStorage.getItem(SETTINGS_KEY); } catch (e) { raw = null; }
-  var saved = null;
-  if (raw) {
-    try { saved = JSON.parse(raw); } catch (e) { saved = null; }
+  let raw = null;
+  try {
+    raw = localStorage.getItem(SETTINGS_KEY);
+  } catch (e) {
+    raw = null;
   }
-  if (!saved) { rebuildKeyMap(); return; }
+  let saved = null;
+  if (raw) {
+    try {
+      saved = JSON.parse(raw);
+    } catch (e) {
+      saved = null;
+    }
+  }
+  if (!saved) {
+    rebuildKeyMap();
+    return;
+  }
 
   settings.muted = saved.muted === true;
   settings.volume = clampInt(saved.volume, 0, 100, 100);
@@ -156,12 +182,12 @@ function loadSettings() {
   if (VISION_MODES.indexOf(saved.vision) >= 0) settings.vision = saved.vision;
 
   if (saved.keys) {
-    for (var i = 0; i < KEY_BINDS.length; i++) {
-      var id = KEY_BINDS[i].id;
-      var list = saved.keys[id];
-      if (!list || !list.length) continue;
-      var clean = [];
-      for (var k = 0; k < list.length; k++) {
+    for (let i = 0; i < KEY_BINDS.length; i++) {
+      const id = KEY_BINDS[i].id;
+      const list = saved.keys[id];
+      if (!list?.length) continue;
+      const clean = [];
+      for (let k = 0; k < list.length; k++) {
         if (typeof list[k] === 'string' && !RESERVED_KEYS[list[k]]) clean.push(list[k]);
       }
       if (clean.length) settings.keys[id] = clean;
@@ -180,79 +206,77 @@ function saveSettings() {
 }
 
 function srgbToLin(c) {
-  var v = c / 255;
-  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  const v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 }
 
 function linToSrgb(c) {
-  var v = c < 0 ? 0 : (c > 1 ? 1 : c);
-  v = v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+  let v = c < 0 ? 0 : c > 1 ? 1 : c;
+  v = v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
   return Math.round(v * 255);
 }
 
 function punch(v) {
-  var out = Math.round(128 + (v - 128) * 1.3);
-  return out < 0 ? 0 : (out > 255 ? 255 : out);
+  const out = Math.round(128 + (v - 128) * 1.3);
+  return out < 0 ? 0 : out > 255 ? 255 : out;
 }
 
 function recolor(r, g, b, mode) {
   if (mode === 'off') return [r, g, b];
-  var nr = srgbToLin(r), ng = srgbToLin(g), nb = srgbToLin(b);
-  var sim = CVD_SIM[mode];
+  let nr = srgbToLin(r),
+    ng = srgbToLin(g),
+    nb = srgbToLin(b);
+  const sim = CVD_SIM[mode];
   if (sim) {
-    var er = nr - (sim[0] * nr + sim[1] * ng + sim[2] * nb);
-    var eg = ng - (sim[3] * nr + sim[4] * ng + sim[5] * nb);
-    var eb = nb - (sim[6] * nr + sim[7] * ng + sim[8] * nb);
-    var sp = CVD_SPREAD[mode];
+    const er = nr - (sim[0] * nr + sim[1] * ng + sim[2] * nb);
+    const eg = ng - (sim[3] * nr + sim[4] * ng + sim[5] * nb);
+    const eb = nb - (sim[6] * nr + sim[7] * ng + sim[8] * nb);
+    const sp = CVD_SPREAD[mode];
     nr += sp[0] * er + sp[1] * eg + sp[2] * eb;
     ng += sp[3] * er + sp[4] * eg + sp[5] * eb;
     nb += sp[6] * er + sp[7] * eg + sp[8] * eb;
   }
-  var k = CVD_SAT[mode] || 1;
-  var lum = 0.2126 * nr + 0.7152 * ng + 0.0722 * nb;
+  const k = CVD_SAT[mode] || 1;
+  const lum = 0.2126 * nr + 0.7152 * ng + 0.0722 * nb;
   nr = lum + (nr - lum) * k;
   ng = lum + (ng - lum) * k;
   nb = lum + (nb - lum) * k;
-  var out = [linToSrgb(nr), linToSrgb(ng), linToSrgb(nb)];
+  const out = [linToSrgb(nr), linToSrgb(ng), linToSrgb(nb)];
   if (mode === 'contrast') return [punch(out[0]), punch(out[1]), punch(out[2])];
   return out;
 }
 
 function rgbHex(c) {
-  return '#' + (0x1000000 + (c[0] << 16) + (c[1] << 8) + c[2]).toString(16).slice(1);
+  return `#${(0x1000000 + (c[0] << 16) + (c[1] << 8) + c[2]).toString(16).slice(1)}`;
 }
 
-function uiHex(name) { return UI_HEX[name]; }
+function uiHex(name) {
+  return UI_HEX[name];
+}
 
 function uiRgba(name, a) {
-  var c = UI_RGB[name];
-  return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')';
+  const c = UI_RGB[name];
+  return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 }
 
 function applyVision() {
-  var mode = settings.vision;
-  var i;
-  if (palR.length !== MAT_COUNT) {
-    palR = new Uint8Array(MAT_COUNT);
-    palG = new Uint8Array(MAT_COUNT);
-    palB = new Uint8Array(MAT_COUNT);
-    palV = new Uint8Array(MAT_COUNT);
-  }
+  const mode = settings.vision;
+  let i;
   for (i = 0; i < MAT_COUNT; i++) {
     if (!MATS[i]) continue;
-    var c = recolor(MATS[i].color[0], MATS[i].color[1], MATS[i].color[2], mode);
+    const c = recolor(MATS[i].color[0], MATS[i].color[1], MATS[i].color[2], mode);
     palR[i] = c[0];
     palG[i] = c[1];
     palB[i] = c[2];
     palV[i] = MATS[i].grain;
   }
-  var root = document.documentElement;
+  const root = document.documentElement;
   for (i = 0; i < UI_NAMES.length; i++) {
-    var name = UI_NAMES[i];
-    var base = UI_BASE[name];
+    const name = UI_NAMES[i];
+    const base = UI_BASE[name];
     UI_RGB[name] = recolor(base[0], base[1], base[2], mode);
     UI_HEX[name] = rgbHex(UI_RGB[name]);
-    root.style.setProperty('--' + name, UI_HEX[name]);
+    root.style.setProperty(`--${name}`, UI_HEX[name]);
   }
 }
 
@@ -261,14 +285,16 @@ var visionBtns = [];
 var listening = null;
 
 function refreshKeyLabels() {
-  var nodes = document.querySelectorAll('[data-bind]');
-  for (var i = 0; i < nodes.length; i++) {
+  const nodes = document.querySelectorAll('[data-bind]');
+  for (let i = 0; i < nodes.length; i++) {
     if (listening && nodes[i] === listening.btn) continue;
     nodes[i].textContent = bindText(nodes[i].getAttribute('data-bind'));
   }
 }
 
-function rebinding() { return listening !== null; }
+function rebinding() {
+  return listening !== null;
+}
 
 function stopListen() {
   if (!listening) return;
@@ -285,11 +311,11 @@ function startListen(btn, id) {
 }
 
 function bindKey(id, code) {
-  for (var i = 0; i < KEY_BINDS.length; i++) {
-    var other = KEY_BINDS[i].id;
+  for (let i = 0; i < KEY_BINDS.length; i++) {
+    const other = KEY_BINDS[i].id;
     if (other === id) continue;
-    var list = settings.keys[other];
-    var at = list.indexOf(code);
+    const list = settings.keys[other];
+    const at = list.indexOf(code);
     if (at >= 0) list.splice(at, 1);
   }
   settings.keys[id] = [code];
@@ -303,37 +329,43 @@ function captureKey(e) {
   e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
-  if (RESERVED_KEYS[e.code]) { stopListen(); return; }
+  if (RESERVED_KEYS[e.code]) {
+    stopListen();
+    return;
+  }
   bindKey(listening.id, e.code);
   stopListen();
 }
 
 function buildKeyRows() {
-  var box = setEl.keys;
+  const box = setEl.keys;
   box.innerHTML = '';
-  for (var i = 0; i < KEY_BINDS.length; i++) {
-    var id = KEY_BINDS[i].id;
-    var row = document.createElement('div');
+  for (let i = 0; i < KEY_BINDS.length; i++) {
+    const id = KEY_BINDS[i].id;
+    const row = document.createElement('div');
     row.className = 'kb-row';
-    var name = document.createElement('span');
+    const name = document.createElement('span');
     name.className = 'kb-name';
-    name.setAttribute('data-i18n', 'set.key.' + id);
-    var btn = document.createElement('button');
+    name.setAttribute('data-i18n', `set.key.${id}`);
+    const btn = document.createElement('button');
     btn.className = 'kb-key';
     btn.type = 'button';
     btn.setAttribute('data-bind', id);
     row.appendChild(name);
     row.appendChild(btn);
     box.appendChild(row);
-    btn.addEventListener('click', (function (b, k) {
-      return function () { startListen(b, k); };
-    })(btn, id));
+    btn.addEventListener(
+      'click',
+      ((b, k) => () => {
+        startListen(b, k);
+      })(btn, id)
+    );
   }
   applyI18n(box);
 }
 
 function markVision() {
-  for (var i = 0; i < visionBtns.length; i++) {
+  for (let i = 0; i < visionBtns.length; i++) {
     visionBtns[i].btn.classList.toggle('on', visionBtns[i].mode === settings.vision);
   }
 }
@@ -348,39 +380,42 @@ function setVision(mode) {
 }
 
 function buildVisionOptions() {
-  var box = setEl.vision;
+  const box = setEl.vision;
   box.innerHTML = '';
   visionBtns = [];
-  for (var i = 0; i < VISION_MODES.length; i++) {
-    var mode = VISION_MODES[i];
-    var btn = document.createElement('button');
+  for (let i = 0; i < VISION_MODES.length; i++) {
+    const mode = VISION_MODES[i];
+    const btn = document.createElement('button');
     btn.className = 'vis-btn';
     btn.type = 'button';
-    var strip = document.createElement('span');
+    const strip = document.createElement('span');
     strip.className = 'vis-strip';
-    for (var k = 0; k < VISION_SAMPLE.length; k++) {
-      var col = MATS[matId(VISION_SAMPLE[k])].color;
-      var sw = document.createElement('i');
+    for (let k = 0; k < VISION_SAMPLE.length; k++) {
+      const col = MATS[matId(VISION_SAMPLE[k])].color;
+      const sw = document.createElement('i');
       sw.style.background = rgbHex(recolor(col[0], col[1], col[2], mode));
       strip.appendChild(sw);
     }
-    var name = document.createElement('span');
+    const name = document.createElement('span');
     name.className = 'vis-name';
-    name.setAttribute('data-i18n', 'set.vision.' + mode);
+    name.setAttribute('data-i18n', `set.vision.${mode}`);
     btn.appendChild(strip);
     btn.appendChild(name);
     box.appendChild(btn);
     visionBtns.push({ mode: mode, btn: btn });
-    btn.addEventListener('click', (function (m) {
-      return function () { setVision(m); };
-    })(mode));
+    btn.addEventListener(
+      'click',
+      ((m) => () => {
+        setVision(m);
+      })(mode)
+    );
   }
   applyI18n(box);
   markVision();
 }
 
 function showGrabValue() {
-  setEl.grabVal.textContent = settings.grabSize + '×' + settings.grabSize;
+  setEl.grabVal.textContent = `${settings.grabSize}×${settings.grabSize}`;
   setEl.grabNote.textContent = tf('set.grabNote', {
     n: settings.grabSize,
     cells: settings.grabSize * settings.grabSize
@@ -404,30 +439,30 @@ function refreshSettingsPanel() {
 }
 
 function bindSettingsPanel() {
-  setEl.mute.addEventListener('change', function () {
+  setEl.mute.addEventListener('change', () => {
     settings.muted = setEl.mute.checked;
     showVolumeValue();
     saveSettings();
     if (onSettingsChange) onSettingsChange('muted');
   });
 
-  setEl.volume.addEventListener('input', function () {
+  setEl.volume.addEventListener('input', () => {
     settings.volume = clampInt(setEl.volume.value, 0, 100, 100);
     showVolumeValue();
     if (onSettingsChange) onSettingsChange('volume');
   });
   setEl.volume.addEventListener('change', saveSettings);
 
-  setEl.grab.addEventListener('input', function () {
+  setEl.grab.addEventListener('input', () => {
     settings.grabSize = clampInt(setEl.grab.value, GRAB_MIN, GRAB_MAX, 2);
     showGrabValue();
   });
-  setEl.grab.addEventListener('change', function () {
+  setEl.grab.addEventListener('change', () => {
     saveSettings();
     if (onSettingsChange) onSettingsChange('grabSize');
   });
 
-  setEl.reset.addEventListener('click', function () {
+  setEl.reset.addEventListener('click', () => {
     stopListen();
     settings.keys = defaultKeys();
     rebuildKeyMap();

@@ -1,18 +1,39 @@
 var player = {
-  x: 0, y: 0, vx: 0, vy: 0,
-  w: 3, h: 5,
-  grounded: false, inLiquid: false,
-  fuel: 100, hp: 100, heat: 22, dryTank: false,
-  drilling: false, aimX: 0, aimY: 0,
-  spawnX: 0, spawnY: 0,
+  x: 0,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  w: 3,
+  h: 5,
+  grounded: false,
+  inLiquid: false,
+  fuel: 100,
+  hp: 100,
+  heat: 22,
+  dryTank: false,
+  drilling: false,
+  aimX: 0,
+  aimY: 0,
+  spawnX: 0,
+  spawnY: 0,
   deathCause: 'heat',
-  fallFrom: 0, fallDrop: 0, buried: 0, lastTemp: 22
+  fallFrom: 0,
+  fallDrop: 0,
+  buried: 0,
+  lastTemp: 22
 };
 
 var hook = {
   state: 'idle',
-  x: 0, y: 0, vx: 0, vy: 0,
-  ax: 0, ay: 0, len: 0, anchor: -1, travel: 0
+  x: 0,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  ax: 0,
+  ay: 0,
+  len: 0,
+  anchor: -1,
+  travel: 0
 };
 
 var REACH = 32;
@@ -30,32 +51,36 @@ var JETPAK_POWER = 0.062;
 var FOOT_POWER = 0.05;
 var WATER_RESISTANCE = 0.6;
 
-var drillOffsets = (function () {
-  var out = [];
-  var r = Math.ceil(DRILL_RADIUS);
-  for (var y = -r; y <= r; y++) {
-    for (var x = -r; x <= r; x++) {
-      var d = Math.sqrt(x * x + y * y);
+var drillOffsets = (() => {
+  const out = [];
+  const r = Math.ceil(DRILL_RADIUS);
+  for (let y = -r; y <= r; y++) {
+    for (let x = -r; x <= r; x++) {
+      const d = Math.sqrt(x * x + y * y);
       if (d <= DRILL_RADIUS) out.push([x, y, d]);
     }
   }
-  out.sort(function (a, b) { return a[2] - b[2]; });
+  out.sort((a, b) => a[2] - b[2]);
   return out;
 })();
 
 function resetVitals() {
   player.vx = player.vy = 0;
-  player.hp = 100; player.fuel = 100; player.dryTank = false;
+  player.hp = 100;
+  player.fuel = 100;
+  player.dryTank = false;
   player.buried = 0;
 }
 
 function moveToSpawn() {
-  player.x = player.spawnX; player.y = player.spawnY;
+  player.x = player.spawnX;
+  player.y = player.spawnY;
   player.fallFrom = player.y;
 }
 
 function spawnPlayer(x, y) {
-  player.spawnX = x; player.spawnY = y;
+  player.spawnX = x;
+  player.spawnY = y;
   moveToSpawn();
   resetVitals();
   player.fallDrop = 0;
@@ -63,27 +88,35 @@ function spawnPlayer(x, y) {
 }
 
 function clearAirlock() {
-  var x0 = Math.round(player.spawnX) - 3, x1 = Math.round(player.spawnX) + 3;
-  var y0 = Math.round(player.spawnY) - 4, y1 = Math.round(player.spawnY) + 3;
-  for (var y = y0; y <= y1; y++) {
-    for (var x = x0; x <= x1; x++) {
+  const x0 = Math.round(player.spawnX) - 3,
+    x1 = Math.round(player.spawnX) + 3;
+  const y0 = Math.round(player.spawnY) - 4,
+    y1 = Math.round(player.spawnY) + 3;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
       if (!inBounds(x, y)) continue;
-      var m = mat[y * W + x];
-      var st = STATE[m];
+      const m = mat[y * W + x];
+      const st = STATE[m];
       if (st === MT.POWDER) setCellHot(x, y, VOID_ID, 22);
       else if (st === MT.LIQUID) displaceCell(x, y);
     }
   }
 }
 
-function spanStart(c, size) { return Math.floor(c - size / 2); }
-function spanEnd(c, size) { return Math.floor(c + size / 2 - 0.01); }
+function spanStart(c, size) {
+  return Math.floor(c - size / 2);
+}
+function spanEnd(c, size) {
+  return Math.floor(c + size / 2 - 0.01);
+}
 
 function boxBlocked(cx, cy) {
-  var x0 = spanStart(cx, player.w), x1 = spanEnd(cx, player.w);
-  var y0 = spanStart(cy, player.h), y1 = spanEnd(cy, player.h);
-  for (var y = y0; y <= y1; y++) {
-    for (var x = x0; x <= x1; x++) {
+  const x0 = spanStart(cx, player.w),
+    x1 = spanEnd(cx, player.w);
+  const y0 = spanStart(cy, player.h),
+    y1 = spanEnd(cy, player.h);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
       if (!inBounds(x, y)) return true;
       if (BLOCKING[mat[y * W + x]]) return true;
     }
@@ -92,17 +125,23 @@ function boxBlocked(cx, cy) {
 }
 
 function sampleEnv() {
-  var x0 = spanStart(player.x, player.w), x1 = spanEnd(player.x, player.w);
-  var y0 = spanStart(player.y, player.h), y1 = spanEnd(player.y, player.h);
-  var liquid = false, hottest = 0, n = 0, sum = 0;
-  for (var y = y0; y <= y1; y++) {
-    for (var x = x0; x <= x1; x++) {
+  const x0 = spanStart(player.x, player.w),
+    x1 = spanEnd(player.x, player.w);
+  const y0 = spanStart(player.y, player.h),
+    y1 = spanEnd(player.y, player.h);
+  let liquid = false,
+    hottest = 0,
+    n = 0,
+    sum = 0;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
       if (!inBounds(x, y)) continue;
-      var i = y * W + x;
+      const i = y * W + x;
       if (STATE[mat[i]] === MT.LIQUID) liquid = true;
-      var t = temp[i];
+      const t = temp[i];
       if (t > hottest) hottest = t;
-      sum += t; n++;
+      sum += t;
+      n++;
     }
   }
   player.inLiquid = liquid;
@@ -111,50 +150,71 @@ function sampleEnv() {
 }
 
 function moveAxis(dx, dy) {
-  var steps = Math.ceil((Math.abs(dx) + Math.abs(dy)) / 0.25) || 1;
-  var sx = dx / steps, sy = dy / steps;
-  var hitX = false, hitY = false;
-  for (var i = 0; i < steps; i++) {
+  const steps = Math.ceil((Math.abs(dx) + Math.abs(dy)) / 0.25) || 1;
+  let sx = dx / steps,
+    sy = dy / steps;
+  let hitX = false,
+    hitY = false;
+  for (let i = 0; i < steps; i++) {
     if (sx !== 0) {
       if (!boxBlocked(player.x + sx, player.y)) player.x += sx;
-      else if (!boxBlocked(player.x + sx, player.y - 1)) { player.x += sx; player.y -= 1; }
-      else { hitX = true; sx = 0; }
+      else if (!boxBlocked(player.x + sx, player.y - 1)) {
+        player.x += sx;
+        player.y -= 1;
+      } else {
+        hitX = true;
+        sx = 0;
+      }
     }
     if (sy !== 0) {
       if (!boxBlocked(player.x, player.y + sy)) player.y += sy;
-      else { hitY = true; sy = 0; }
+      else {
+        hitY = true;
+        sy = 0;
+      }
     }
   }
-  return hitX ? (hitY ? 3 : 1) : (hitY ? 2 : 0);
+  return hitX ? (hitY ? 3 : 1) : hitY ? 2 : 0;
 }
 
 function fireHook(tx, ty) {
-  var dx = tx - player.x, dy = ty - player.y;
-  var d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const dx = tx - player.x,
+    dy = ty - player.y;
+  const d = Math.sqrt(dx * dx + dy * dy) || 1;
   hook.state = 'fly';
-  hook.x = player.x; hook.y = player.y;
-  hook.vx = dx / d * HOOK_SPEED;
-  hook.vy = dy / d * HOOK_SPEED;
+  hook.x = player.x;
+  hook.y = player.y;
+  hook.vx = (dx / d) * HOOK_SPEED;
+  hook.vy = (dy / d) * HOOK_SPEED;
   hook.travel = 0;
   hook.anchor = -1;
 }
 
-function releaseHook() { hook.state = 'idle'; hook.anchor = -1; }
+function releaseHook() {
+  hook.state = 'idle';
+  hook.anchor = -1;
+}
 
 function updateHook(reeling) {
   if (hook.state === 'fly') {
-    for (var s = 0; s < 4; s++) {
+    for (let s = 0; s < 4; s++) {
       hook.x += hook.vx * 0.25;
       hook.y += hook.vy * 0.25;
       hook.travel += HOOK_SPEED * 0.25;
-      var cx = Math.floor(hook.x), cy = Math.floor(hook.y);
-      if (!inBounds(cx, cy) || hook.travel > HOOK_RANGE) { releaseHook(); return; }
-      var m = mat[cy * W + cx];
+      const cx = Math.floor(hook.x),
+        cy = Math.floor(hook.y);
+      if (!inBounds(cx, cy) || hook.travel > HOOK_RANGE) {
+        releaseHook();
+        return;
+      }
+      const m = mat[cy * W + cx];
       if (RIGID[m]) {
         hook.state = 'set';
         hook.anchor = cy * W + cx;
-        hook.ax = cx + 0.5; hook.ay = cy + 0.5;
-        var dx = hook.ax - player.x, dy = hook.ay - player.y;
+        hook.ax = cx + 0.5;
+        hook.ay = cy + 0.5;
+        const dx = hook.ax - player.x,
+          dy = hook.ay - player.y;
         hook.len = Math.max(2, Math.sqrt(dx * dx + dy * dy));
         return;
       }
@@ -164,36 +224,47 @@ function updateHook(reeling) {
 
   if (hook.state !== 'set') return;
 
-  var m2 = mat[hook.anchor];
-  if (!RIGID[m2]) { releaseHook(); return; }
+  const m2 = mat[hook.anchor];
+  if (!RIGID[m2]) {
+    releaseHook();
+    return;
+  }
 
-  var ddx = hook.ax - player.x, ddy = hook.ay - player.y;
-  var d = Math.sqrt(ddx * ddx + ddy * ddy) || 0.001;
+  const ddx = hook.ax - player.x,
+    ddy = hook.ay - player.y;
+  const d = Math.sqrt(ddx * ddx + ddy * ddy) || 0.001;
   if (reeling) hook.len = Math.max(2.5, hook.len - 0.26);
-  if (d > HOOK_RANGE + 6) { releaseHook(); return; }
+  if (d > HOOK_RANGE + 6) {
+    releaseHook();
+    return;
+  }
 
   if (d > hook.len) {
-    var nx = ddx / d, ny = ddy / d;
-    var stretch = d - hook.len;
+    const nx = ddx / d,
+      ny = ddy / d;
+    const stretch = d - hook.len;
     player.vx += nx * stretch * 0.12;
     player.vy += ny * stretch * 0.12;
-    var radial = player.vx * nx + player.vy * ny;
-    if (radial < 0) { player.vx -= nx * radial * 0.5; player.vy -= ny * radial * 0.5; }
+    const radial = player.vx * nx + player.vy * ny;
+    if (radial < 0) {
+      player.vx -= nx * radial * 0.5;
+      player.vy -= ny * radial * 0.5;
+    }
     player.vx *= 0.995;
   }
 }
 
 function updatePlayer(keys, reeling) {
-  var hottest = sampleEnv();
+  const hottest = sampleEnv();
 
-  var acc = player.grounded ? FOOT_POWER : JETPAK_POWER;
+  let acc = player.grounded ? FOOT_POWER : JETPAK_POWER;
   if (player.inLiquid) acc *= WATER_RESISTANCE;
   if (keys.left) player.vx -= acc;
   if (keys.right) player.vx += acc;
   if (!keys.left && !keys.right) player.vx *= player.grounded ? 0.78 : 0.94;
   else player.vx *= 0.94;
 
-  var maxVx = hook.state === 'set' ? 1.1 : (player.inLiquid ? 0.3 : 0.55);
+  const maxVx = hook.state === 'set' ? 1.1 : player.inLiquid ? 0.3 : 0.55;
   if (player.vx > maxVx) player.vx = maxVx;
   if (player.vx < -maxVx) player.vx = -maxVx;
 
@@ -203,8 +274,12 @@ function updatePlayer(keys, reeling) {
     player.vy -= JETPAK_POWER;
     if (!sandbox.on) player.fuel -= FUEL_BURN_RATE;
 
-    if (player.fuel <= 0) { player.fuel = 0; player.dryTank = true; }
-    if (rnd() < 0.25) spawnNear(Math.round(player.x), Math.round(player.y + player.h / 2 + 1), JET_EXHAUST, 1);
+    if (player.fuel <= 0) {
+      player.fuel = 0;
+      player.dryTank = true;
+    }
+    if (rnd() < 0.25)
+      spawnNear(Math.round(player.x), Math.round(player.y + player.h / 2 + 1), JET_EXHAUST, 1);
   }
 
   if (keys.down) player.vy += 0.03;
@@ -212,7 +287,7 @@ function updatePlayer(keys, reeling) {
 
   updateHook(reeling);
 
-  var maxVy = hook.state === 'set' ? 1.2 : (player.inLiquid ? 0.35 : 0.75);
+  const maxVy = hook.state === 'set' ? 1.2 : player.inLiquid ? 0.35 : 0.75;
   if (player.vy > maxVy) player.vy = maxVy;
   if (player.vy < -maxVy) player.vy = -maxVy;
   if (player.inLiquid) player.vy *= 0.94;
@@ -221,13 +296,13 @@ function updatePlayer(keys, reeling) {
     player.fallFrom = player.y;
   }
 
-  var hit = moveAxis(player.vx, player.vy);
+  const hit = moveAxis(player.vx, player.vy);
   if (hit & 1) player.vx = 0;
   player.grounded = false;
   if (hit & 2) {
     if (player.vy > 0) {
       player.grounded = true;
-      var drop = player.y - player.fallFrom;
+      const drop = player.y - player.fallFrom;
       if (drop > FALL_SAFE && !sandbox.on) {
         player.fallDrop = drop;
         player.hp -= (drop - FALL_SAFE) * 3.4;
@@ -240,11 +315,20 @@ function updatePlayer(keys, reeling) {
 
   if (boxBlocked(player.x, player.y)) {
     player.buried++;
-    for (var k = 1; k <= 6; k++) {
-      var s = k * 0.35;
-      if (!boxBlocked(player.x, player.y - s)) { player.y -= s; break; }
-      if (!boxBlocked(player.x - s, player.y)) { player.x -= s; break; }
-      if (!boxBlocked(player.x + s, player.y)) { player.x += s; break; }
+    for (let k = 1; k <= 6; k++) {
+      const s = k * 0.35;
+      if (!boxBlocked(player.x, player.y - s)) {
+        player.y -= s;
+        break;
+      }
+      if (!boxBlocked(player.x - s, player.y)) {
+        player.x -= s;
+        break;
+      }
+      if (!boxBlocked(player.x + s, player.y)) {
+        player.x += s;
+        break;
+      }
     }
     if (player.buried > 60) {
       player.hp -= 0.9;
@@ -270,54 +354,65 @@ function updatePlayer(keys, reeling) {
 }
 
 function clampToReach(tx, ty, anchor) {
-  var ax = anchor ? anchor.x : player.x, ay = anchor ? anchor.y : player.y;
-  var dx = tx - ax, dy = ty - ay;
-  var d = Math.sqrt(dx * dx + dy * dy);
-  if (d > REACH) return [ax + dx / d * REACH, ay + dy / d * REACH];
+  const ax = anchor ? anchor.x : player.x,
+    ay = anchor ? anchor.y : player.y;
+  const dx = tx - ax,
+    dy = ty - ay;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  if (d > REACH) return [ax + (dx / d) * REACH, ay + (dy / d) * REACH];
   return [tx, ty];
 }
 
 function drillableAt(x, y) {
   if (!inBounds(x, y)) return false;
-  var m = mat[y * W + x];
+  const m = mat[y * W + x];
   return MINEABLE[m] === 1;
 }
 
 function drillAt(tx, ty) {
-  var p = clampToReach(tx, ty);
-  var cx = Math.round(p[0]), cy = Math.round(p[1]);
+  const p = clampToReach(tx, ty);
+  const cx = Math.round(p[0]),
+    cy = Math.round(p[1]);
   player.drilling = true;
-  player.aimX = cx; player.aimY = cy;
+  player.aimX = cx;
+  player.aimY = cy;
 
-  var budget = DRILL_POWER;
-  var broken = 0, splash = 0;
+  let budget = DRILL_POWER;
+  let broken = 0,
+    splash = 0;
 
-  for (var n = 0; n < drillOffsets.length; n++) {
-    var x = cx + drillOffsets[n][0], y = cy + drillOffsets[n][1];
+  for (let n = 0; n < drillOffsets.length; n++) {
+    const x = cx + drillOffsets[n][0],
+      y = cy + drillOffsets[n][1];
     if (!inBounds(x, y)) continue;
-    var i = y * W + x;
-    var m = mat[i];
+    const i = y * W + x;
+    const m = mat[i];
     if (!drillableAt(x, y)) continue;
 
-    var portion;
+    let portion;
     if (budget > 0) portion = budget;
-    else if (splash < 3) { portion = DRILL_POWER * 0.25; splash++; }
-    else break;
+    else if (splash < 3) {
+      portion = DRILL_POWER * 0.25;
+      splash++;
+    } else break;
 
-    var ct = temp[i];
+    const ct = temp[i];
     if (ct > 260) {
       player.hp -= (ct - 260) * 0.009;
       player.lastTemp = ct;
       if (player.hp <= 0) player.deathCause = 'hotdrill';
     }
 
-    var need = HARD[m] - dmg[i];
+    const need = HARD[m] - dmg[i];
     if (portion >= need) {
       setCell(x, y, VOID_ID);
-      var loose = BREAK_INTO[m];
+      const loose = BREAK_INTO[m];
       if (loose) {
         spoil[loose] = (spoil[loose] || 0) + 1;
-        if (spoil[loose] >= 2) { spoil[loose] -= 2; dropLoose(x, y, loose, ct); }
+        if (spoil[loose] >= 2) {
+          spoil[loose] -= 2;
+          dropLoose(x, y, loose, ct);
+        }
       }
       broken++;
       if (budget > 0) budget -= need;
@@ -331,18 +426,23 @@ function drillAt(tx, ty) {
 }
 
 function igniteAt(tx, ty) {
-  var p = clampToReach(tx, ty);
-  var cx = Math.round(p[0]), cy = Math.round(p[1]);
-  var lit = 0;
-  for (var y = cy - 1; y <= cy + 1; y++) {
-    for (var x = cx - 1; x <= cx + 1; x++) {
+  const p = clampToReach(tx, ty);
+  const cx = Math.round(p[0]),
+    cy = Math.round(p[1]);
+  let lit = 0;
+  for (let y = cy - 1; y <= cy + 1; y++) {
+    for (let x = cx - 1; x <= cx + 1; x++) {
       if (!inBounds(x, y)) continue;
-      var i = y * W + x;
-      var m = mat[i];
-      var point = HOT_T[m];
-      if (ISVOID[m]) { setCellHot(x, y, TORCH_FLAME, EMITS[TORCH_FLAME]); lit++; }
-      else if (point > 0 && point <= TORCH_TEMP) { temp[i] = point + 80; lit++; }
-      else if (temp[i] < TORCH_TEMP) temp[i] = TORCH_TEMP;
+      const i = y * W + x;
+      const m = mat[i];
+      const point = HOT_T[m];
+      if (ISVOID[m]) {
+        setCellHot(x, y, TORCH_FLAME, EMITS[TORCH_FLAME]);
+        lit++;
+      } else if (point > 0 && point <= TORCH_TEMP) {
+        temp[i] = point + 80;
+        lit++;
+      } else if (temp[i] < TORCH_TEMP) temp[i] = TORCH_TEMP;
     }
   }
   return lit;

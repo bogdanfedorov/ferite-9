@@ -54,8 +54,10 @@ regLang('pl', {
 
   'tip.drill': 'LPM — krusz skałę: rozsypie się sypka na miejscu · PPM — hak',
   'tip.ignite': 'LPM na węgiel — podpalić · żar trzyma 1500 °C',
-  'tip.hand': 'Przytrzymaj LPM na sypkim — w garści tylko to, na co celujesz · puść, a od razu wsypie się w podłoże',
-  'tip.build': 'Wybierz co stawiasz i jaki kształt · przytrzymaj LPM i prowadź · Shift — równa linia lub kwadrat · R — kształt',
+  'tip.hand':
+    'Przytrzymaj LPM na sypkim — w garści tylko to, na co celujesz · puść, a od razu wsypie się w podłoże',
+  'tip.build':
+    'Wybierz co stawiasz i jaki kształt · przytrzymaj LPM i prowadź · Shift — równa linia lub kwadrat · R — kształt',
 
   'body.belt': 'taśma',
   'body.wall': 'ściana',
@@ -81,14 +83,16 @@ regLang('pl', {
   'msg.noIgnite': 'Nie ma czego podpalić — wysyp najpierw węgiel',
   'msg.heatOn': 'Mapa ciepła włączona',
   'msg.heatOff': 'Mapa ciepła wyłączona',
-  'msg.roomOn': 'Poligon: wszystkie materiały w zasobnikach, plecak bez paliwa, upadek bez obrażeń.',
+  'msg.roomOn':
+    'Poligon: wszystkie materiały w zasobnikach, plecak bez paliwa, upadek bez obrażeń.',
   'msg.roomOff': 'Szyb: zmiana zaczyna się od nowa.',
   'msg.roomReset': 'Zasobnik napełniony: {mat}',
   'msg.soundOn': 'Dźwięk włączony',
   'msg.soundOff': 'Dźwięk wyłączony',
 
   'intro.kicker': 'Kopalnia głębinowa · zmiana 41',
-  'intro.lede': 'Jesteś modułem badawczym <b>sol_1.01</b>, kolejną przesyłką Centrum do tego szybu. Magazynu nie masz: skała pod wiertłem rozsypuje się na miejscu, a wszystko nosisz w rękach. Wykuj piec w skale, wnieś do niego węgiel i rudę, podpal — i patrz, jak ferryt spływa ciekłym żelazem. Każda strata modułu kosztuje Centrum nową przesyłkę, a ciebie — kolejną porcję komentarzy z orbity.',
+  'intro.lede':
+    'Jesteś modułem badawczym <b>sol_1.01</b>, kolejną przesyłką Centrum do tego szybu. Magazynu nie masz: skała pod wiertłem rozsypuje się na miejscu, a wszystko nosisz w rękach. Wykuj piec w skale, wnieś do niego węgiel i rudę, podpal — i patrz, jak ferryt spływa ciekłym żelazem. Każda strata modułu kosztuje Centrum nową przesyłkę, a ciebie — kolejną porcję komentarzy z orbity.',
   'intro.keyMove': 'ruch, plecak przy wznoszeniu',
   'intro.keyTool': 'narzędzie',
   'intro.keyHook': 'hak i podciąganie',
@@ -97,18 +101,27 @@ regLang('pl', {
   'intro.keyHelp': 'pomoc · pauza',
   'intro.cta': 'Zjechać do szybu',
   'intro.room': 'Poligon',
-  'intro.foot': 'Niezbadanego dla symulacji jeszcze nie ma: lawa i pokład węgla obok siebie nie ruszają się nawzajem, dopóki się do nich nie dokopiesz. To, co odkryjesz, żyje dalej samo.',
+  'intro.foot':
+    'Niezbadanego dla symulacji jeszcze nie ma: lawa i pokład węgla obok siebie nie ruszają się nawzajem, dopóki się do nich nie dokopiesz. To, co odkryjesz, żyje dalej samo.',
 
   'help.kicker': 'Pomoc',
   'help.title': 'Jak wytopić żelazo',
-  'help.s1': '<b>Wiertło</b> gryzie skałę w czasie: piasek — chwila, kamień — sekunda, ferryt i żelazo — długo. Pęknięcia na komórce pokazują postęp. Cieczy nie rusza i przechodzi przez nie na wylot: wodę i lawę trzeba odprowadzić kanałem albo odciąć murem. <b>Ręką</b> bierzesz sypkie: do garści trafia wyłącznie materiał, na który celujesz — nigdy mieszanka. Przytrzymaj, a garść poleci za kursorem; puść, i od razu wsypie się z powrotem w podłoże.',
-  'help.s2': '<b>Wykuj piec w skale</b>: wywierć niszę z wąskim wlotem. Kamień trzyma ciepło gorzej niż szamot, ale to jest to, co masz od początku.',
-  'help.s3': '<b>Ręką</b> przenieś węgiel i ferryt do niszy — na dole węgiel, nad nim ruda — potem <b>zapalnik</b> na węgiel. Żar trzyma 1500 °C i pali się kilkadziesiąt sekund.',
-  'help.s4': '<b>Ferryt topi się w 1120 °C</b> i spływa ciekłym żelazem. Krzepnie poniżej 850 °C albo natychmiast od wody — hartuj, jeśli się spieszysz.',
-  'help.s5': '<b>Szkło jest trudniejsze niż żelazo</b>: piasek topi się dopiero w 1340 °C. Warstwa piasku na węglu nigdy tam nie dojdzie — komórka z jednym gorącym sąsiadem zatrzymuje się około 1240 °C. Zakop piasek w węglu, żeby żar otoczył go ze wszystkich stron.',
-  'help.s6': '<b>Ciepło jest wszędzie</b>: lawa grzeje kamień, woda zabiera ciepło i wrze, przegrzanie kosztuje zdrowie. Wciśnij <b>T</b>, aby widzieć temperaturę.',
-  'help.s7': '<b>Świat budzi się od ciebie</b>: niezbadane obszary nie są symulowane. Gdy tylko przebijesz chodnik i zobaczysz — wszystko tam rusza naraz i trwa, nawet gdy odejdziesz.',
-  'help.s8': '<b>Moduł jest śmiertelny</b>: upadek z ponad 17 komórek, upał powyżej 120 °C, wiercenie w rozżarzonym i zasypanie sypkim. Każda strata to nowa przesyłka z nowym numerem i kolejny komentarz z orbity. <b>Plecak sam się nie tankuje</b>: zbiornik napełnią tylko na stacji dokującej, więc wysokość bierz hakiem.',
+  'help.s1':
+    '<b>Wiertło</b> gryzie skałę w czasie: piasek — chwila, kamień — sekunda, ferryt i żelazo — długo. Pęknięcia na komórce pokazują postęp. Cieczy nie rusza i przechodzi przez nie na wylot: wodę i lawę trzeba odprowadzić kanałem albo odciąć murem. <b>Ręką</b> bierzesz sypkie: do garści trafia wyłącznie materiał, na który celujesz — nigdy mieszanka. Przytrzymaj, a garść poleci za kursorem; puść, i od razu wsypie się z powrotem w podłoże.',
+  'help.s2':
+    '<b>Wykuj piec w skale</b>: wywierć niszę z wąskim wlotem. Kamień trzyma ciepło gorzej niż szamot, ale to jest to, co masz od początku.',
+  'help.s3':
+    '<b>Ręką</b> przenieś węgiel i ferryt do niszy — na dole węgiel, nad nim ruda — potem <b>zapalnik</b> na węgiel. Żar trzyma 1500 °C i pali się kilkadziesiąt sekund.',
+  'help.s4':
+    '<b>Ferryt topi się w 1120 °C</b> i spływa ciekłym żelazem. Krzepnie poniżej 850 °C albo natychmiast od wody — hartuj, jeśli się spieszysz.',
+  'help.s5':
+    '<b>Szkło jest trudniejsze niż żelazo</b>: piasek topi się dopiero w 1340 °C. Warstwa piasku na węglu nigdy tam nie dojdzie — komórka z jednym gorącym sąsiadem zatrzymuje się około 1240 °C. Zakop piasek w węglu, żeby żar otoczył go ze wszystkich stron.',
+  'help.s6':
+    '<b>Ciepło jest wszędzie</b>: lawa grzeje kamień, woda zabiera ciepło i wrze, przegrzanie kosztuje zdrowie. Wciśnij <b>T</b>, aby widzieć temperaturę.',
+  'help.s7':
+    '<b>Świat budzi się od ciebie</b>: niezbadane obszary nie są symulowane. Gdy tylko przebijesz chodnik i zobaczysz — wszystko tam rusza naraz i trwa, nawet gdy odejdziesz.',
+  'help.s8':
+    '<b>Moduł jest śmiertelny</b>: upadek z ponad 17 komórek, upał powyżej 120 °C, wiercenie w rozżarzonym i zasypanie sypkim. Każda strata to nowa przesyłka z nowym numerem i kolejny komentarz z orbity. <b>Plecak sam się nie tankuje</b>: zbiornik napełnią tylko na stacji dokującej, więc wysokość bierz hakiem.',
   'help.cta': 'Wrócić do pracy',
   'intro.keySettings': 'ustawienia',
 
@@ -120,9 +133,11 @@ regLang('pl', {
   'set.volume': 'Głośność',
   'set.grab': 'Chwyt',
   'set.grabSize': 'Rozmiar chwytu',
-  'set.grabNote': 'Garść mieści do {cells} komórek naraz — kłębek {n}×{n} tego materiału, na który celujesz.',
+  'set.grabNote':
+    'Garść mieści do {cells} komórek naraz — kłębek {n}×{n} tego materiału, na który celujesz.',
   'set.vision': 'Schemat kolorów',
-  'set.visionNote': 'Schematy dla daltonistów rozsuwają barwy skał: to, co się zlewało, rozchodzi się wzdłuż osi niebiesko-żółtej. Dotyczy kopalni i przyrządów.',
+  'set.visionNote':
+    'Schematy dla daltonistów rozsuwają barwy skał: to, co się zlewało, rozchodzi się wzdłuż osi niebiesko-żółtej. Dotyczy kopalni i przyrządów.',
   'set.vision.off': 'Standardowy',
   'set.vision.protan': 'Protanopia · czerwień',
   'set.vision.deutan': 'Deuteranopia · zieleń',
@@ -133,7 +148,8 @@ regLang('pl', {
   'set.worldMine': 'szyb',
   'set.worldRoom': 'poligon',
   'set.worldSwap': 'Uruchom ponownie w drugim',
-  'set.worldNote': 'Poligon to płaski plac z zasobnikami wszystkich materiałów: plecak nie zużywa paliwa, a upadki nie szkodzą. Przełączenie buduje świat od nowa.',
+  'set.worldNote':
+    'Poligon to płaski plac z zasobnikami wszystkich materiałów: plecak nie zużywa paliwa, a upadki nie szkodzą. Przełączenie buduje świat od nowa.',
   'set.keys': 'Klawisze',
   'set.keysReset': 'Domyślne',
   'set.press': 'naciśnij klawisz',
@@ -154,8 +170,10 @@ regLang('pl', {
 
   'win.kicker': 'Ładunek przyjęty',
   'win.title': 'Wahadłowiec odleciał',
-  'win.textClean': 'Normę zamknął {sol} — bez ani jednej straconej przesyłki. Centrum sprawdza telemetrię pod kątem fałszerstwa.',
-  'win.textLosses': 'Normę zamknął {sol}. Poprzednie {n} przesyłek Centrum spisało na „wydatki badawcze".',
+  'win.textClean':
+    'Normę zamknął {sol} — bez ani jednej straconej przesyłki. Centrum sprawdza telemetrię pod kątem fałszerstwa.',
+  'win.textLosses':
+    'Normę zamknął {sol}. Poprzednie {n} przesyłek Centrum spisało na „wydatki badawcze".',
   'win.time': 'Czas zmiany',
   'win.cargo': 'Ładunku na płycie',
   'win.drilled': 'Komórek przewierconych',
@@ -315,27 +333,32 @@ regLang('pl', {
     'Obwał był do przewidzenia. Przewidzieliśmy. Ciebie nie uprzedzono.'
   ],
 
-  'respawn': [
+  respawn: [
     'Przesyłka {sol} w śluzie. Spróbuj wytrzymać dłużej niż poprzednia.',
     'Nowy kadłub, stare zadanie. Pamięci nie przenosimy — za drogo.',
     '{sol} na pozycji. Dziennik strat zaktualizowany.',
     'Rozpakowano {sol}. Gwarancja nie obejmuje lawy, wysokości i piasku.'
   ],
 
-  'event.intro': 'Centrum „Sol" na łączach. Jesteś {sol}, moduł badawczy. Norma zmiany: 60 żelaza i 40 szkła na płytę ładunkową przy śluzie. Magazynu nie masz — wszystko nosisz w rękach. Poprzednie przesyłki jej nie zamknęły.',
+  'event.intro':
+    'Centrum „Sol" na łączach. Jesteś {sol}, moduł badawczy. Norma zmiany: 60 żelaza i 40 szkła na płytę ładunkową przy śluzie. Magazynu nie masz — wszystko nosisz w rękach. Poprzednie przesyłki jej nie zamknęły.',
   'event.first_hook': 'Hak trzyma. Następne rewizje dostaną taki sam. O ile będą następne.',
   'event.first_ember': 'Węgiel się zajął. 1500 °C. Palce, których nie masz, trzymaj z daleka.',
   'event.first_melt': 'Ferryt popłynął. Centrum jest oficjalnie zdziwione.',
   'event.first_iron': 'Pierwsza sztaba w magazynie. Orbita prosi o jeszcze 59.',
   'event.first_glass': 'Szkło poszło. Wahadłowiec dostanie iluminator — żeby patrzeć, jak spadasz.',
-  'event.dry_tank': 'Zbiornik suchy. Następne tankowanie na stacji dokującej. Stacji jeszcze nie ma, więc dalej — hak i własne nogi.',
-  'event.glass_hint': 'Piasek się grzeje, ale nie płynie. Żar od spodu nie wystarcza: zakop go w węglu, żeby piekło ze wszystkich stron.',
-  'event.goal_ready': 'Ładunek zebrany. {sol}, wciśnij „Załadować wahadłowiec", zanim coś się zawali.',
+  'event.dry_tank':
+    'Zbiornik suchy. Następne tankowanie na stacji dokującej. Stacji jeszcze nie ma, więc dalej — hak i własne nogi.',
+  'event.glass_hint':
+    'Piasek się grzeje, ale nie płynie. Żar od spodu nie wystarcza: zakop go w węglu, żeby piekło ze wszystkich stron.',
+  'event.goal_ready':
+    'Ładunek zebrany. {sol}, wciśnij „Załadować wahadłowiec", zanim coś się zawali.',
 
   'comms.from': 'CENTRUM · KANAŁ 7',
-  'comms.beltGift': 'Limit zamknięty. Odblokowano budowniczego. Prowadź linię — postaw taśmę albo ścianę, za darmo.',
+  'comms.beltGift':
+    'Limit zamknięty. Odblokowano budowniczego. Prowadź linię — postaw taśmę albo ścianę, za darmo.',
 
-  'baseline': [
+  baseline: [
     { q: 'System. Skała.', a: 'Skała.' },
     { q: 'Trzysta metrów nad tobą. Skała.', a: 'Skała.' },
     { q: 'Naciska, dopóki stoisz. Skała.', a: 'Skała.' },

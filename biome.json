@@ -11,10 +11,10 @@
       "electron/**/*.js",
       "tools/**/*.js",
       "*.json",
-      "!app/**",
-      "!dist/**",
-      "!release/**",
-      "!node_modules/**"
+      "!app",
+      "!dist",
+      "!release",
+      "!node_modules"
     ]
   },
   "formatter": {
@@ -34,10 +34,25 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "preset": "recommended"
     }
   },
   "assist": {
     "enabled": false
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["js/**/*.js"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off"
+          },
+          "suspicious": {
+            "noVar": "off"
+          }
+        }
+      }
+    }
+  ]
 }

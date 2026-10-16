@@ -72,9 +72,13 @@ function resetBuild() {
   endBuildDrag();
 }
 
-function activeBody() { return BODIES[buildBody]; }
+function activeBody() {
+  return BODIES[buildBody];
+}
 
-function shapesOfBody() { return Object.keys(activeBody().aims); }
+function shapesOfBody() {
+  return Object.keys(activeBody().aims);
+}
 
 function setBuildBody(body) {
   if (!BODIES[body]) return;
@@ -88,7 +92,7 @@ function setBuildShape(shape) {
 }
 
 function cycleBuildShape() {
-  var allowed = shapesOfBody();
+  const allowed = shapesOfBody();
   buildShape = allowed[(allowed.indexOf(buildShape) + 1) % allowed.length];
   return buildShape;
 }
@@ -111,19 +115,20 @@ function stepOf(n) {
 }
 
 function gridPoint(wx, wy) {
-  var p = clampToReach(wx, wy, buildAnchor);
+  const p = clampToReach(wx, wy, buildAnchor);
   return { x: Math.round(p[0]), y: Math.round(p[1]) };
 }
 
 function cappedPoint(from, to) {
-  var dx = to.x - from.x, dy = to.y - from.y;
-  var reach = Math.max(Math.abs(dx), Math.abs(dy));
+  const dx = to.x - from.x,
+    dy = to.y - from.y;
+  const reach = Math.max(Math.abs(dx), Math.abs(dy));
   if (reach <= SHAPE_MAX) return to;
-  var scale = SHAPE_MAX / reach;
+  const scale = SHAPE_MAX / reach;
   return { x: from.x + Math.round(dx * scale), y: from.y + Math.round(dy * scale) };
 }
 
-function freePoint(from, to) {
+function freePoint(_from, to) {
   return to;
 }
 
@@ -137,7 +142,7 @@ function levelPoint(from, to) {
 }
 
 function evenPoint(from, to) {
-  var side = Math.min(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
+  const side = Math.min(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
   return {
     x: from.x + stepOf(to.x - from.x) * side,
     y: from.y + stepOf(to.y - from.y) * side
@@ -148,43 +153,46 @@ function shiftPoint(from, to, even) {
   return even ? evenPoint(from, to) : to;
 }
 
-function pointAt(from, to) {
+function pointAt(_from, to) {
   return [{ x: to.x, y: to.y }];
 }
 
 function lineBetween(from, to) {
-  var dx = to.x - from.x, dy = to.y - from.y;
-  var steps = Math.max(Math.abs(dx), Math.abs(dy));
-  var cells = [];
-  for (var k = 0; k <= steps; k++) {
-    var along = steps === 0 ? 0 : k / steps;
+  const dx = to.x - from.x,
+    dy = to.y - from.y;
+  const steps = Math.max(Math.abs(dx), Math.abs(dy));
+  const cells = [];
+  for (let k = 0; k <= steps; k++) {
+    const along = steps === 0 ? 0 : k / steps;
     cells.push({ x: from.x + Math.round(dx * along), y: from.y + Math.round(dy * along) });
   }
   return cells;
 }
 
 function rectBetween(from, to) {
-  var x0 = Math.min(from.x, to.x), x1 = Math.max(from.x, to.x);
-  var y0 = Math.min(from.y, to.y), y1 = Math.max(from.y, to.y);
-  var cells = [];
-  for (var y = y0; y <= y1; y++) {
-    for (var x = x0; x <= x1; x++) cells.push({ x: x, y: y });
+  const x0 = Math.min(from.x, to.x),
+    x1 = Math.max(from.x, to.x);
+  const y0 = Math.min(from.y, to.y),
+    y1 = Math.max(from.y, to.y);
+  const cells = [];
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) cells.push({ x: x, y: y });
   }
   return cells;
 }
 
 function buildCells(fromWorld, toWorld) {
-  var from = gridPoint(fromWorld[0], fromWorld[1]);
-  var to = cappedPoint(from, gridPoint(toWorld[0], toWorld[1]));
-  var aim = activeBody().aims[buildShape];
+  const from = gridPoint(fromWorld[0], fromWorld[1]);
+  const to = cappedPoint(from, gridPoint(toWorld[0], toWorld[1]));
+  const aim = activeBody().aims[buildShape];
   return TRACES[buildShape](from, aim(from, to, buildEven));
 }
 
 function thicken(cells, thickness) {
   if (thickness === 1) return cells;
-  var out = [];
-  for (var k = 0; k < cells.length; k++) {
-    for (var down = 0; down < thickness; down++) {
+  const out = [];
+  for (let k = 0; k < cells.length; k++) {
+    for (let down = 0; down < thickness; down++) {
       out.push({ x: cells[k].x, y: cells[k].y + down });
     }
   }
@@ -196,7 +204,7 @@ function bodyCells(cells) {
 }
 
 function buildVerdict(cells) {
-  var body = activeBody();
+  const body = activeBody();
   if (cells.length < body.min) return 'short';
   if (!body.fits(cells)) return body.miss;
   return 'ok';
@@ -207,8 +215,8 @@ function beltCellAt(x, y) {
 }
 
 function beltFits(surface) {
-  var body = thicken(surface, BELT_THICK);
-  var k, c;
+  const body = thicken(surface, BELT_THICK);
+  let k, c;
   for (k = 0; k < body.length; k++) {
     c = body[k];
     if (!inBounds(c.x, c.y) || !OPEN[mat[c.y * W + c.x]]) return false;
@@ -221,18 +229,19 @@ function beltFits(surface) {
 }
 
 function wallFits(cells) {
-  for (var k = 0; k < cells.length; k++) {
-    var c = cells[k];
+  for (let k = 0; k < cells.length; k++) {
+    const c = cells[k];
     if (!inBounds(c.x, c.y) || FIXED[mat[c.y * W + c.x]]) return false;
   }
   return true;
 }
 
 function placeBelt(surface) {
-  var body = thicken(surface, BELT_THICK);
-  var first = surface[0], last = surface[surface.length - 1];
-  var belt = { cells: surface, dx: stepOf(last.x - first.x), dy: stepOf(last.y - first.y) };
-  for (var k = 0; k < body.length; k++) {
+  const body = thicken(surface, BELT_THICK);
+  const first = surface[0],
+    last = surface[surface.length - 1];
+  const belt = { cells: surface, dx: stepOf(last.x - first.x), dy: stepOf(last.y - first.y) };
+  for (let k = 0; k < body.length; k++) {
     setCell(body[k].x, body[k].y, BELT_DECK);
     beltByCell.set(body[k].y * W + body[k].x, belt);
   }
@@ -241,7 +250,7 @@ function placeBelt(surface) {
 }
 
 function placeWall(cells) {
-  for (var k = 0; k < cells.length; k++) setCell(cells[k].x, cells[k].y, WALL_ID);
+  for (let k = 0; k < cells.length; k++) setCell(cells[k].x, cells[k].y, WALL_ID);
 }
 
 function beltAt(x, y) {
@@ -250,13 +259,13 @@ function beltAt(x, y) {
 }
 
 function removeBelt(belt) {
-  var idx = belts.indexOf(belt);
+  const idx = belts.indexOf(belt);
   if (idx < 0) return false;
   belts.splice(idx, 1);
-  var body = thicken(belt.cells, BELT_THICK);
-  for (var k = 0; k < body.length; k++) {
-    var c = body[k];
-    var i = c.y * W + c.x;
+  const body = thicken(belt.cells, BELT_THICK);
+  for (let k = 0; k < body.length; k++) {
+    const c = body[k];
+    const i = c.y * W + c.x;
     if (beltByCell.get(i) === belt) beltByCell.delete(i);
     if (beltCellAt(c.x, c.y)) setCell(c.x, c.y, VOID_ID);
   }
@@ -274,58 +283,65 @@ function removeWallCell(x, y) {
 }
 
 function hasRemovable(cells) {
-  for (var k = 0; k < cells.length; k++) {
-    var c = cells[k];
+  for (let k = 0; k < cells.length; k++) {
+    const c = cells[k];
     if (beltAt(c.x, c.y) || wallCellAt(c.x, c.y)) return true;
   }
   return false;
 }
 
 function eraseCells(cells) {
-  var gone = 0;
-  for (var k = 0; k < cells.length; k++) {
-    var c = cells[k];
-    var belt = beltAt(c.x, c.y);
-    if (belt) { removeBelt(belt); gone++; continue; }
+  let gone = 0;
+  for (let k = 0; k < cells.length; k++) {
+    const c = cells[k];
+    const belt = beltAt(c.x, c.y);
+    if (belt) {
+      removeBelt(belt);
+      gone++;
+      continue;
+    }
     if (removeWallCell(c.x, c.y)) gone++;
   }
   return gone;
 }
 
 function finishBuild(fromWorld, toWorld) {
-  var cells = buildCells(fromWorld, toWorld);
+  const cells = buildCells(fromWorld, toWorld);
   buildAnchor = null;
-  var verdict = buildVerdict(cells);
+  const verdict = buildVerdict(cells);
   if (verdict !== 'ok') return verdict;
   activeBody().place(cells);
   return activeBody().done;
 }
 
 function tickBelts() {
-  for (var b = 0; b < belts.length; b++) {
-    var belt = belts[b];
-    var cs = belt.cells;
-    var back = belt.dx > 0;
-    var k = back ? cs.length - 1 : 0;
-    var end = back ? -1 : cs.length;
-    var st = back ? -1 : 1;
+  for (let b = 0; b < belts.length; b++) {
+    const belt = belts[b];
+    const cs = belt.cells;
+    const back = belt.dx > 0;
+    let k = back ? cs.length - 1 : 0;
+    const end = back ? -1 : cs.length;
+    const st = back ? -1 : 1;
 
     for (; k !== end; k += st) {
-      var c = cs[k];
+      const c = cs[k];
       if (!beltCellAt(c.x, c.y)) continue;
-      var sx = c.x, sy = c.y - 1;
+      const sx = c.x,
+        sy = c.y - 1;
       if (!inBounds(sx, sy)) continue;
-      var i = sy * W + sx;
-      var m = mat[i];
+      const i = sy * W + sx;
+      const m = mat[i];
       if (!MOVABLE[m]) continue;
 
-      var nx = sx + belt.dx, ny = sy + belt.dy;
+      const nx = sx + belt.dx,
+        ny = sy + belt.dy;
       if (!inBounds(nx, ny)) continue;
-      var j = ny * W + nx;
-      var tm = mat[j];
+      const j = ny * W + nx;
+      const tm = mat[j];
       if (!OPEN[tm]) continue;
 
-      var hot = temp[i], hotT = temp[j];
+      const hot = temp[i],
+        hotT = temp[j];
       setCellHot(nx, ny, m, hot);
       if (STATE[tm] === MT.GAS) setCellHot(sx, sy, tm, hotT);
       else setCell(sx, sy, VOID_ID);

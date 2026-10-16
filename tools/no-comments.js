@@ -1,13 +1,23 @@
-'use strict';
-
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOTS = ['js', 'electron', 'tools'];
 const SKIP = new Set(['node_modules', 'app', 'dist', 'release', '.git']);
 const KEYWORDS = new Set([
-  'return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void',
-  'case', 'do', 'else', 'yield', 'await', 'throw'
+  'return',
+  'typeof',
+  'instanceof',
+  'in',
+  'of',
+  'new',
+  'delete',
+  'void',
+  'case',
+  'do',
+  'else',
+  'yield',
+  'await',
+  'throw'
 ]);
 const REGEX_AFTER = '([{,;:=!&|?+-*%~^<>';
 
@@ -15,7 +25,7 @@ function collect(dir, out) {
   let entries;
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch (err) {
+  } catch (_err) {
     return out;
   }
   for (const entry of entries) {
@@ -153,7 +163,7 @@ function position(src, offset) {
       start = i + 1;
     }
   }
-  return line + ':' + (offset - start + 1);
+  return `${line}:${offset - start + 1}`;
 }
 
 function main() {
@@ -166,15 +176,17 @@ function main() {
     const hits = scan(src);
     total += hits.length;
     for (const offset of hits) {
-      process.stdout.write(file.replace(/\\/g, '/') + ':' + position(src, offset) + ' comment\n');
+      process.stdout.write(`${file.replace(/\\/g, '/')}:${position(src, offset)} comment\n`);
     }
   }
 
   if (total > 0) {
-    process.stdout.write('\n' + total + ' comment(s) found. Comments are not allowed in this codebase.\n');
+    process.stdout.write(
+      `\n${total} comment(s) found. Comments are not allowed in this codebase.\n`
+    );
     process.exit(1);
   }
-  process.stdout.write('no comments in ' + files.length + ' files\n');
+  process.stdout.write(`no comments in ${files.length} files\n`);
 }
 
 main();

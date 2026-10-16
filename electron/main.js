@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, session } = require('electron');
-const path = require('path');
+const path = require('node:path');
 
 const isDev = !app.isPackaged || process.argv.includes('--dev');
 

@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { minify } = require('terser');
 const Obfuscator = require('javascript-obfuscator');
 
@@ -61,8 +61,8 @@ async function build() {
   let raw = '';
   for (const f of FILES) {
     const p = path.join(ROOT, f);
-    if (!fs.existsSync(p)) throw new Error('Немає файлу: ' + f);
-    raw += '\n;/* ' + f + ' */\n' + fs.readFileSync(p, 'utf8');
+    if (!fs.existsSync(p)) throw new Error(`Немає файлу: ${f}`);
+    raw += `\n;/* ${f} */\n${fs.readFileSync(p, 'utf8')}`;
   }
   const rawSize = Buffer.byteLength(raw);
 
@@ -82,14 +82,17 @@ async function build() {
   html = html.replace('</body>', '<script src="bundle.js"></script>\n</body>');
 
   const fontsDir = path.join(ROOT, 'fonts');
-  const hasFonts = fs.existsSync(path.join(fontsDir, 'fonts.css')) &&
+  const hasFonts =
+    fs.existsSync(path.join(fontsDir, 'fonts.css')) &&
     fs.readdirSync(fontsDir).some((f) => f.toLowerCase().endsWith('.woff2'));
   if (hasFonts) {
     fs.cpSync(fontsDir, path.join(OUT, 'fonts'), { recursive: true });
     html = html
       .replace(/\n?\s*<link rel="preconnect"[^>]*>/g, '')
-      .replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^>]*>/,
-        '<link rel="stylesheet" href="fonts/fonts.css">');
+      .replace(
+        /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^>]*>/,
+        '<link rel="stylesheet" href="fonts/fonts.css">'
+      );
     console.log('шрифти · вшито локально з fonts/');
   } else {
     console.warn('шрифти · fonts/fonts.css немає — гра тягтиме Google Fonts, офлайн буде фолбек');
@@ -103,9 +106,13 @@ async function build() {
 
   const outSize = Buffer.byteLength(obf);
   console.log(
-    'app/ зібрано за ' + (Date.now() - started) + ' мс · ' +
-    Math.round(rawSize / 1024) + ' КБ джерел → ' +
-    Math.round(outSize / 1024) + ' КБ bundle.js'
+    'app/ зібрано за ' +
+      (Date.now() - started) +
+      ' мс · ' +
+      Math.round(rawSize / 1024) +
+      ' КБ джерел → ' +
+      Math.round(outSize / 1024) +
+      ' КБ bundle.js'
   );
 }
 

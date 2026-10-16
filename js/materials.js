@@ -37,24 +37,26 @@ var GRIPS, GLOW, FIXED, MINEABLE, REACTIVE;
 var REACT_INTO, REACT_T, REACT_GIVES, REACT_GIVES_T;
 
 function camelName(name) {
-  return name.replace(/_([a-z])/g, function (_, c) { return c.toUpperCase(); });
+  return name.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
 
 function matId(name) {
-  var id = MAT[name];
-  if (id === undefined) throw new Error('unknown material: ' + name);
+  const id = MAT[name];
+  if (id === undefined) throw new Error(`unknown material: ${name}`);
   return id;
 }
 
-function matLabel(id) { return t(MATS[id].labelKey); }
+function matLabel(id) {
+  return t(MATS[id].labelKey);
+}
 
 function heatResponse(rec) {
-  var s = HEAT_STEP / (rec.density * rec.heatCapacity);
+  const s = HEAT_STEP / (rec.density * rec.heatCapacity);
   return s > HEAT_RESPONSE_MAX ? HEAT_RESPONSE_MAX : s;
 }
 
 function ambientRelax(rec) {
-  var r = AMBIENT_FLOW / (rec.density * rec.heatCapacity);
+  const r = AMBIENT_FLOW / (rec.density * rec.heatCapacity);
   if (r > RELAX_MAX) return RELAX_MAX;
   if (r < RELAX_MIN) return RELAX_MIN;
   return r;
@@ -62,22 +64,25 @@ function ambientRelax(rec) {
 
 function latentPasses(rec) {
   if (!rec.latentHeat) return 0;
-  return Math.round(rec.latentHeat * 1000 / (rec.heatCapacity * LATENT_STEP));
+  return Math.round((rec.latentHeat * 1000) / (rec.heatCapacity * LATENT_STEP));
 }
 
 function flowReach(rec) {
   if (rec.state !== 'liquid') return 0;
-  var v = rec.viscosity || FLOW_VISC_REF;
-  var r = Math.round(FLOW_REACH_BASE - FLOW_REACH_DECADE * Math.log(v / FLOW_VISC_REF) / Math.LN10);
+  const v = rec.viscosity || FLOW_VISC_REF;
+  const r = Math.round(
+    FLOW_REACH_BASE - (FLOW_REACH_DECADE * Math.log(v / FLOW_VISC_REF)) / Math.LN10
+  );
   if (r < FLOW_REACH_MIN) return FLOW_REACH_MIN;
   if (r > FLOW_REACH_MAX) return FLOW_REACH_MAX;
   return r;
 }
 
 function pairConductivity(a, b) {
-  var ka = a.thermalConductivity, kb = b.thermalConductivity;
+  const ka = a.thermalConductivity,
+    kb = b.thermalConductivity;
   if (ka <= 0 || kb <= 0) return 0;
-  return 2 * ka * kb / (ka + kb);
+  return (2 * ka * kb) / (ka + kb);
 }
 
 function transitionUp(rec) {
@@ -136,17 +141,17 @@ function allocMaterialTables(n) {
 
 function checkMaterial(rec) {
   if (!rec.name) throw new Error('material without a name');
-  if (MT_NAMES.indexOf(rec.state) < 0) throw new Error(rec.name + ': unknown state ' + rec.state);
-  if (!(rec.density > 0)) throw new Error(rec.name + ': density must be positive');
-  if (!(rec.heatCapacity > 0)) throw new Error(rec.name + ': heatCapacity must be positive');
+  if (MT_NAMES.indexOf(rec.state) < 0) throw new Error(`${rec.name}: unknown state ${rec.state}`);
+  if (!(rec.density > 0)) throw new Error(`${rec.name}: density must be positive`);
+  if (!(rec.heatCapacity > 0)) throw new Error(`${rec.name}: heatCapacity must be positive`);
   if (!(rec.thermalConductivity > 0)) {
-    throw new Error(rec.name + ': thermalConductivity must be positive');
+    throw new Error(`${rec.name}: thermalConductivity must be positive`);
   }
 }
 
 function fillMaterialCell(rec) {
-  var id = rec.id;
-  var state = MT_NAMES.indexOf(rec.state);
+  const id = rec.id;
+  const state = MT_NAMES.indexOf(rec.state);
 
   STATE[id] = state;
   DENS[id] = rec.density;
@@ -155,20 +160,19 @@ function fillMaterialCell(rec) {
   EMITS[id] = rec.emits || 0;
   LATENT[id] = latentPasses(rec);
   FLOW_REACH[id] = flowReach(rec);
-  SHIMMER[id] = rec.look === 'flame' ? LOOK.FLAME
-    : (rec.look === 'pulse' ? LOOK.PULSE : LOOK.PLAIN);
+  SHIMMER[id] = rec.look === 'flame' ? LOOK.FLAME : rec.look === 'pulse' ? LOOK.PULSE : LOOK.PLAIN;
   CARGO[id] = rec.cargo || '';
 
-  var hot = transitionUp(rec);
+  const hot = transitionUp(rec);
   HOT_T[id] = hot ? hot.at : 0;
   HOT_INTO[id] = hot ? matId(hot.into) : 0;
-  var cold = transitionDown(rec);
+  const cold = transitionDown(rec);
   COLD_T[id] = cold ? cold.at : 0;
   COLD_INTO[id] = cold ? matId(cold.into) : 0;
 
   BREAK_INTO[id] = rec.breaksInto ? matId(rec.breaksInto) : 0;
 
-  var life = rec.life === undefined ? 0 : rec.life;
+  const life = rec.life === undefined ? 0 : rec.life;
   LIFE_BASE[id] = typeof life === 'number' ? life : life[0];
   LIFE_RND[id] = typeof life === 'number' ? 0 : life[1];
 
@@ -193,9 +197,9 @@ function fillMaterialCell(rec) {
 
 function fillReactions(rec) {
   if (!rec.reacts) return;
-  for (var k = 0; k < rec.reacts.length; k++) {
-    var r = rec.reacts[k];
-    var p = rec.id * MAT_COUNT + matId(r.with);
+  for (let k = 0; k < rec.reacts.length; k++) {
+    const r = rec.reacts[k];
+    const p = rec.id * MAT_COUNT + matId(r.with);
     REACT_INTO[p] = matId(r.into);
     REACT_T[p] = r.at || 0;
     REACT_GIVES[p] = r.gives ? matId(r.gives) : 0;
@@ -210,11 +214,11 @@ function emissivityOf(rec) {
 }
 
 function fillHeatCoefficients() {
-  for (var a = 0; a < MAT_COUNT; a++) {
-    var response = heatResponse(MATS[a]);
-    var radiates = 0.25 * RAD_GAIN * response * emissivityOf(MATS[a]);
-    for (var b = 0; b < MAT_COUNT; b++) {
-      var c = response * pairConductivity(MATS[a], MATS[b]);
+  for (let a = 0; a < MAT_COUNT; a++) {
+    const response = heatResponse(MATS[a]);
+    const radiates = 0.25 * RAD_GAIN * response * emissivityOf(MATS[a]);
+    for (let b = 0; b < MAT_COUNT; b++) {
+      const c = response * pairConductivity(MATS[a], MATS[b]);
       HEAT_COEF[a * MAT_COUNT + b] = c > HEAT_COEF_MAX ? HEAT_COEF_MAX : c;
       RAD_COEF[a * MAT_COUNT + b] = OPEN[b] ? radiates : 0;
     }
@@ -228,13 +232,13 @@ function buildMaterials(list) {
   if (MAT_COUNT > 255) throw new Error('too many materials for a Uint8 grid');
   allocMaterialTables(MAT_COUNT);
 
-  var i, rec;
+  let i, rec;
   for (i = 0; i < list.length; i++) {
     rec = list[i];
     checkMaterial(rec);
-    if (MAT[rec.name] !== undefined) throw new Error('duplicate material: ' + rec.name);
+    if (MAT[rec.name] !== undefined) throw new Error(`duplicate material: ${rec.name}`);
     rec.id = i;
-    rec.labelKey = 'mat.' + camelName(rec.name);
+    rec.labelKey = `mat.${camelName(rec.name)}`;
     MATS[i] = rec;
     MAT[rec.name] = i;
     if (rec.isVoid) VOID_ID = i;

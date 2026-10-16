@@ -7,55 +7,60 @@ var LANG_LIST = [
 ];
 var onLangChange = null;
 
-function regLang(code, data) { LANGS[code] = data; }
+function setLangHook(fn) {
+  onLangChange = fn;
+}
+
+function regLang(code, data) {
+  LANGS[code] = data;
+}
 
 function t(key) {
-  var d = LANGS[LANG];
-  var v = d ? d[key] : undefined;
+  const d = LANGS[LANG];
+  let v = d ? d[key] : undefined;
   if (v === undefined && LANGS.uk) v = LANGS.uk[key];
   return v === undefined ? key : v;
 }
 
 function tf(key, vars) {
-  var s = t(key);
+  const s = t(key);
   if (typeof s !== 'string') return s;
   if (!vars) return s;
-  return s.replace(/\{(\w+)\}/g, function (m, name) {
-    return vars[name] === undefined ? m : vars[name];
-  });
+  return s.replace(/\{(\w+)\}/g, (m, name) => (vars[name] === undefined ? m : vars[name]));
 }
 
 function tPick(key) {
-  var arr = t(key);
-  if (!arr || !arr.length) return '';
+  const arr = t(key);
+  if (!arr?.length) return '';
   return arr[(Math.random() * arr.length) | 0];
 }
 
 function pluralForm(n) {
   if (LANG === 'en') return n === 1 ? 0 : 1;
-  var d10 = n % 10, d100 = n % 100;
+  const d10 = n % 10,
+    d100 = n % 100;
   if (d10 === 1 && d100 !== 11) return 0;
   if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return 1;
   return 2;
 }
 
 function tPlural(key, n) {
-  var forms = t(key);
-  if (!forms || !forms.length) return '';
-  var i = pluralForm(n);
+  const forms = t(key);
+  if (!forms?.length) return '';
+  const i = pluralForm(n);
   return forms[i < forms.length ? i : forms.length - 1];
 }
 
 function applyI18n(root) {
-  var scope = root || document;
-  var nodes = scope.querySelectorAll('[data-i18n]');
-  for (var i = 0; i < nodes.length; i++) {
-    var v = t(nodes[i].getAttribute('data-i18n'));
+  const scope = root || document;
+  const nodes = scope.querySelectorAll('[data-i18n]');
+  for (let i = 0; i < nodes.length; i++) {
+    const v = t(nodes[i].getAttribute('data-i18n'));
     if (typeof v === 'string') nodes[i].textContent = v;
   }
-  var html = scope.querySelectorAll('[data-i18n-html]');
+  const html = scope.querySelectorAll('[data-i18n-html]');
   for (i = 0; i < html.length; i++) {
-    var h = t(html[i].getAttribute('data-i18n-html'));
+    const h = t(html[i].getAttribute('data-i18n-html'));
     if (typeof h === 'string') html[i].innerHTML = h;
   }
 }
@@ -63,40 +68,48 @@ function applyI18n(root) {
 function setLang(code, silent) {
   if (!LANGS[code]) return;
   LANG = code;
-  try { localStorage.setItem('ferit9.lang', code); } catch (e) {}
+  try {
+    localStorage.setItem('ferit9.lang', code);
+  } catch (e) {}
   document.documentElement.lang = code;
   applyI18n();
-  var btns = document.querySelectorAll('.lang-btn');
-  for (var i = 0; i < btns.length; i++) {
+  const btns = document.querySelectorAll('.lang-btn');
+  for (let i = 0; i < btns.length; i++) {
     btns[i].classList.toggle('on', btns[i].dataset.lang === code);
   }
   if (!silent && onLangChange) onLangChange();
 }
 
 function detectLang() {
-  var saved = null;
-  try { saved = localStorage.getItem('ferit9.lang'); } catch (e) {}
+  let saved = null;
+  try {
+    saved = localStorage.getItem('ferit9.lang');
+  } catch (e) {}
   if (saved && LANGS[saved]) return saved;
-  var nav = (navigator.language || 'uk').toLowerCase();
+  const nav = (navigator.language || 'uk').toLowerCase();
   if (nav.indexOf('pl') === 0) return 'pl';
   if (nav.indexOf('uk') === 0 || nav.indexOf('ru') === 0) return 'uk';
   return 'en';
 }
 
 function buildLangSwitches() {
-  var holders = document.querySelectorAll('.lang-switch');
-  for (var h = 0; h < holders.length; h++) {
-    var box = holders[h];
+  const holders = document.querySelectorAll('.lang-switch');
+  for (let h = 0; h < holders.length; h++) {
+    const box = holders[h];
     box.innerHTML = '';
-    for (var i = 0; i < LANG_LIST.length; i++) {
-      var b = document.createElement('button');
+    for (let i = 0; i < LANG_LIST.length; i++) {
+      const b = document.createElement('button');
       b.className = 'lang-btn';
       b.type = 'button';
       b.dataset.lang = LANG_LIST[i].code;
       b.textContent = LANG_LIST[i].label;
-      b.addEventListener('click', (function (code) {
-        return function (e) { e.stopPropagation(); setLang(code); };
-      })(LANG_LIST[i].code));
+      b.addEventListener(
+        'click',
+        ((code) => (e) => {
+          e.stopPropagation();
+          setLang(code);
+        })(LANG_LIST[i].code)
+      );
       box.appendChild(b);
     }
   }
