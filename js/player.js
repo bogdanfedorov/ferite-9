@@ -62,6 +62,11 @@ function floorBelow(x, y) {
   return fy;
 }
 
+function shiftPlayer(dx) {
+  player.x -= dx;
+  player.spawnX -= dx;
+}
+
 function spawnPlayer(x, y) {
   player.spawnX = x;
   player.spawnY = floorBelow(Math.round(x), y) - player.h / 2;

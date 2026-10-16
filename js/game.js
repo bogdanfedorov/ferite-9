@@ -111,9 +111,22 @@ function checkMilestones() {
   }
 }
 
+function followWindow() {
+  const dc = windowShiftFor(player.x);
+  if (!dc) return;
+  const dx = dc * CHUNK_SIZE;
+  shiftWindow(dc);
+  shiftPlayer(dx);
+  shiftObjects(dx);
+  shiftCamera(dx);
+  endBuildDrag();
+  eachPiece('shiftWorld', dx);
+}
+
 function step() {
   const mouse = input.mouse;
   if (updatePlayer(input.keys) === 'respawn') respawn();
+  followWindow();
   checkMilestones();
 
   const wpt = screenToWorld(mouse.x, mouse.y);

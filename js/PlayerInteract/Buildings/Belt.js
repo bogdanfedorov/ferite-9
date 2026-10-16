@@ -75,6 +75,15 @@ function tickBelts(frame) {
   applyBeltMoves();
 }
 
+function shiftBelts(dx) {
+  const moved = new Map();
+  for (const [i, code] of beltCells) {
+    const x = (i % W) - dx;
+    if (x >= 0 && x < W) moved.set(((i / W) | 0) * W + x, code);
+  }
+  beltCells = moved;
+}
+
 var ARROW_EVERY = 3;
 
 function drawBelts() {
@@ -117,5 +126,6 @@ regBuilding({
     beltCells.clear();
   },
   tick: tickBelts,
+  shiftWorld: shiftBelts,
   drawWorld: drawBelts
 });
