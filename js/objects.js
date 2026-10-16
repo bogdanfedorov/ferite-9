@@ -2,6 +2,7 @@ var objects = [];
 var shelvedObjects = [];
 
 var OBJ_MAX = 16;
+var OBJ_LIFT = 48;
 var IMPACT_STEAM = matId('smoke');
 var OBJ_GRAV = 0.03;
 var OBJ_MAXV = 1.4;
@@ -87,7 +88,7 @@ function makeObject(bx, by, cells) {
 }
 
 function takeObject(cx, cy, only) {
-  if (objects.length >= OBJ_MAX) return null;
+  if (objects.length + shelvedObjects.length >= OBJ_MAX) return null;
   const pick = grabPick(cx, cy, only);
   if (!pick.length) return null;
 
@@ -322,6 +323,16 @@ function shelveObject(o) {
   shelvedObjects.push(o);
 }
 
+function unshelveObject(o, lx) {
+  let y = o.y;
+  const top = Math.max(0, y - OBJ_LIFT);
+  while (y > top && objBlocked(o, lx, y)) y--;
+  if (objBlocked(o, lx, y)) return false;
+  o.x = lx;
+  o.y = y;
+  return true;
+}
+
 function shiftObjects(dx) {
   const inside = [];
   for (let k = 0; k < objects.length; k++) {
@@ -334,10 +345,8 @@ function shiftObjects(dx) {
   for (let k = 0; k < shelvedObjects.length; k++) {
     const o = shelvedObjects[k];
     const lx = localX(o.x);
-    if (lx >= 0 && lx < W) {
-      o.x = lx;
-      inside.push(o);
-    } else shelved.push(o);
+    if (lx >= 0 && lx < W && unshelveObject(o, lx)) inside.push(o);
+    else shelved.push(o);
   }
   shelvedObjects = shelved;
   objects = inside;

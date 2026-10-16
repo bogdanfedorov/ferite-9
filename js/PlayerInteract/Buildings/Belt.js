@@ -84,15 +84,16 @@ function shiftBelts(dx) {
   beltCells = moved;
 }
 
-function beltsOut(lx, ly) {
+function beltsOutColumn(lx) {
   const S = CHUNK_SIZE;
-  let out = null;
+  const out = new Map();
   for (const [i, code] of beltCells) {
     const x = (i % W) - lx,
-      y = ((i / W) | 0) - ly;
-    if (x < 0 || y < 0 || x >= S || y >= S) continue;
-    if (!out) out = new Map();
-    out.set(y * S + x, code);
+      y = (i / W) | 0;
+    if (x < 0 || x >= S) continue;
+    const row = y >> CHUNK_SHIFT;
+    if (!out.has(row)) out.set(row, new Map());
+    out.get(row).set((y - row * S) * S + x, code);
     beltCells.delete(i);
   }
   return out;

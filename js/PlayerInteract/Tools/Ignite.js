@@ -22,8 +22,12 @@ function igniteAt(tx, ty) {
       lit++;
     } else if (point > 0 && point <= TORCH_TEMP) {
       temp[i] = point + 80;
+      markDirty(x, y);
       lit++;
-    } else if (temp[i] < TORCH_TEMP) temp[i] = TORCH_TEMP;
+    } else if (temp[i] < TORCH_TEMP) {
+      temp[i] = TORCH_TEMP;
+      markDirty(x, y);
+    }
   }
   return lit;
 }

@@ -43,26 +43,34 @@ Done:
    it by whole chunks, saving leaving columns and loading entering ones.
    `shiftMargin()` is the larger of a constant and half the visible width plus
    the frozen edge strip plus one chunk, capped inside the window; `setZoom`
-   keeps the visible width below what the cap allows, so the frozen strip is
+   keeps the visible width below what the cap allows (re-applied when the
+   canvas resizes and after the world is generated), so the frozen strip is
    never on screen.
 3. **Window border.** `EDGE_FREEZE` cells on each side do not simulate.
-4. **Per-chunk state.** A stored chunk carries `mat`, `shade`, `life`, `temp`,
-   its fog cells (`seen`, `fogVal`) and its belt direction codes. Belts stay
-   per-cell data in `beltCells`.
-5. **Dirty tracking.** `dirtyT` marks 16x16 tiles that changed (cell writes,
-   swaps, non-ambient heat, fog reveals beyond the surface reveal, painting).
-   A leaving chunk is stored only if a tile of it is dirty or it holds belts;
-   otherwise it is regenerated from the seed on re-entry.
-6. **Explored count.** `seenAway` and `seenAwayStore` keep the seen-cell count
-   of chunks outside the window, so `seenCount` never drops on a shift.
+4. **Per-chunk state.** A stored chunk carries `mat`, `shade`, `life`, `temp`
+   and its belt direction codes. Belts stay per-cell data in `beltCells`.
+5. **Dirty tracking.** `dirtyT` marks 16x16 tiles that were modified: cell
+   writes (`setCell`, `paintCell`, `swapCells`), direct tool writes (the torch
+   calls `markDirty`), gas life countdown, burning and latent-heat life changes,
+   and tiles left above ambient temperature by the thermal pass. Hot tiles
+   (`hotA`/`hotB`) are separate and do not imply modified. A leaving chunk is
+   stored only if a tile of it is dirty or it holds belts; otherwise it is
+   regenerated from the seed on re-entry.
+6. **Fog.** Every leaving chunk with seen cells leaves a 64-byte slice in
+   `fogStore`, dirty or not; it is pasted back on re-entry, so caves stay
+   mapped. Fog alone never makes a chunk dirty. `seenCount` counts the window
+   only (the explored % is relative to the window); `seenAway` counts seen
+   cells in stored slices and `exploredTotal()` is the sum, which never drops.
 7. **Loose objects.** Objects that leave the window move to `shelvedObjects`
-   with world X and come back when their column is in the window again.
+   with world X and come back when their column is in the window again, lifted
+   out of solid terrain if needed. Shelved objects count toward `OBJ_MAX`.
 8. **Cargo pad.** `cargoPad` is in world coordinates; `padLocal()` converts.
    Calling the drone needs the pad inside the window; a drone in flight whose
    pad has left the window turns back and refunds the fee.
 9. **Damage.** `dmg` and `dmgT` shift with the window and `dmgList` is rebuilt.
 10. **Hot tiles.** Entering columns are marked hot.
-11. **Surface.** `surfaceTop` is recomputed from the window on every shift.
+11. **Surface.** `windowSurf` caches the surface row, shifts with the window
+    and `surfaceTop` is recomputed from it on every shift.
 
 Remaining:
 
@@ -70,5 +78,5 @@ Remaining:
    shelved objects, pad and `seenAway` data) to disk is not done.
 2. **Vertical axis.** Unbounded horizontally; depth is still bounded by
    `WORLD_H`. `geothermalGradient` is still an array of length `H`.
-3. **Cell state not tracked as dirty.** Changes to `life` or `flow` alone in a
-   tile that is otherwise at ambient temperature do not mark it dirty.
+3. **Fog slices.** `fogStore` grows by 64 bytes per visited chunk and is never
+   pruned.
