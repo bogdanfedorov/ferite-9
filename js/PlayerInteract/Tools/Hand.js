@@ -41,10 +41,6 @@ regTool({
   id: 'hand',
   hud: { name: 'tool.hand', desc: 'tool.hand.desc', icon: '◐' },
   sound: 'pickTool',
-  sounds: {
-    grab: { freq: 640, dur: 0.05, wave: 'triangle', vol: 0.025 },
-    drop: { freq: 300, dur: 0.05, wave: 'square', vol: 0.02 }
-  },
   grips: true,
   press: handPress,
   overlay: drawGrabHint

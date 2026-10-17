@@ -51,10 +51,6 @@ regTool({
   hud: { name: 'tool.ignite', desc: 'tool.ignite.desc', icon: '✦' },
   cost: 60,
   sound: 'pickTool',
-  sounds: {
-    ignite: { freq: 320, dur: 0.14, wave: 'sawtooth', vol: 0.035 },
-    fizzle: { freq: 150, dur: 0.14, wave: 'sawtooth', vol: 0.035 }
-  },
   ghost: { size: 3, free: (m) => STATE[m] !== MT.STRUCTURE },
   hold: igniteHold,
   reset: () => {

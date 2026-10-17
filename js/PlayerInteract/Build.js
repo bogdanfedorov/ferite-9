@@ -1,9 +1,3 @@
-addSounds({
-  pickShape: { freq: 500, dur: 0.05, wave: 'square', vol: 0.02 },
-  built: { freq: 560, dur: 0.07, wave: 'triangle', vol: 0.03 },
-  removed: { freq: 220, dur: 0.08, wave: 'square', vol: 0.025 }
-});
-
 var BUILD_REPORTS = {
   removed: { text: 'msg.structRemoved', sound: 'removed' },
   nothing: { text: 'msg.nothingToRemove', sound: null },

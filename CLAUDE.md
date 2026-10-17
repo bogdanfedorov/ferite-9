@@ -11,6 +11,23 @@ not. Enforced by `npm run lint` (`tools/no-comments.js`).
 
 Explanations belong in the README, BUILD.md or the wiki — not in the source.
 
+## Process
+
+Every feature goes in this order, and each step is approved before the next:
+
+1. **Docs** — what and why, in a `*.md` design note.
+2. **Model** — data structures, states, transitions, failure outcomes.
+3. **Tests** — unit tests that formally state the wanted behaviour; they fail.
+4. **Code** — make them pass with the fewest new functions; reuse first.
+
+`npm run lint` rejects any function without a caller (`tools/no-dead-functions.js`).
+
+## Core and shell
+
+See `SIMULATION.md`. Core files never touch browser APIs; the shell reads core
+state and calls core functions. A core change is done when its unit tests pass —
+the browser checks the shell, not the core.
+
 ## World model
 
 Everything in the world is a cell: a material id plus, where needed, per-cell
