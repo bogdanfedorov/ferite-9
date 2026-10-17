@@ -83,7 +83,9 @@ Done:
     Lookups try `mem`, `spill`, `cache`, in that order, so an evicted entry is
     never lost between eviction and write completion. A failed write turns the disk
     layer off and returns everything to `mem` (memory only, unbounded, but safe).
-    Without `indexedDB` the store behaves like before: unbounded, in memory.
+    Without a backend the store behaves like before: unbounded, in memory. The
+    backend (`get`, `put`, `clear`) and its IndexedDB form in `js/disk.js` are
+    described in `SIMULATION.md`, section Storage.
 11. **No stalls.** Disk reads are asynchronous. After each shift
     `prefetchAround` requests every on-disk chunk and fog slice in a ring of
     `PREFETCH_RING` chunks around the window. If a chunk that is only on disk is
@@ -93,20 +95,18 @@ Done:
     window. Fog slices arrive the same way and are merged into `seen`. A
     placeholder that leaves the window before the read arrives is not stored
     unless it was modified in between.
-12. **World save and resume.** `saveWorld()` writes a consistent snapshot: all
-    window chunks and fog slices go to the base object stores and the meta record
-    (seed, origins) is written last. After a snapshot, evictions go to separate
-    `*_live` overlay stores, and the next snapshot migrates the overlay into the
-    base, so a resume (`resumeWorld()` then `generateWorld(seed, w, h, meta)`, which
-    uses the seed from meta) sees exactly the last snapshot and never a mix of
-    versions; the overlay is discarded on resume. Starting a new world wipes the
-    disk store.
-13. **Stable origin.** The Go build serves the game on `127.0.0.1:<random port>/<token>/`
-    with a temporary browser profile removed on exit, so its IndexedDB never
-    survives a session. `storeResumable` is false for an http loopback origin with a
-    port; the store then clears the database at startup, spills only within the
-    session, and `resumeWorld()` returns null. Electron (`file://`) and normal
-    origins are resumable.
+12. **Spill only, per owner.** The disk holds the spill of one running game and
+    nothing else. Each game owns a database `ferit9.spill.<random id>`, guarded
+    by a Web Lock of the same name; `storeReset` clears only that database, and
+    databases whose owner is gone are deleted at startup. The earlier snapshot,
+    resume and `*_live` overlay code (`saveWorld`, `resumeWorld`, `storeSnapshot`,
+    `storeLoadIndex`, `storeWarm`, `tierMigrate`, `tier.over`) had no caller and
+    is removed; a game-level save will be designed on its own.
+13. **Read outcomes.** A disk read ends as found (`chunkArrived` /
+    `fogArrived`), absent (`chunkMissing` / `fogMissing`) or error
+    (`chunkFailed` / `fogFailed`). An error keeps the key in the disk index, so
+    the saved copy is read again later instead of being replaced by a chunk
+    regenerated from the seed.
 14. **Spread generation.** Chunks that must be generated are built at once only
     near the window centre (`NEAR_BUILD`); the rest get a cheap placeholder and are
     queued nearest first, `BUILD_PER_FRAME` per frame (`streamWorld`, called from
@@ -116,24 +116,20 @@ Done:
     built fully before play. Placeholders are never stored; shelved objects are
     retried as chunks are built.
 15. **Missing disk entries.** A read that finds nothing forgets the key and the
-    placeholder is generated. Fog of a chunk that leaves while its slice is still
+    placeholder is generated. A read that fails is not "nothing" (see 13). Fog of a chunk that leaves while its slice is still
     being read is OR-merged with the stored slice when the read arrives.
 
 Remaining:
 
-0. **Disk failure loses spilled edits.** If IndexedDB fails (open error, blocked
-   upgrade, write error), the store turns the disk layer off. Entries that were
-   still in memory or waiting to be written stay in memory, but everything that was
-   only on disk is treated as lost: the index is cleared and those chunks are
-   regenerated from the seed. A blocked upgrade fails over the same way instead of
-   hanging, and an older connection closes itself on a version change.
+0. **Disk failure loses spilled edits.** If IndexedDB fails on a write, the
+   store turns the disk layer off. Entries that were still in memory or waiting
+   to be written stay in memory; reads in flight end as error; everything that
+   was only on disk is lost: the index is cleared and those chunks are
+   regenerated from the seed. A blocked open fails the same way instead of
+   hanging, and a connection that arrives after that is closed.
 
-1. **Game-level save is not wired.** The game has no save mechanism (only
-   settings and language in `localStorage`). `saveWorld` / `resumeWorld` store
-   and restore the terrain only; nothing calls them yet, and the Go build could
-   not resume anyway (see 13). Inventory, market,
-   player, loose objects, the cargo pad and belts outside the window are not
-   part of a save, and a resumed world has no spawn shelter.
+1. **No game-level save.** The game has no save mechanism (only settings and
+   language in `localStorage`). The disk is a session spill, not a save.
 2. **Placeholder race.** A placeholder (an unbuilt chunk, or one generated
    while its disk read is pending) is never written to disk. If a chunk with a
    pending read leaves the window before the read lands, its edits are dropped and

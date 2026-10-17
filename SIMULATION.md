@@ -25,8 +25,8 @@ for checking the shell, not for proving the core works.
 
 | Layer | Files |
 |---|---|
-| Core | `i18n.js`, `lang/*.js`, `sizes.js`, `materials.data.js`, `materials.js`, `world.js`, `objects.js`, `sandbox.js`, `market.js`, `player.js`, `lib/Shape.js`, `PlayerInteract/Registry.js` |
-| Shell | `settings.js`, `lore.js`, `sound.js`, `render.js`, `hud.js`, `input.js`, `game.js` |
+| Core | `i18n.js`, `lang/*.js`, `sizes.js`, `materials.data.js`, `materials.js`, `world.js`, `store.js`, `objects.js`, `sandbox.js`, `market.js`, `player.js`, `lib/Shape.js`, `PlayerInteract/Registry.js` |
+| Shell | `settings.js`, `lore.js`, `disk.js`, `sound.js`, `render.js`, `hud.js`, `input.js`, `game.js` |
 | Mixed | `PlayerInteract/Build.js`, `Toolbelt.js`, `Tools/*.js`, `Buildings/*.js` |
 
 **Mixed** files define what a piece does to cells (core) together with its
@@ -35,12 +35,67 @@ and all sound definitions live in `SOUNDS` in `sound.js`.
 
 ## Storage
 
-Disk is a shell concern. The core talks to storage through one backend object
-with `get`, `put`, `clear`. Each call has one of three outcomes:
-`found | absent | error`. The browser installs the IndexedDB backend. Tests
-install a fake backend that can delay, reorder and fail replies. This is how
-review findings 1-4 on PR #1 become reproducible tests instead of browser
-sessions.
+Disk is a shell concern. `js/store.js` is core: the bounded chunk and fog
+tiers, the spill policy and the read outcomes. It never touches a browser API.
+`js/disk.js` is shell: it builds the IndexedDB backend and installs it with
+`setDiskBackend`. Without a backend the store keeps everything in memory.
+
+### Backend
+
+One object, three calls, nothing else:
+
+| Call | Resolves | Rejects |
+|---|---|---|
+| `get(store, key)` | value (**found**) or `undefined` (**absent**) | **error** |
+| `put(store, pairs)` | all pairs written | **error** |
+| `clear()` | the owner's stores are empty | **error** |
+
+`store` is `'chunks'` or `'fog'`. A backend belongs to exactly one owner (one
+running game) and `clear()` empties only that owner's data.
+
+### Read outcome
+
+Every read ends in exactly one report to `world.js`:
+
+| Outcome | Chunk | Fog | Disk index after |
+|---|---|---|---|
+| found | `chunkArrived(key)` | `fogArrived(key)` | key kept |
+| absent | `chunkMissing(key)` | `fogMissing(key)` | key removed |
+| error | `chunkFailed(key)` | `fogFailed(key)` | key kept, next read retries |
+
+An error is never reported as absent: absent means "regenerate from the seed",
+and a regenerated chunk that is edited and spilled would overwrite the real
+save. A reply is dropped unchanged if `storeReset` ran after the read started
+(epoch) or a newer read of the same key replaced it (token).
+
+A failed **write** turns the disk layer off for the rest of the session:
+spilled entries go back to `mem`, reads in flight end as **error**, and keys
+that were only on disk are lost (the index is cleared).
+
+### Ownership
+
+Each running game owns one database, `ferit9.spill.<random id>`, with the
+stores `chunks` and `fog`. Nothing else is stored: there is no save, resume,
+meta record or overlay (removed, they had no caller). So `storeReset` clears
+only its own database, and another tab never sees or wipes it.
+
+Before it opens its database, the owner takes a Web Lock with the database
+name and holds it until the page closes. At startup `js/disk.js` lists
+`ferit9.spill.*` databases and deletes each one whose lock it can take: its
+owner is gone. A live owner holds its lock before its database exists, so a
+sweep never deletes it.
+
+`open` handles every event of the request: on `blocked` the call fails with
+**error**, and a connection that still arrives later is closed at once.
+
+### Tests
+
+`test/store.test.js` loads `js/store.js` alone into a `vm` context with
+recorders for the six report functions, so each test is a fresh store.
+`test/fake-disk.js` is a backend whose replies can be held, released in any
+order, or failed. `test/disk.test.js` loads what `index.html` loads of
+`store.js` and `disk.js` into one context per tab, over one shared fake
+`indexedDB` and lock manager, so two tabs run side by side.
 
 ## Tests
 
@@ -78,4 +133,4 @@ calls go through a hook the shell installs.
 2. Lint rule for the core boundary.
 3. Move `Mixed` piece files to load headless.
 4. Storage backend interface with the fake backend; then fix PR #1 findings
-   test-first.
+   test-first. Model and failing tests: `test/store.test.js`, `test/disk.test.js`.

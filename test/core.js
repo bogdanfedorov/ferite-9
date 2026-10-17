@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const ROOT = path.join(__dirname, '..');
 const SHELL = new Set([
   'js/settings.js',
+  'js/disk.js',
   'js/lore.js',
   'js/sound.js',
   'js/render.js',
