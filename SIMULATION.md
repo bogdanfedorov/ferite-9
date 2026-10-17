@@ -89,9 +89,9 @@ Two more run-time calls from core into the shell go with this change, because
 a sale or a purchase cannot run headless without them:
 
 - `renderToolbelt()` in `deliverPad`, `buyTool`, `upgradePiece`. The core stops
-  asking for a redraw. The shell redraws the toolbelt when `market.money`
-  differs from the value it last drew; every one of those calls changes money,
-  and so does `callDrone`, which today leaves the display stale.
+  asking for a redraw. The shell redraws the toolbelt when `toolbeltKey()`
+  (money and every toolbelt field it draws) differs from the key it last drew,
+  so a change that leaves money equal (a free unlock, a level) is drawn too.
 - `game.elapsed` in `priceOf`. Prices decay with wall-clock milliseconds kept
   by the shell, which makes the market non-deterministic. The market gets its
   own clock: `market.age` in simulation frames, reset by `resetMarket`,
@@ -134,7 +134,8 @@ and a regenerated chunk that is edited and spilled would overwrite the real
 save. A reply is dropped unchanged if `storeReset` ran after the read started
 (epoch) or a newer read of the same key replaced it (token).
 
-A failed **write** turns the disk layer off for the rest of the session:
+A failed **write** of the current epoch turns the disk layer off for the rest
+of the session (a write started before `storeReset` is ignored either way):
 spilled entries go back to `mem`, reads in flight end as **error**, keys that
 were only on disk are lost (the index is cleared), and then `diskLost()` is
 called once so the world can regenerate those chunks and tell the player.

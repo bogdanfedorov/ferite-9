@@ -31,6 +31,11 @@ function makeDisk() {
   disk.release = () => {
     for (const r of disk.held.splice(0)) r.resolve(structuredClone(table(r.name).get(r.key)));
   };
+  disk.releaseKey = (name, key) => {
+    const k = disk.held.findIndex((r) => r.name === name && r.key === key);
+    const [r] = disk.held.splice(k, 1);
+    r.resolve(structuredClone(table(r.name).get(r.key)));
+  };
   disk.failHeld = () => {
     for (const r of disk.held.splice(0)) r.reject(new Error('read failed'));
   };
@@ -48,8 +53,9 @@ async function freshWorld(disk, seed) {
   C.fogTier.memMax = 0;
   C.resetObjects();
   C.beltCells.clear();
-  C.generateWorld(seed);
+  const spawn = C.generateWorld(seed);
   await settle();
+  return spawn;
 }
 
 function keyAt(lx, ly) {
@@ -134,6 +140,34 @@ test('F1: the window is not settled while a near chunk is loading', async () => 
   assert.strictEqual(C.windowSettled(), true);
 });
 
+function objectPrint(o) {
+  const cells = o.cells.map((c) => `${c.dx},${c.dy},${c.mat}`).join(' ');
+  return `${C.worldX(o.x)},${C.worldY(o.y)}: ${cells}`;
+}
+
+function liveObject(print) {
+  return C.objects.find((o) => objectPrint(o) === print);
+}
+
+function pair(m) {
+  return [
+    { dx: 0, dy: 0, mat: m, temp: 20 },
+    { dx: 1, dy: 0, mat: m, temp: 20 }
+  ];
+}
+
+function looseObject(x, y, cells) {
+  const o = C.makeObject(x, y, cells);
+  o.held = false;
+  assert.strictEqual(C.objBlocked(o, x, y, false), false, `object at ${x},${y} starts blocked`);
+  return objectPrint(o);
+}
+
+function moveWithObjects(dcx) {
+  C.moveWindow(dcx, 0);
+  C.shiftObjects(dcx * S, 0);
+}
+
 test('F3: shelved objects are not placed into a loading chunk', async () => {
   const disk = makeDisk();
   await freshWorld(disk, 104);
@@ -144,19 +178,22 @@ test('F3: shelved objects are not placed into a loading chunk', async () => {
     { dx: 1, dy: 0, mat: C.SAND_ID, temp: 20 }
   ];
   const o = C.makeObject(650, 90, cells);
-  for (let y = 85; y < 96; y++) for (let x = 644; x < 662; x++) C.setCell(x, y, MARK);
+  o.held = false;
+  const want = objectPrint(o);
+  mark(640, 64);
   C.moveWindow(AWAY, 0);
   C.shiftObjects(AWAY * S, 0);
   await settle();
-  assert.ok(C.shelvedObjects.includes(o), 'object shelved when its chunk left');
+  assert.strictEqual(liveObject(want), undefined, 'object still live after its chunk left');
   disk.mode = 'hold';
   C.moveWindow(-AWAY, 0);
   C.shiftObjects(-AWAY * S, 0);
-  assert.ok(!C.objects.includes(o), 'object placed while its chunk is still loading');
+  assert.strictEqual(liveObject(want), undefined, 'object placed while its chunk is loading');
   disk.release();
   await settle();
-  assert.ok(C.objects.includes(o), 'object placed once its chunk arrived');
-  assert.strictEqual(C.objBlocked(o, o.x, o.y, false), false, 'object inside solid cells');
+  const back = liveObject(want);
+  assert.ok(back, 'object placed once its chunk arrived');
+  assert.strictEqual(C.objBlocked(back, back.x, back.y, false), false, 'object inside solid cells');
 });
 
 test('F7: placeholder chunks are inert to heat and motion', async () => {
@@ -363,4 +400,152 @@ test('state invariants hold after any sequence of moves and read outcomes', asyn
     checkBelts();
     markReady(marked);
   }
+});
+
+const OBJ_SLOT = { lx: 128, ly: 0 };
+
+test('objects: more than eight loose objects all survive leaving the window through a disk spill', async () => {
+  const disk = makeDisk();
+  await freshWorld(disk, 120);
+  const kinds = [C.SAND_ID, C.matId('coal'), C.matId('iron')];
+  const want = [];
+  for (let k = 0; k < 12; k++) {
+    want.push(looseObject(OBJ_SLOT.lx + 2 + 4 * k, 12, pair(kinds[k % 3])));
+  }
+  const key = keyAt(OBJ_SLOT.lx, OBJ_SLOT.ly);
+  moveWithObjects(AWAY);
+  await settle();
+  assert.ok(disk.has('chunks', key), 'chunk owning the objects was not spilled to disk');
+  moveWithObjects(-AWAY);
+  await settle();
+  for (let k = 0; k < 6; k++) C.streamWorld();
+  const lost = want.filter((print) => !liveObject(print));
+  assert.deepStrictEqual(lost, [], 'objects lost or moved');
+});
+
+const BORDER = { x: 304, y: 62 };
+
+function carvePocket() {
+  for (let y = BORDER.y - 6; y < BORDER.y + 10; y++) {
+    for (let x = BORDER.x - 4; x < BORDER.x + 8; x++) C.setCell(x, y, C.VOID_ID);
+  }
+}
+
+function column(m, n) {
+  const cells = [];
+  for (let dy = 0; dy < n; dy++) cells.push({ dx: 0, dy, mat: m, temp: 20 });
+  return cells;
+}
+
+test('objects: an object across a chunk border waits for every slot it covers and is never lifted', async () => {
+  const disk = makeDisk();
+  await freshWorld(disk, 121);
+  carvePocket();
+  mark(BORDER.x - (BORDER.x % S), 0);
+  const want = looseObject(BORDER.x, BORDER.y, column(C.SAND_ID, 4));
+  const owner = keyAt(BORDER.x, BORDER.y);
+  moveWithObjects(AWAY);
+  await settle();
+  disk.mode = 'hold';
+  moveWithObjects(-AWAY);
+  disk.releaseKey('chunks', owner);
+  await settle();
+  assert.strictEqual(C.chunkStateAt(BORDER.x - (BORDER.x % S), 0), C.CHUNK_READY);
+  assert.strictEqual(C.chunkStateAt(BORDER.x - (BORDER.x % S), S), C.CHUNK_LOADING);
+  const early = C.objects.filter((o) => C.worldX(o.x) === C.worldX(BORDER.x));
+  assert.deepStrictEqual(
+    early.map(objectPrint),
+    [],
+    'object placed while a slot it covers is loading'
+  );
+  disk.release();
+  await settle();
+  assert.ok(liveObject(want), 'object not placed at its own position once every slot is ready');
+});
+
+function spawnSlot() {
+  const lx = Math.floor(C.localX(C.player.spawnX)),
+    ly = Math.floor(C.localY(C.player.spawnY));
+  return { lx: lx - (lx % S), ly: ly - (ly % S) };
+}
+
+async function spawnAwayAndBack(disk, seed, mode) {
+  const sp = await freshWorld(disk, seed);
+  C.spawnPlayer(sp.spawnX, sp.spawnY);
+  const slot = spawnSlot();
+  const keep = { x: slot.lx + 40, y: slot.ly + 20 };
+  C.setCell(keep.x, keep.y, MARK);
+  C.moveWindow(AWAY, 0);
+  await settle();
+  disk.mode = mode;
+  C.beginRespawn();
+  C.moveWindow(-AWAY, 0);
+  await settle();
+  return { slot, keep };
+}
+
+function assertPlayable(keep) {
+  assert.strictEqual(C.boxBlocked(C.player.x, C.player.y), false, 'player placed inside cells');
+  const lx = Math.floor(C.player.x),
+    ly = Math.floor(C.player.y);
+  assert.strictEqual(C.chunkStateAt(lx - (lx % S), ly - (ly % S)), C.CHUNK_READY);
+  if (keep) assert.strictEqual(C.mat[keep.y * C.W + keep.x], MARK, 'spawn chunk regenerated');
+}
+
+test('respawn: a failed spawn read is retried, never stood on and never regenerated', async () => {
+  const disk = makeDisk();
+  const { slot, keep } = await spawnAwayAndBack(disk, 130, 'fail');
+  assert.strictEqual(C.chunkStateAt(slot.lx, slot.ly), C.CHUNK_FAILED);
+  assert.strictEqual(C.respawnStep(), false, 'player placed over a failed spawn slot');
+  disk.mode = 'auto';
+  await settle();
+  let placed = C.respawnStep();
+  for (let k = 0; k < 4 && !placed; k++) {
+    await settle();
+    placed = C.respawnStep();
+  }
+  assert.strictEqual(placed, true, 'respawn never finished after the read recovered');
+  assertPlayable(keep);
+});
+
+test('respawn: a spawn read still loading after SETTLE_MS is waited for', async () => {
+  const disk = makeDisk();
+  const { slot, keep } = await spawnAwayAndBack(disk, 131, 'hold');
+  assert.strictEqual(C.chunkStateAt(slot.lx, slot.ly), C.CHUNK_LOADING);
+  for (let k = 0; k < 5; k++) {
+    assert.strictEqual(C.respawnStep(), false, 'player placed over a loading spawn slot');
+    await settle();
+  }
+  disk.release();
+  await settle();
+  assert.strictEqual(C.respawnStep(), true);
+  assertPlayable(keep);
+});
+
+test('respawn: a spawn read that keeps failing ends as a lost disk and a playable spawn', async () => {
+  const disk = makeDisk();
+  await spawnAwayAndBack(disk, 132, 'fail');
+  const sent = [];
+  C.setNoticeHook((sound, text) => sent.push([sound, text]));
+  let placed = false;
+  for (let k = 0; k < 12 && !placed; k++) {
+    placed = C.respawnStep();
+    C.streamWorld();
+    await settle();
+  }
+  C.setNoticeHook(null);
+  assert.strictEqual(placed, true, 'respawn never finished with a failing disk');
+  assert.deepStrictEqual(sent, [[null, C.t('msg.diskLost')]]);
+  assertPlayable(null);
+});
+
+test('respawn: a respawn pending when a new world is made does nothing there', async () => {
+  const disk = makeDisk();
+  await spawnAwayAndBack(disk, 133, 'hold');
+  const sp = await freshWorld(disk, 134);
+  C.spawnPlayer(sp.spawnX, sp.spawnY);
+  const at = [C.player.x, C.player.y, C.player.arriving];
+  C.player.arriving = false;
+  assert.strictEqual(C.respawnStep(), false, 'old respawn fired in the new world');
+  assert.deepStrictEqual([C.player.x, C.player.y, C.player.arriving], [at[0], at[1], false]);
 });

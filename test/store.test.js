@@ -147,3 +147,18 @@ test('the store has no save layer and no browser backend', () => {
   );
   assert.strictEqual('over' in store.chunkTier, false);
 });
+
+test('a write from before storeReset that fails does not turn the disk off', async () => {
+  const { store, fake } = storeWithDisk();
+  fake.holding = true;
+  await spill(store, store.chunkTier, 1, 'old game');
+  const put = fake.held.find((op) => op.kind === 'put');
+  assert.ok(put, 'spill started a write');
+  store.storeReset();
+  put.fail();
+  await settle();
+  for (const op of fake.held) if (op !== put) op.ok();
+  await settle();
+  assert.deepStrictEqual(store.reports, []);
+  assert.strictEqual(store.diskBackend, fake.backend, 'old write failure killed the new disk');
+});
