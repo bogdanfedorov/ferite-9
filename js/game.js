@@ -1,8 +1,7 @@
 var game = {
   tool: 'drill',
   paused: false,
-  menuBack: false,
-  elapsed: 0
+  menuBack: false
 };
 
 var MILESTONES = [
@@ -161,7 +160,6 @@ function frame(now) {
   loop.last = now;
 
   if (!game.paused) {
-    game.elapsed += dt;
     loop.acc += dt;
     let steps = 0;
     while (loop.acc >= 16.6667 && steps < 3) {
@@ -171,6 +169,7 @@ function frame(now) {
     }
   } else loop.acc = 0;
 
+  if (market.money !== toolbeltMoney) renderToolbelt();
   const wpt = screenToWorld(input.mouse.x, input.mouse.y);
   render(game.tool, wpt);
   if (++loop.hudTick % 6 === 0) updateHud(wpt);
@@ -261,15 +260,21 @@ function refreshLang() {
   updateHud(screenToWorld(input.mouse.x, input.mouse.y));
 }
 
+function showNotice(sound, text) {
+  if (sound) play(sound);
+  if (text) transmit(text, NOTICE);
+}
+
 function applySettings(what) {
   if (what === 'volume' && !settings.muted) play('volume');
-  if (what === 'grabSize') play('grabSize');
+  if (what !== 'grabSize') return;
+  setGrabSize(settings.grabSize);
+  play('grabSize');
 }
 
 function enterWorld(room) {
   sandbox.on = room;
   sandbox.bins.length = 0;
-  game.elapsed = 0;
   resetMarket(room);
   resetObjects();
   resetPieces();
@@ -292,7 +297,9 @@ function startGame() {
   initLang();
   setLangHook(refreshLang);
   initSettings();
+  setGrabSize(settings.grabSize);
   setSettingsHook(applySettings);
+  setNoticeHook(showNotice);
   initLore();
   initRender();
   enterWorld(false);

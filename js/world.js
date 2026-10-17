@@ -785,13 +785,19 @@ function maxShiftMargin() {
   return (W >> 1) - CHUNK_SIZE;
 }
 
+var viewCells = 0;
+
+function setViewCells(n) {
+  viewCells = n;
+}
+
 function maxViewCells() {
   if (!infiniteX) return Infinity;
   return 2 * (maxShiftMargin() - EDGE_FREEZE - CHUNK_SIZE);
 }
 
 function shiftMargin() {
-  const seenHalf = Math.ceil(view.vw / 2) + EDGE_FREEZE + CHUNK_SIZE;
+  const seenHalf = Math.ceil(viewCells / 2) + EDGE_FREEZE + CHUNK_SIZE;
   return Math.min(maxShiftMargin(), Math.max(SHIFT_MARGIN, seenHalf));
 }
 

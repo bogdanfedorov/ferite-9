@@ -30,6 +30,12 @@ function grabTargetAt(cx, cy) {
   return j < 0 ? 0 : mat[j];
 }
 
+var grabSize = 4;
+
+function setGrabSize(n) {
+  grabSize = n;
+}
+
 function grabPick(cx, cy, only) {
   let dx, dy;
   const fit = (px, py) => grabbableAt(px, py) === only;
@@ -40,7 +46,7 @@ function grabPick(cx, cy, only) {
   const ax = anchor % W,
     ay = (anchor / W) | 0;
 
-  const cap = settings.grabSize * settings.grabSize;
+  const cap = grabSize * grabSize;
   const pick = [[ax, ay]];
   const seen = {};
   seen[anchor] = 1;

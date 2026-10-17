@@ -12,6 +12,7 @@ var START_MONEY = 25;
 var ROOM_MONEY = 9999;
 var DRONE_FEE = 10;
 var DRONE_TRIP = 300;
+var FRAMES_PER_MINUTE = 3600;
 
 function indexGoods() {
   const out = {};
@@ -21,18 +22,19 @@ function indexGoods() {
 
 var GOOD_OF = indexGoods();
 
-var market = { money: 0, sold: {}, sales: 0, drone: 0 };
+var market = { money: 0, sold: {}, sales: 0, drone: 0, age: 0 };
 
 function resetMarket(rich) {
   market.money = rich ? ROOM_MONEY : START_MONEY;
   market.sold = {};
   market.sales = 0;
   market.drone = 0;
+  market.age = 0;
   for (let i = 0; i < GOODS.length; i++) market.sold[GOODS[i].key] = 0;
 }
 
 function priceOf(good) {
-  const minutes = game.elapsed / 60000;
+  const minutes = market.age / FRAMES_PER_MINUTE;
   const decay = Math.max(PRICE_FLOOR, 0.5 ** (minutes / good.half));
   return Math.max(1, Math.round(good.base * decay));
 }
@@ -65,42 +67,37 @@ function deliverPad() {
   for (const key in counts) market.sold[key] += counts[key];
   market.money += sum;
   if (sum > 0) market.sales++;
-  transmit(sum > 0 ? tf('msg.droneSold', { sum: sum }) : t('msg.droneEmpty'), NOTICE);
-  play(sum > 0 ? 'sale' : 'denied');
-  renderToolbelt();
+  if (sum > 0) notice('sale', tf('msg.droneSold', { sum: sum }));
+  else notice('denied', t('msg.droneEmpty'));
 }
 
 function callDrone() {
   if (market.drone > 0) return;
   if (!cargoPad) {
-    transmit(t('msg.noPad'), NOTICE);
-    play('denied');
+    notice('denied', t('msg.noPad'));
     return;
   }
   if (!padInWindow()) {
-    transmit(t('msg.padFar'), NOTICE);
-    play('denied');
+    notice('denied', t('msg.padFar'));
     return;
   }
   if (market.money < DRONE_FEE) {
-    transmit(tf('msg.cantAfford', { cost: DRONE_FEE }), NOTICE);
-    play('denied');
+    notice('denied', tf('msg.cantAfford', { cost: DRONE_FEE }));
     return;
   }
   market.money -= DRONE_FEE;
   market.drone = DRONE_TRIP;
-  transmit(t('msg.droneOn'), NOTICE);
-  play('launch');
+  notice('launch', t('msg.droneOn'));
 }
 
 function abortDrone() {
   market.money += DRONE_FEE;
   market.drone = 0;
-  transmit(t('msg.droneAbort'), NOTICE);
-  play('denied');
+  notice('denied', t('msg.droneAbort'));
 }
 
 function tickMarket() {
+  market.age++;
   if (market.drone <= 0) return;
   market.drone--;
   if (market.drone !== DRONE_TRIP >> 1) return;

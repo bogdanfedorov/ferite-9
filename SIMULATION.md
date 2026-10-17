@@ -1,7 +1,7 @@
 # Simulation core and shell
 
-Status: test harness in place (`npm test`). Closing the boundary: design and
-failing tests on `infinite/core-boundary`, code not written yet. The core already runs headless: loading the core files below
+Status: test harness in place (`npm test`). The core/shell boundary is closed:
+core files reach the shell only through `notice()`, and `npm run lint` checks it. The core already runs headless: loading the core files below
 into a Node `vm` context, `generateWorld(seed)` plus 60 `simulate()` steps work
 with no code changes (checked 2026-10-17 on `infinite-world`).
 
@@ -124,9 +124,9 @@ sessions.
 - No browser, no DOM shim. If a core file needs a shim to load, that is a
   boundary violation to fix, not to paper over.
 
-## Known violations
+## Closed violations
 
-Found by listing every top-level name a core or Mixed file uses that only a
+All fixed on `infinite/core-boundary`. Found by listing every top-level name a core or Mixed file uses that only a
 shell file declares (2026-10-17):
 
 | File | Shell names used at run time | Fix |
@@ -171,7 +171,7 @@ shell code inside a Mixed file and is not a violation.
 ## Order of work
 
 1. Done: test harness `test/core.js`, first tests in `test/world.test.js`.
-2. Close the boundary: notice hook, market clock, the two setters,
+2. Done: close the boundary: notice hook, market clock, the two setters,
    `tools/layers.js`, lint rule for the core boundary.
 3. Done as part of 2: Mixed files load and run their core paths headless.
 4. Split Mixed files so the lint rule can check their core halves.

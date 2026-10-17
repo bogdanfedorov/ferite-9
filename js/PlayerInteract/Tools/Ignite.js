@@ -36,14 +36,14 @@ function igniteHold(wpt) {
   const dx = wpt[0] - player.x,
     dy = wpt[1] - player.y;
   if (Math.sqrt(dx * dx + dy * dy) > REACH + 8) {
-    transmit(t('msg.tooFar'), NOTICE);
+    notice(null, t('msg.tooFar'));
     return;
   }
   if (igniteCd > 0) return;
   igniteCd = IGNITE_COOLDOWN;
   const lit = igniteAt(wpt[0], wpt[1]);
-  play(lit ? 'ignite' : 'fizzle');
-  if (!lit) transmit(t('msg.noIgnite'), NOTICE);
+  if (lit) notice('ignite', null);
+  else notice('fizzle', t('msg.noIgnite'));
 }
 
 regTool({
