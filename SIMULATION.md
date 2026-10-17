@@ -1,6 +1,6 @@
 # Simulation core and shell
 
-Status: proposal. The core already runs headless: loading the core files below
+Status: test harness in place (`npm test`). The core already runs headless: loading the core files below
 into a Node `vm` context, `generateWorld(seed)` plus 60 `simulate()` steps work
 with no code changes (checked 2026-10-17 on `infinite-world`).
 
@@ -44,15 +44,26 @@ sessions.
 
 ## Tests
 
-- `npm test` runs `node --test test/`.
-- `test/core.js` loads the core files into one `vm` context in `index.html`
-  order and returns the context, so each test gets a fresh world.
+- `npm test` runs every `test/**/*.test.js`.
+- `test/core.js` loads the core files (every `index.html` script that is not
+  shell, in page order) into the Node global scope and exports it as `core`.
+  A separate `vm` context is about 30x slower, because every global lookup
+  goes through the context proxy. `node --test` runs each test file in its own
+  process, so files never share state; inside a file, `generateWorld(seed)`
+  resets the world.
 - Tests check the model: invariants after `simulate()` (cell counts per
   material conserved where physics says so, `beltCells` matches belt
   materials, no object inside solid cells), and scenario outcomes for a fixed
   seed.
 - No browser, no DOM shim. If a core file needs a shim to load, that is a
   boundary violation to fix, not to paper over.
+
+## Known violations
+
+Core files call `play()` from `sound.js` at run time: `market.js`,
+`PlayerInteract/Build.js`, `Toolbelt.js`, `Tools/Drill.js`, `Tools/Hand.js`,
+`Tools/Ignite.js`. A test that sells, builds or drills throws until these
+calls go through a hook the shell installs.
 
 ## Enforcement
 
@@ -63,7 +74,7 @@ sessions.
 
 ## Order of work
 
-1. Test harness `test/core.js` and first invariant tests on today's core.
+1. Done: test harness `test/core.js`, first tests in `test/world.test.js`.
 2. Lint rule for the core boundary.
 3. Move `Mixed` piece files to load headless.
 4. Storage backend interface with the fake backend; then fix PR #1 findings

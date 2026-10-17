@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const acorn = require('acorn');
 
-const ROOTS = ['js', 'electron', 'tools'];
+const ROOTS = ['js', 'electron', 'tools', 'test'];
 const SKIP = new Set(['node_modules', 'app', 'dist', 'release', '.git']);
 const FUNCTION_TYPES = new Set([
   'FunctionDeclaration',

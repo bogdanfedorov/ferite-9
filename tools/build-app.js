@@ -6,9 +6,9 @@ const Obfuscator = require('javascript-obfuscator');
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'app');
 
-const FILES = [...fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').matchAll(/<script src="(js\/[^"]+)">/g)].map(
-  (m) => m[1]
-);
+const FILES = [
+  ...fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').matchAll(/<script src="(js\/[^"]+)">/g)
+].map((m) => m[1]);
 
 const OBFUSCATOR_OPTIONS = {
   compact: true,
