@@ -1,9 +1,3 @@
-addSounds({
-  pickShape: { freq: 500, dur: 0.05, wave: 'square', vol: 0.02 },
-  built: { freq: 560, dur: 0.07, wave: 'triangle', vol: 0.03 },
-  removed: { freq: 220, dur: 0.08, wave: 'square', vol: 0.025 }
-});
-
 var BUILD_REPORTS = {
   removed: { text: 'msg.structRemoved', sound: 'removed' },
   nothing: { text: 'msg.nothingToRemove', sound: null },
@@ -207,6 +201,7 @@ function drawBuildPreview() {
   if (!spec.arrows) return;
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
-    if (c.x % ARROW_EVERY === 0) drawFlowArrow(c.x + 0.5, c.y + 0.5, plan.dx, plan.dy, uiRgba(tint, 0.9));
+    if (c.x % ARROW_EVERY === 0)
+      drawFlowArrow(c.x + 0.5, c.y + 0.5, plan.dx, plan.dy, uiRgba(tint, 0.9));
   }
 }

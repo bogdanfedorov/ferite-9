@@ -78,9 +78,5 @@ regTool({
   id: 'drill',
   hud: { name: 'tool.drill', desc: 'tool.drill.desc', icon: '▼' },
   sound: 'pickDrill',
-  sounds: {
-    pickDrill: { freq: 420, dur: 0.05, wave: 'square', vol: 0.025 },
-    drill: { freq: 170, dur: 0.03, wave: 'square', vol: 0.013 }
-  },
   hold: drillHold
 });

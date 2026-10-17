@@ -10,6 +10,7 @@
       "js/**/*.js",
       "electron/**/*.js",
       "tools/**/*.js",
+      "test/**/*.js",
       "*.json",
       "!app",
       "!dist",

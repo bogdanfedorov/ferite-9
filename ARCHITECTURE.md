@@ -47,7 +47,6 @@ js/PlayerInteract/Buildings/*.js   Pad, Belt, Wall
   hud: { name: 'tool.belt', desc: 'tool.belt.desc', icon: '»' },
   cost: 240,
   sound: 'pickTool',
-  sounds: { ... },
   levels: [ { interval: 3 }, { cost: 360, interval: 2 } ],
   reset, tick(frame), drawWorld(), overlay(mouseWorld),
   ghost: { size: 1, free: (mat) => bool }
@@ -58,8 +57,9 @@ js/PlayerInteract/Buildings/*.js   Pad, Belt, Wall
   `desc` показується в меню E, коли елемент відкритий.
 - `cost` — ціна покупки. **Немає `cost` = стартовий** елемент, відкритий з
   початку.
-- `sound` — звук вибору. `sounds` — власні звуки елемента; `regPiece` сам
-  викликає `addSounds`, правити `sound.js` не треба.
+- `sound` — звук вибору: ключ у `SOUNDS`. Усі звуки, зокрема власні звуки
+  елемента, описуються в `SOUNDS` у `js/sound.js`; файл елемента лише називає
+  їх ключами.
 - `levels` — масив рівнів. `levels[0]` — базовий, далі `{ cost, ...статистика }`.
   Поточну статистику читаємо через `pieceStats(id)`; апгрейд — `upgradePiece(id)`
   (кнопка «▲» на картці в меню E). Рівні скидаються разом із `resetToolbelt`.

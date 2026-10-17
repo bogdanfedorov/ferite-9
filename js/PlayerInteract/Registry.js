@@ -4,7 +4,6 @@ var PIECE_IDS = [];
 function regPiece(spec) {
   PIECES[spec.id] = spec;
   PIECE_IDS.push(spec.id);
-  if (spec.sounds) addSounds(spec.sounds);
   return spec;
 }
 

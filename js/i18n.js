@@ -1,8 +1,6 @@
 var LANGS = {};
 var LANG = 'en';
-var LANG_LIST = [
-  { code: 'en', label: 'EN' }
-];
+var LANG_LIST = [{ code: 'en', label: 'EN' }];
 var onLangChange = null;
 
 function setLangHook(fn) {

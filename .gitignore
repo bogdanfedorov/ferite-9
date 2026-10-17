@@ -8,3 +8,4 @@ fonts/*.woff2
 .DS_Store
 Thumbs.db
 .gstack/
+.claude/worktrees/
