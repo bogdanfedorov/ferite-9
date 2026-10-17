@@ -1,6 +1,5 @@
 var GRAB_MIN = 1;
 var GRAB_MAX = 8;
-var GRAB_DEFAULT = 4;
 
 function handPress(wpt) {
   if (heldObject) return;
