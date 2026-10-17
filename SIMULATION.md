@@ -69,8 +69,9 @@ save. A reply is dropped unchanged if `storeReset` ran after the read started
 (epoch) or a newer read of the same key replaced it (token).
 
 A failed **write** turns the disk layer off for the rest of the session:
-spilled entries go back to `mem`, reads in flight end as **error**, and keys
-that were only on disk are lost (the index is cleared).
+spilled entries go back to `mem`, reads in flight end as **error**, keys that
+were only on disk are lost (the index is cleared), and then `diskLost()` is
+called once so the world can regenerate those chunks and tell the player.
 
 ### Ownership
 
@@ -81,8 +82,10 @@ only its own database, and another tab never sees or wipes it.
 
 Before it opens its database, the owner takes a Web Lock with the database
 name and holds it until the page closes. At startup `js/disk.js` lists
-`ferit9.spill.*` databases and deletes each one whose lock it can take: its
-owner is gone. A live owner holds its lock before its database exists, so a
+`ferit9.spill.*` databases, and the old shared `ferit9.world`, and deletes each
+one whose lock it can take: its owner is gone. Without `navigator.locks` or
+`indexedDB.databases` the sweep is skipped; the game still uses its own
+database. A live owner holds its lock before its database exists, so a
 sweep never deletes it.
 
 `open` handles every event of the request: on `blocked` the call fails with

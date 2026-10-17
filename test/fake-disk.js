@@ -9,7 +9,8 @@ const REPORTS = [
   'chunkFailed',
   'fogArrived',
   'fogMissing',
-  'fogFailed'
+  'fogFailed',
+  'diskLost'
 ];
 const TAB_FILES = new Set(['js/store.js', 'js/disk.js']);
 
@@ -41,8 +42,7 @@ function loadStore() {
 function loadTab(shared) {
   const globals = {
     indexedDB: shared.idb,
-    navigator: { locks: shared.locks },
-    crypto: globalThis.crypto
+    navigator: { locks: shared.locks }
   };
   return runFiles(makeContext(globals), pageFiles());
 }

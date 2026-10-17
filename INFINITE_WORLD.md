@@ -124,8 +124,8 @@ Remaining:
 0. **Disk failure loses spilled edits.** If IndexedDB fails on a write, the
    store turns the disk layer off. Entries that were still in memory or waiting
    to be written stay in memory; reads in flight end as error; everything that
-   was only on disk is lost: the index is cleared and those chunks are
-   regenerated from the seed. A blocked open fails the same way instead of
+   was only on disk is lost: the index is cleared, `diskLost()` tells the world,
+   and those chunks are regenerated from the seed. A blocked open fails the same way instead of
    hanging, and a connection that arrives after that is closed.
 
 1. **No game-level save.** The game has no save mechanism (only settings and
