@@ -26,6 +26,7 @@ var CHUNK_READY = 0,
   CHUNK_LOADING = 2,
   CHUNK_FAILED = 3;
 var chunkState = null;
+var editedChunks = new Set();
 var pendingFog = new Set();
 var fogMerge = new Map();
 var windowSurf;
@@ -312,25 +313,15 @@ function scatterOpen(x, y, maxR, tries) {
   return -1;
 }
 
-function displaceCell(x, y) {
-  if (!inBounds(x, y)) return false;
-  const i = y * W + x;
-  const m = mat[i];
-  if (OPEN[m]) return true;
-  if (STATE[m] !== MT.LIQUID) return false;
-  const j = openNear(x, y, 1, 4);
-  if (j < 0) return false;
-  moveCell(i, j);
-  return true;
-}
-
 function dropLoose(x, y, m, hot) {
   const j = scatterOpen(x, y, 2, 12);
   if (j < 0) {
     setCellHot(x, y, m, hot);
+    markEdited(x, y);
     return false;
   }
   putCell(j, m, hot);
+  markEdited(j % W, (j / W) | 0);
   return true;
 }
 
@@ -403,6 +394,7 @@ function beginWorld(seed, w, h) {
   infiniteY = false;
   pendingFog.clear();
   fogMerge.clear();
+  editedChunks.clear();
   storeReset();
 }
 
@@ -448,6 +440,9 @@ var EDGE_FREEZE = 16;
 var SAND_ID = matId('sand'),
   HARDPAN_ID = matId('hardpan'),
   ROCK_ID = matId('rock');
+var SPAWN_PAD_W = 24,
+  SPAWN_PAD_AIR = 9,
+  SPAWN_PAD_ROCK = 3;
 var DEPOSIT_SLOTS = 3;
 var DEPOSIT_KINDS = [
   { id: SAND_ID, n: 46, y0: 90, y1: 280, r0: 7, rn: 9, mask: [ROCK_ID, HARDPAN_ID] },
@@ -573,9 +568,23 @@ function applyWorldFloor(ch, cy) {
   ch.mat.fill(EDGE_ID, Math.max(0, top) * S);
 }
 
+function applySpawnPad(ch, seed, cx, cy) {
+  const S = CHUNK_SIZE,
+    top = surfaceAt(seed, 0) - 1;
+  const x0 = Math.max(-(SPAWN_PAD_W >> 1), cx * S) - cx * S,
+    x1 = Math.min((SPAWN_PAD_W >> 1) - 1, cx * S + S - 1) - cx * S;
+  const y0 = Math.max(top - SPAWN_PAD_AIR, cy * S),
+    y1 = Math.min(top + SPAWN_PAD_ROCK - 1, cy * S + S - 1);
+  for (let wy = y0; wy <= y1 && x0 <= x1; wy++) {
+    const row = (wy - cy * S) * S;
+    ch.mat.fill(wy < top ? VOID_ID : ROCK_ID, row + x0, row + x1 + 1);
+  }
+}
+
 function buildChunk(seed, cx, cy) {
   const blobs = blobsNear(seed, cx, cy);
   const ch = generateChunk(seed, cx, cy, blobs);
+  applySpawnPad(ch, seed, cx, cy);
   applyWorldFloor(ch, cy);
   ch.life = new Uint8Array(CHUNK_AREA);
   ch.temp = new Float32Array(CHUNK_AREA);
@@ -594,7 +603,8 @@ function copyChunkOut(lx, ly) {
     shade: new Uint8Array(CHUNK_AREA),
     life: new Uint8Array(CHUNK_AREA),
     temp: new Float32Array(CHUNK_AREA),
-    belts: null
+    belts: null,
+    objects: null
   };
   for (let y = 0; y < S; y++) {
     const i = (ly + y) * W + lx;
@@ -684,9 +694,12 @@ function saveChunk(cx, cy, lx, ly, belts) {
     fogMerge.set(key, held ? orSlice(held, slice) : slice);
   } else if (slice) tierPut(fogTier, key, slice);
   if (chunkStateAt(lx, ly) !== CHUNK_READY) return;
-  if (!belts && !chunkDirty(lx, ly)) return;
+  const owned = objectsOut(key);
+  if (owned) markEdited(lx, ly);
+  if (!belts && !owned && !chunkDirty(lx, ly)) return;
   const ch = copyChunkOut(lx, ly);
   ch.belts = belts;
+  ch.objects = owned;
   tierPut(chunkTier, key, ch);
 }
 
@@ -739,9 +752,20 @@ function holdChunk(lx, ly, state) {
   chunkState[chunkSlot(lx, ly)] = state;
 }
 
+function markEdited(x, y) {
+  editedChunks.add(chunkKey((originX + x) >> CHUNK_SHIFT, (originY + y) >> CHUNK_SHIFT));
+}
+
+function unreadState(key, lost) {
+  if (!editedChunks.has(key)) return CHUNK_QUEUED;
+  if (lost) fault(`chunk ${keyCx(key)},${keyCy(key)} lost`, new Error('edited chunk has no copy'));
+  return CHUNK_FAILED;
+}
+
 function placeStored(stored, lx, ly) {
   pasteChunk(stored, lx, ly);
   if (stored.belts) beltsIn(stored.belts, lx, ly);
+  if (stored.objects) objectsIn(stored.objects);
   setChunkDirty(lx, ly);
   chunkState[chunkSlot(lx, ly)] = CHUNK_READY;
 }
@@ -762,8 +786,8 @@ function loadChunk(cx, cy, lx, ly) {
   const stored = tierTake(chunkTier, key);
   if (stored) placeStored(stored, lx, ly);
   else if (tierWaiting(chunkTier, key)) holdChunk(lx, ly, CHUNK_LOADING);
-  else if (chunkIsNear(lx, ly)) placeBuilt(cx, cy, lx, ly);
-  else holdChunk(lx, ly, CHUNK_QUEUED);
+  else if (!editedChunks.has(key) && chunkIsNear(lx, ly)) placeBuilt(cx, cy, lx, ly);
+  else holdChunk(lx, ly, unreadState(key, true));
   const slice = tierTake(fogTier, key);
   if (slice) pasteFog(slice, lx, ly);
   else if (tierWaiting(fogTier, key)) pendingFog.add(key);
@@ -812,6 +836,41 @@ function streamWorld() {
   if (built && shelvedObjects.length) unshelveObjects();
 }
 
+function boxWaits(x0, y0, x1, y1) {
+  if (!inBounds(x0, y0) || !inBounds(x1, y1)) return true;
+  const cols = W >> CHUNK_SHIFT;
+  for (let cy = y0 >> CHUNK_SHIFT; cy <= y1 >> CHUNK_SHIFT; cy++) {
+    for (let cx = x0 >> CHUNK_SHIFT; cx <= x1 >> CHUNK_SHIFT; cx++) {
+      const state = chunkState[cy * cols + cx];
+      if (state === CHUNK_QUEUED || state === CHUNK_LOADING) return true;
+    }
+  }
+  return false;
+}
+
+function boxBlocking(x0, y0, x1, y1) {
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) if (BLOCKING[mat[y * W + x]]) return true;
+  }
+  return false;
+}
+
+function spawnEntity(e, x, y) {
+  const x0 = spanStart(x + e.ox, e.w),
+    x1 = spanEnd(x + e.ox, e.w);
+  for (let top = y; ; top--) {
+    const y0 = spanStart(top + e.oy, e.h),
+      y1 = spanEnd(top + e.oy, e.h);
+    if (boxWaits(x0, y0, x1, y1)) return false;
+    if (boxBlocking(x0, y0, x1, y1)) continue;
+    e.x = x;
+    e.y = top;
+    e.vx = 0;
+    e.vy = 0;
+    return true;
+  }
+}
+
 function windowSettled() {
   for (let k = 0; k < chunkState.length; k++) {
     const lx = (k % (W >> CHUNK_SHIFT)) * CHUNK_SIZE,
@@ -856,22 +915,12 @@ function chunkArrived(key) {
 
 function chunkMissing(key) {
   const slot = loadingSlot(key);
-  if (slot >= 0) chunkState[slot] = CHUNK_QUEUED;
+  if (slot >= 0) chunkState[slot] = unreadState(key, true);
 }
 
 function chunkFailed(key) {
   const slot = loadingSlot(key);
-  if (slot >= 0) chunkState[slot] = CHUNK_FAILED;
-}
-
-function diskLost() {
-  for (let k = 0; k < chunkState.length; k++) {
-    if (chunkState[k] === CHUNK_FAILED) chunkState[k] = CHUNK_QUEUED;
-  }
-  for (const [key, held] of fogMerge) tierPut(fogTier, key, held);
-  fogMerge.clear();
-  pendingFog.clear();
-  notice(null, t('msg.diskLost'));
+  if (slot >= 0) chunkState[slot] = unreadState(key, false);
 }
 
 function fogArrived(key) {
@@ -904,7 +953,9 @@ function fogMissing(key) {
   if (pendingFog.has(key)) fogArrived(key);
 }
 
-function fogFailed() {}
+function fogFailed(key) {
+  fogMissing(key);
+}
 
 function mergeFog(slice, lx, ly) {
   for (let r = 0; r < FOG_CHUNK; r++) {
@@ -1205,7 +1256,6 @@ function generateWorld(seed, w, h) {
   originY = 0;
   infiniteX = true;
   infiniteY = true;
-  const ROCK = matId('rock');
   fillGeothermal();
 
   fillSurface(seed, 0, W);
@@ -1213,11 +1263,7 @@ function generateWorld(seed, w, h) {
 
   stampWorld(seed);
   buildDeferred();
-
-  const bx = (W >> 1) - 12,
-    by = windowSurf[W >> 1] - 1;
-  paintRect(bx, by, bx + 23, by + 2, ROCK);
-  paintRect(bx, by - 9, bx + 23, by - 1, VOID_ID);
+  const by = windowSurf[W >> 1] - 1 - originY;
 
   finishWorld(worldTemp);
   revealSurface(0, W, 0, H);

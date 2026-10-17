@@ -49,7 +49,9 @@ function sweepPad(take) {
       const group = CARGO[mat[y * W + x]];
       if (!GOOD_OF[group]) continue;
       counts[group] = (counts[group] || 0) + 1;
-      if (take) setCell(x, y, VOID_ID);
+      if (!take) continue;
+      setCell(x, y, VOID_ID);
+      markEdited(x, y);
     }
   }
   return counts;

@@ -4,6 +4,7 @@ var FOG_MEM_MAX = 8192;
 var FOG_CACHE_MAX = 512;
 var KEY_SPAN = 1048576;
 var KEY_BIAS = 524288;
+var READ_TRIES = 3;
 
 function makeTier(name, memMax, cacheMax, report) {
   return {
@@ -57,13 +58,13 @@ function diskRun(work) {
   return p;
 }
 
-function diskFailed() {
+function diskFailed(err) {
   if (!diskBackend) return;
   diskBackend = null;
   diskEpoch++;
+  fault('disk write failed', err);
   tierDetach(chunkTier);
   tierDetach(fogTier);
-  diskLost();
 }
 
 function tierDetach(tier) {
@@ -132,7 +133,9 @@ function tierFlush(tier) {
   for (let k = 0; k < batch.length; k++) tier.sent.set(batch[k][0], batch[k][1]);
   diskRun(() => backend.put(tier.name, batch)).then(
     () => tierWritten(tier, batch, epoch),
-    diskFailed
+    (err) => {
+      if (epoch === diskEpoch) diskFailed(err);
+    }
   );
 }
 
@@ -156,18 +159,28 @@ function tierWaiting(tier, key) {
 function tierRead(tier, key) {
   const backend = diskBackend;
   if (!backend || !tier.disk.has(key) || tier.reading.has(key) || tierInRam(tier, key)) return;
-  const token = {};
+  const token = { tries: 0 };
   tier.reading.set(key, token);
+  tierAsk(tier, key, token, backend);
+}
+
+function tierAsk(tier, key, token, backend) {
+  token.tries++;
   backend.get(tier.name, key).then(
-    (v) => tierReply(tier, key, token, v, false),
-    () => tierReply(tier, key, token, undefined, true)
+    (v) => tierReply(tier, key, token, v, null),
+    (err) => tierReply(tier, key, token, undefined, err || new Error(`${tier.name} read failed`))
   );
 }
 
-function tierReply(tier, key, token, v, failed) {
+function tierReply(tier, key, token, v, err) {
   if (tier.reading.get(key) !== token) return;
+  if (err && token.tries < READ_TRIES && diskBackend) {
+    tierAsk(tier, key, token, diskBackend);
+    return;
+  }
   tier.reading.delete(key);
-  if (failed) {
+  if (err) {
+    fault(`${tier.name} read ${keyCx(key)},${keyCy(key)}`, err);
     tier.report.error(key);
     return;
   }

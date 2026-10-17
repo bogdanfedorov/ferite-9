@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -28,11 +29,15 @@ const (
 	windowH = 800
 
 	pingPath     = "/_alive"
+	faultPath    = "/_fault"
+	faultMax     = 64 << 10
 	pingEvery    = 2 * time.Second
 	pingPatience = 12 * time.Second
 )
 
 var lastPing atomic.Int64
+
+var faultMu sync.Mutex
 
 func main() {
 	token := randomToken()
@@ -83,6 +88,11 @@ func gameHandler() http.Handler {
 	page := indexPage()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == faultPath && r.Method == http.MethodPost {
+			appendFault(r)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if r.URL.Path == pingPath {
 			lastPing.Store(time.Now().UnixMilli())
 			w.Header().Set("Cache-Control", "no-store")
@@ -118,12 +128,31 @@ func indexPage() []byte {
 	}
 
 	beat := fmt.Sprintf(
-		"\n<script>setInterval(function(){"+
+		"\n<script>window.FAULT_POST=true;setInterval(function(){"+
 			"fetch(%q,{cache:'no-store'}).catch(function(){});"+
 			"},%d);</script>\n",
 		strings.TrimPrefix(pingPath, "/"), int(pingEvery/time.Millisecond))
 
 	return []byte(strings.Replace(html, "</body>", beat+"</body>", 1))
+}
+
+func appendFault(r *http.Request) {
+	line, err := io.ReadAll(io.LimitReader(r.Body, faultMax))
+	if err != nil || len(line) == 0 {
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+	faultMu.Lock()
+	defer faultMu.Unlock()
+	f, err := os.OpenFile(filepath.Join(filepath.Dir(exe), "ferit9-fault.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	f.Write(line)
 }
 
 func hasLocalFonts() bool {

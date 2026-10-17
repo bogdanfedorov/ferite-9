@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Menu, session } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, session } = require('electron');
+const fs = require('node:fs');
 const path = require('node:path');
 
 const isDev = !app.isPackaged || process.argv.includes('--dev');
@@ -25,6 +26,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.js'),
       devTools: isDev,
       backgroundThrottling: false,
       spellcheck: false
@@ -57,8 +59,16 @@ function createWindow() {
   });
 }
 
+function appendFault(_event, line) {
+  const file = path.join(app.getPath('logs'), 'fault.log');
+  fs.mkdir(path.dirname(file), { recursive: true }, () => {
+    fs.appendFile(file, String(line).slice(0, 65536), () => {});
+  });
+}
+
 app.whenReady().then(() => {
   hardenSession();
+  ipcMain.on('fault', appendFault);
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

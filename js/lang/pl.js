@@ -83,7 +83,6 @@ regLang('pl', {
   'msg.droneSold': 'Dron sprzedał ładunek: +${sum}',
   'msg.droneOn': 'Dron wyleciał — odbiór za chwilę',
   'msg.cantAfford': 'Brakuje pieniędzy: potrzeba ${cost}',
-  'msg.diskLost': 'Awaria pamięci — odległy teren odtworzono z mapy',
   'msg.noPad': 'Najpierw wyznacz strefę odbioru',
   'msg.padFar': 'Strefa odbioru jest za daleko — podejdź bliżej',
   'msg.droneAbort': 'Dron zgubił strefę — opłata zwrócona',

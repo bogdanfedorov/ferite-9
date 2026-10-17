@@ -619,16 +619,17 @@ function spawnSlot() {
 async function spawnAwayAndBack(disk, seed, mode) {
   const sp = await freshWorld(disk, seed);
   C.spawnPlayer(sp.spawnX, sp.spawnY);
-  const slot = spawnSlot();
-  const keep = { x: slot.lx + 40, y: slot.ly + 20 };
-  C.setCell(keep.x, keep.y, MARK);
-  C.markEdited(keep.x, keep.y);
+  const home = spawnSlot();
+  const keepAt = { x: C.worldX(home.lx + 40), y: C.worldY(home.ly + 20) };
+  C.setCell(C.localX(keepAt.x), C.localY(keepAt.y), MARK);
+  C.markEdited(C.localX(keepAt.x), C.localY(keepAt.y));
   C.moveWindow(AWAY, 0);
   await settle();
   disk.mode = mode;
   C.player.respawning = true;
-  C.moveWindow(-AWAY, 0);
-  return { slot, keep };
+  C.moveWindow(-AWAY, C.windowShiftForY(C.localY(C.player.spawnY)));
+  const keep = { x: C.localX(keepAt.x), y: C.localY(keepAt.y) };
+  return { slot: spawnSlot(), keep };
 }
 
 function assertPlayable(keep) {
@@ -659,7 +660,7 @@ test('respawn: a spawn read still loading after SETTLE_MS is waited for', async 
   }
   disk.release();
   await settle();
-  assert.strictEqual(C.moveToSpawn(), true);
+  assert.strictEqual(await respawnWithin(6), true, 'respawn never finished after the read landed');
   assertPlayable(keep);
 });
 

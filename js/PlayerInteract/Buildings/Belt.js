@@ -30,6 +30,7 @@ function beltPlace(plan) {
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
     setCell(c.x, c.y, BELT_DECK);
+    markEdited(c.x, c.y);
     beltCells.set(c.y * W + c.x, code);
   }
 }

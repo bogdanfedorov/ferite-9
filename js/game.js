@@ -25,7 +25,7 @@ var OVERLAYS = ['intro', 'pause', 'help', 'settings', 'inventory'];
 
 var SETTLE_MS = 3000;
 
-var loop = { acc: 0, last: 0, hudTick: 0, waitFrom: 0, respawn: false };
+var loop = { acc: 0, last: 0, hudTick: 0, waitFrom: 0 };
 
 function selectTool(name) {
   if (!toolOpen(name)) {
@@ -47,7 +47,6 @@ function selectSlot(i) {
 
 function invSlot(i) {
   if (placePicked(i)) play('pickTool');
-  renderToolbelt();
 }
 
 function invUpgrade(name) {
@@ -60,13 +59,11 @@ function invTool(name) {
     return;
   }
   pickForSlot(name);
-  renderToolbelt();
 }
 
 function toggleInventory() {
   if (game.paused && el.inventory.classList.contains('hidden')) return;
   pickForSlot(null);
-  renderToolbelt();
   toggleScreen('inventory');
 }
 
@@ -89,7 +86,6 @@ function clickRoomButton(bin) {
 
 function respawn() {
   game.paused = true;
-  loop.respawn = true;
   followWindow(localX(player.spawnX), localY(player.spawnY), Infinity);
 }
 
@@ -100,9 +96,6 @@ function windowReady(now) {
 }
 
 function finishRespawn() {
-  loop.respawn = false;
-  clearAirlock();
-  moveToSpawn();
   releaseObject();
   moduleDeath(player.deathCause, { drop: player.fallDrop, temp: player.lastTemp });
   play('death');
@@ -178,7 +171,7 @@ function frame(now) {
   loop.last = now;
 
   const ready = windowReady(now);
-  if (ready && loop.respawn) finishRespawn();
+  if (player.respawning && moveToSpawn()) finishRespawn();
   if (!game.paused && ready) {
     loop.acc += dt;
     let steps = 0;
@@ -190,7 +183,7 @@ function frame(now) {
   } else loop.acc = 0;
 
   streamWorld();
-  if (market.money !== toolbeltMoney) renderToolbelt();
+  if (toolbeltKey() !== toolbeltDrawn) renderToolbelt();
   const wpt = screenToWorld(input.mouse.x, input.mouse.y);
   render(game.tool, wpt);
   if (++loop.hudTick % 6 === 0) updateHud(wpt);
@@ -281,6 +274,13 @@ function refreshLang() {
   updateHud(screenToWorld(input.mouse.x, input.mouse.y));
 }
 
+function logFault(what, err) {
+  const line = `${new Date().toISOString()} ${what}\n${err?.stack || err}\n`;
+  console.error(line);
+  if (window.ferit9) window.ferit9.fault(line);
+  else if (window.FAULT_POST) fetch('_fault', { method: 'POST', body: line }).catch(() => {});
+}
+
 function showNotice(sound, text) {
   if (sound) play(sound);
   if (text) transmit(text, NOTICE);
@@ -294,6 +294,7 @@ function applySettings(what) {
 }
 
 function enterWorld(room) {
+  loop.waitFrom = 0;
   sandbox.on = room;
   sandbox.bins.length = 0;
   resetMarket(room);
@@ -321,6 +322,7 @@ function startGame() {
   setGrabSize(settings.grabSize);
   setSettingsHook(applySettings);
   setNoticeHook(showNotice);
+  setFaultHook(logFault);
   initLore();
   initRender();
   enterWorld(false);

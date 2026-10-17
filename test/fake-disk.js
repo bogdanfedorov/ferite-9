@@ -9,8 +9,7 @@ const REPORTS = [
   'chunkFailed',
   'fogArrived',
   'fogMissing',
-  'fogFailed',
-  'diskLost'
+  'fogFailed'
 ];
 const TAB_FILES = new Set(['js/store.js', 'js/disk.js']);
 

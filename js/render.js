@@ -269,9 +269,8 @@ function drawObjects() {
     const o = objects[n];
     const px = sx(o.x),
       py = sy(o.y);
-    const span = objSpan(o);
-    const ow = span[0] * z,
-      oh = span[1] * z;
+    const ow = o.w * z,
+      oh = o.h * z;
     if (px + ow < -20 || py + oh < -20 || px > cv.width + 20 || py > cv.height + 20) continue;
 
     for (let k = 0; k < o.cells.length; k++) {

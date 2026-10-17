@@ -41,7 +41,8 @@ Done:
 1. **Generation.** `buildChunk(seed, cx, cy)` depends only on the seed and world
    coordinates, for any `cy`: sky above the surface, sand, hardpan and rock below,
    deposits and caves from noise, deep lava pools from world Y 300 down, and a
-   floor of `EDGE` material from `WORLD_FLOOR` (99840 cells) down. Features
+   floor of `EDGE` material from `WORLD_FLOOR` (99840 cells) down, and the spawn
+   pad with its air pocket at world x 0. Features
    crossing chunk borders match on both sides.
 2. **Horizontal window.** `originX` maps local to world X. `shiftWindow` moves it
    by whole chunks, saving leaving columns and loading entering ones.
@@ -281,16 +282,20 @@ change it.
 
   | Path | Where |
   |---|---|
-  | dig | `Tools/Drill.js` (`setCell` to void, `dropLoose`) |
+  | dig | `Tools/Drill.js` (`setCell` to void), `dropLoose` (only the drill calls it) |
   | build, erase | `Buildings/Wall.js` `wallPlace`, `Buildings/Belt.js` `beltPlace`, `Build.js` `eraseCells` |
-  | torch | `Tools/Ignite.js` (the flame it places) |
+  | torch | `Tools/Ignite.js` (every cell it lights or heats) |
   | grab | `takeObject` (cells it lifts) |
   | object lands | `placeCell` / `swapCell` in `dropObject` (objects exist only by a grab) |
+  | object shoves | `shoveCell` (a held object pushing loose cells) |
   | object stored | `saveChunk` marks the owner of every object it stores |
   | drone pickup | `market.js` (cells taken from the pad) |
-  | spawn pad | `generateWorld` (the pad and its air pocket are not in `buildChunk`) |
 
   `simulate`, `thermoPass`, belt transport, burning and gas never call it.
+- **Spawn pad.** The pad and its air pocket are part of generation:
+  `applySpawnPad` in `buildChunk` writes them for the chunks they cross (world
+  x -12..11, the surface row at world x 0), so the seed reproduces every chunk
+  the player never touched. `generateWorld` no longer paints anything.
 - **Reader.** `loadChunk`, `chunkMissing`, `chunkFailed`: regenerate only if
   the key is not in `editedChunks`. An edited chunk that left the window always
   has a record (its edit dirtied a tile), so "edited and no copy anywhere" can
@@ -395,7 +400,7 @@ lift in `unshelveObject` are deleted.
 ```
 live    -> stored   owner slot leaves the window (saveChunk; a hold is dropped)
 waiting -> stored   owner slot leaves the window (saveChunk)
-live    -> waiting  a slot it covers leaves the window, its owner stays
+live    -> waiting  its box is no longer inside the window, its owner stays
 stored  -> waiting  owner slot becomes READY from a stored record
 waiting -> live     spawnEntity: own x, y, or the first free place above
 live    -> (cells)  dropObject, as today
