@@ -181,10 +181,12 @@ window; a found chunk stays in the store cache for the next entry.
 | Player step | runs | frozen while `windowSettled()` is false |
 
 `windowSettled()` is true when no slot within `NEAR_BUILD` of the window centre
-is `QUEUED` or `LOADING`. The frame loop skips `step()` until it is true (reads
-usually land within a frame, thanks to the prefetch ring). A respawn
-(`jumpWindow`) clears the airlock and places the player only once settled. A
-near `FAILED` slot counts as settled: it is a wall until it re-enters.
+is `QUEUED` or `LOADING`. The frame loop skips `step()` until it is true or
+`SETTLE_MS` (3 s) has passed; placeholders are inert, so resuming after the
+timeout is safe (reads usually land within a frame, thanks to the prefetch
+ring). A respawn (`jumpWindow`) clears the airlock and places the player only
+once the window is ready. A near `FAILED` slot counts as settled: it is a wall
+until it re-enters.
 
 ### Fog
 
@@ -209,14 +211,19 @@ grow, so every outcome is an OR merge:
   counts it as reading, so a later `tierWaiting` / `tierRead` starts a new read.
 - The world never puts a placeholder into a tier, so the store never has to tell
   a placeholder from real data.
+- When the disk is declared dead, the store first resolves every read in flight
+  as failed, drops disk-only keys from its index, then calls `diskLost()` once.
+  `diskLost` turns every `FAILED` slot into `QUEUED` (nobody can read that data
+  again in this session), stores held fog bits as the slices, and tells the
+  player (`msg.diskLost`).
 
 Remaining:
 
 0. **Disk failure.** If IndexedDB fails (open error, blocked upgrade, write
    error), the store turns the disk layer off. Entries still in memory or
    waiting to be written stay in memory. Chunks whose only copy was on disk are
-   now unreachable: their slots stay `FAILED` walls instead of being regenerated,
-   so a failure is visible and never silently replaces edited terrain.
+   unreachable and are regenerated from the seed after `diskLost`; the player is
+   told. A single failed read on a working disk never regenerates anything.
 1. **Game-level save is not planned.** The game has no save mechanism (only
    settings and language in `localStorage`).
 2. **Placeholders are visible.** A `QUEUED` or `LOADING` slot inside the view

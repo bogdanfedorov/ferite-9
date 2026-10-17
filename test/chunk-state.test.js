@@ -212,6 +212,23 @@ test('chunkFailed: a failed read never regenerates the chunk or overwrites its d
   assert.ok(hasMark(NEAR.lx, NEAR.ly), 'near disk copy survived');
 });
 
+test('diskLost: failed chunks are regenerated and the player is told', async () => {
+  const disk = makeDisk();
+  await freshWorld(disk, 110);
+  mark(FAR.lx, FAR.ly);
+  await awayAndHome(disk, 'fail');
+  await settle();
+  const sent = [];
+  globalThis.NOTICE = {};
+  globalThis.transmit = (text) => sent.push(text);
+  C.diskLost();
+  assert.strictEqual(C.chunkStateAt(FAR.lx, FAR.ly), C.CHUNK_QUEUED);
+  C.buildDeferred();
+  assert.strictEqual(C.chunkStateAt(FAR.lx, FAR.ly), C.CHUNK_READY);
+  assert.notStrictEqual(inertCount(FAR.lx, FAR.ly), S * S, 'regenerated from the seed');
+  assert.deepStrictEqual(sent, [C.t('msg.diskLost')]);
+});
+
 test('fogFailed: a failed fog read never overwrites the saved slice', async () => {
   const disk = makeDisk();
   await freshWorld(disk, 107);
