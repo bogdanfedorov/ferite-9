@@ -83,6 +83,7 @@ regLang('en', {
   'msg.droneSold': 'The drone sold the cargo: +${sum}',
   'msg.droneOn': 'Drone dispatched — the pickup is moments away',
   'msg.cantAfford': 'Not enough money: need ${cost}',
+  'msg.diskLost': 'Storage failed — distant terrain was regenerated from the map',
   'msg.noPad': 'Mark a pickup zone first',
   'msg.padFar': 'The pickup zone is too far away — move closer',
   'msg.droneAbort': 'The drone lost the zone — fee refunded',

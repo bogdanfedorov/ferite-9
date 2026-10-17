@@ -24,7 +24,9 @@ var MILESTONES = [
 
 var OVERLAYS = ['intro', 'pause', 'help', 'settings', 'inventory'];
 
-var loop = { acc: 0, last: 0, hudTick: 0 };
+var SETTLE_MS = 3000;
+
+var loop = { acc: 0, last: 0, hudTick: 0, waitFrom: 0, respawn: false };
 
 function selectTool(name) {
   if (!toolOpen(name)) {
@@ -87,13 +89,24 @@ function clickRoomButton(bin) {
 }
 
 function respawn() {
+  game.paused = true;
+  loop.respawn = true;
   followWindow(localX(player.spawnX), localY(player.spawnY), Infinity);
+}
+
+function windowReady(now) {
+  if (windowSettled()) loop.waitFrom = 0;
+  else if (!loop.waitFrom) loop.waitFrom = now;
+  return !loop.waitFrom || now - loop.waitFrom > SETTLE_MS;
+}
+
+function finishRespawn() {
+  loop.respawn = false;
   clearAirlock();
   moveToSpawn();
   releaseObject();
   moduleDeath(player.deathCause, { drop: player.fallDrop, temp: player.lastTemp });
   play('death');
-  game.paused = true;
   setTimeout(() => {
     play('reboot');
     startBoot(() => {
@@ -129,7 +142,10 @@ function followWindow(lx, ly, maxChunks) {
 
 function step() {
   const mouse = input.mouse;
-  if (updatePlayer(input.keys) === 'respawn') respawn();
+  if (updatePlayer(input.keys) === 'respawn') {
+    respawn();
+    return;
+  }
   followWindow(player.x, player.y, 1);
   checkMilestones();
 
@@ -162,11 +178,13 @@ function frame(now) {
   const dt = Math.min(100, now - loop.last);
   loop.last = now;
 
-  if (!game.paused) {
+  const ready = windowReady(now);
+  if (ready && loop.respawn) finishRespawn();
+  if (!game.paused && ready) {
     game.elapsed += dt;
     loop.acc += dt;
     let steps = 0;
-    while (loop.acc >= 16.6667 && steps < 3) {
+    while (loop.acc >= 16.6667 && steps < 3 && !game.paused) {
       step();
       loop.acc -= 16.6667;
       steps++;
