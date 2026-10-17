@@ -83,8 +83,9 @@ Done:
     `mem` is capped (`CHUNK_MEM_MAX` chunks, `FOG_MEM_MAX` slices); the oldest
     entries move to `spill` and one batched IndexedDB write persists them.
     Lookups try `mem`, `spill`, `cache`, in that order, so an evicted entry is
-    never lost between eviction and write completion. A failed write turns the disk
-    layer off and returns everything to `mem` (memory only, unbounded, but safe).
+    never lost between eviction and write completion. A failed write is a fault
+    (logged, see "Faults"): the disk layer turns off and everything returns to
+    `mem` (memory only, unbounded, but safe).
     Without a backend the store behaves like before: unbounded, in memory. The
     backend (`get`, `put`, `clear`) and its IndexedDB form in `js/disk.js` are
     described in `SIMULATION.md`, section Storage.
@@ -112,8 +113,9 @@ Done:
     play. Waiting objects are retried whenever a chunk becomes `READY`.
 15. **Read outcomes.** Every chunk and fog read ends in exactly one of three
     calls from the store: found (`chunkArrived` / `fogArrived`), absent
-    (`chunkMissing` / `fogMissing`) or error (`chunkFailed` / `fogFailed`). An
-    error is never treated as absent.
+    (`chunkMissing` / `fogMissing`) or error (`chunkFailed` / `fogFailed`). A
+    rejected read is retried; error means `READ_TRIES` rejections in a row and
+    is logged as a fault. An error never regenerates a chunk the player edited.
 16. **Spill per owner.** Each game owns a database `ferit9.spill.<random id>`,
     guarded by a Web Lock of the same name; `storeReset` clears only that
     database. At startup `js/disk.js` deletes every `ferit9.spill.*` database whose
@@ -140,8 +142,10 @@ window chunk slot.
   | `CHUNK_READY` | real terrain | the window |
   | `CHUNK_QUEUED` | placeholder | none exists: the seed |
   | `CHUNK_LOADING` | placeholder | disk; read in flight |
-  | `CHUNK_FAILED` | placeholder | disk; read failed, copy untouched |
+  | `CHUNK_FAILED` | placeholder | disk, unreadable or lost; the player edited it, so it is never regenerated |
 
+- `editedChunks`: `Set` of world chunk keys the player changed (see "Edited
+  chunks" below). It is the only input to "may this chunk be regenerated".
 - Dirty is not a state. A `READY` chunk is dirty when one of its `dirtyT` tiles
   is set; tiles stay the single record (the torch and `thermoPass` mark single
   tiles). A non-`READY` slot never has a dirty tile.
@@ -158,22 +162,26 @@ window chunk slot.
 ### Transitions
 
 ```
-enter window:  in store RAM            -> READY    (paste, all tiles dirty, belts in)
+enter window:  in store RAM            -> READY    (paste, all tiles dirty, belts, objects)
                on disk (read started)   -> LOADING
+               edited, no copy anywhere -> FAILED   (fault: copy lost)
                nowhere, near centre     -> READY    (build now, clean)
                nowhere, far             -> QUEUED
 QUEUED   -> READY    streamWorld builds it
-LOADING  -> READY    chunkArrived: paste stored copy, all tiles dirty, belts in
-LOADING  -> QUEUED   chunkMissing: no copy exists, generating is safe
-LOADING  -> FAILED   chunkFailed: keep placeholder, never generate
-any      -> (gone)   leave window: READY saved if dirty or belts; others save nothing
-FAILED   -> LOADING  by leaving and re-entering (a fresh read), or by a
-                     respawn retrying a slot of the spawn area (a fresh read)
+LOADING  -> READY    chunkArrived: paste stored copy, all tiles dirty, belts, objects
+LOADING  -> QUEUED   chunkMissing or chunkFailed, chunk not edited: regenerate
+LOADING  -> FAILED   chunkFailed, chunk edited: keep placeholder, never generate
+LOADING  -> FAILED   chunkMissing, chunk edited (fault: copy lost)
+any      -> (gone)   leave window: READY saved if dirty, belts or objects; others nothing
+FAILED   -> LOADING  only by leaving and re-entering (a fresh read)
 ```
 
-No other transition exists. `FAILED -> QUEUED` and `FAILED -> READY` are
-forbidden: the disk copy may hold edits, and generating would either show the
-wrong terrain or, once edited, overwrite that copy on leave. A reply for a key
+No other transition exists. A chunk is regenerated from the seed only if
+`editedChunks` does not hold its key: the seed then reproduces everything but
+physics and heat. `FAILED -> QUEUED` and `FAILED -> READY` are forbidden: the
+disk copy holds player edits, and generating would show the wrong terrain or,
+once dirty, overwrite that copy on leave. A `FAILED` slot never saves, so its
+disk copy is never overwritten. A reply for a key
 whose slot is outside the window, or not `LOADING`, changes nothing in the
 window; a found chunk stays in the store cache for the next entry.
 
@@ -182,7 +190,7 @@ window; a found chunk stays in the store cache for the next entry.
 | Operation | `READY` | `QUEUED` / `LOADING` / `FAILED` |
 |---|---|---|
 | Cell write (tools, build, physics, objects landing) | allowed, marks tiles dirty | cannot happen: placeholder is bedrock |
-| Place a waiting object | placed at its own position if every cell it covers is in a `READY` slot | stays waiting; never lifted or moved |
+| `spawnEntity` scan (respawn, waiting object) | free: place; blocked: one row up | `QUEUED` / `LOADING`: stop, retry later; `FAILED`: bedrock, blocked, scan goes on up |
 | `thermoPass` | normal | cells stay at ambient, no heat crosses, no tile marked |
 | `simulate` movement | normal | rigid, nothing enters |
 | Save on leave | stored if a tile is dirty, it holds belts or it owns objects | nothing stored; a disk copy stays the truth |
@@ -193,10 +201,9 @@ window; a found chunk stays in the store cache for the next entry.
 is `QUEUED` or `LOADING`. The frame loop skips `step()` until it is true or
 `SETTLE_MS` (3 s) has passed; placeholders are inert, so resuming after the
 timeout is safe (reads usually land within a frame, thanks to the prefetch
-ring). A respawn (`jumpWindow`) clears the airlock and places the player
-only when its spawn area is `READY` (see "Respawn" below); `SETTLE_MS` never
-applies to it. For play, a near `FAILED` slot counts as settled: it is a wall
-until it re-enters.
+ring). A respawn places the player with `spawnEntity`, which waits for the
+slots it needs by itself; `SETTLE_MS` does not apply to it. A near `FAILED`
+slot counts as settled: it is a wall until it re-enters.
 
 ### Fog
 
@@ -208,34 +215,38 @@ grow, so every outcome is an OR merge:
 - `fogArrived`: OR held bits into the stored slice; OR the slice into `seen` if
   the slot is still waiting.
 - `fogMissing`: the held bits become the stored slice.
-- `fogFailed`: nothing changes. The key stays pending, held bits stay in
-  `fogMerge`, and the next read after re-entry merges them. A local slice is
-  never put over an unread disk slice.
+- `fogFailed` (after `READ_TRIES`, fault already logged): same as
+  `fogMissing`. Fog is visibility, not player work; bits only in the
+  unreadable slice are lost.
 
 ### Contract with the store (`js/store.js`)
 
 - The store calls exactly one of `chunkArrived` / `chunkMissing` /
   `chunkFailed` per chunk read, and the same for fog; an error (including the
   disk layer turning off with reads in flight) is `*Failed`, never `*Missing`.
+- A rejected `get` is retried at once, up to `READ_TRIES` (3) attempts. Only
+  the last rejection is reported: the store calls `fault(what, err)` with that
+  error, then `chunkFailed` / `fogFailed`.
 - After `chunkFailed(key)` the store keeps `key` in its disk index and no longer
   counts it as reading, so a later `tierWaiting` / `tierRead` starts a new read.
 - The world never puts a placeholder into a tier, so the store never has to tell
   a placeholder from real data.
 - A write reply, success or failure, is dropped if `storeReset` ran after the
   write started (epoch). Only a write of the current game can kill its disk.
-- When the disk is declared dead, the store first resolves every read in flight
-  as failed, drops disk-only keys from its index, then calls `diskLost()` once.
-  `diskLost` turns every `FAILED` slot into `QUEUED` (nobody can read that data
-  again in this session), stores held fog bits as the slices, and tells the
-  player (`msg.diskLost`).
+- A failed write of the current epoch calls `fault('disk write failed', err)`,
+  then turns the disk off: spilled entries go back to `mem`, disk-only keys
+  leave the index, every read in flight ends as `*Failed`. `diskLost` and
+  `msg.diskLost` are deleted: edited chunks that were only on disk become
+  `FAILED` when they enter (copy lost), unedited ones are regenerated, and the
+  player is not told; the log is.
 
 Remaining:
 
 0. **Disk failure.** If IndexedDB fails (open error, blocked upgrade, write
-   error), the store turns the disk layer off. Entries still in memory or
-   waiting to be written stay in memory. Chunks whose only copy was on disk are
-   unreachable and are regenerated from the seed after `diskLost`; the player is
-   told. A single failed read on a working disk never regenerates anything.
+   error), the store logs a fault and turns the disk layer off. Entries still in
+   memory or waiting to be written stay in memory. Chunks whose only copy was on
+   disk are regenerated if the player never edited them and are `FAILED` walls
+   if they were. A single failed read is retried and never regenerates anything.
 1. **Game-level save is not planned.** The game has no save mechanism (only
    settings and language in `localStorage`).
 2. **Placeholders are visible.** A `QUEUED` or `LOADING` slot inside the view
@@ -250,52 +261,109 @@ Remaining:
 
 ## Review fixes, round 4
 
-Six findings on `infinite/4-persistence-vertical`. Each one is a piece of state
+Six findings and revisions R1, R2 on `infinite/4-persistence-vertical`. Each one is a piece of state
 that had no owner or no reset; the fix gives it one.
 
-### Respawn (findings 1, 2)
+### Edited chunks (R1)
 
-Respawn moves from the shell (`loop.respawn`, `windowReady`, `SETTLE_MS`) into
-the core, so it is testable and is reset with the world.
+Dirty tiles say "store this chunk"; physics and heat set them too. Whether a
+chunk may be regenerated needs a different, stricter record: did the player
+change it.
 
-Data, in `player` (`js/player.js`):
+- **Data.** `editedChunks`: a `Set` of world chunk keys in `world.js`, cleared
+  by `beginWorld`. It is keyed by world key, so it does not move with the
+  window, survives the chunk leaving and spilling, and is known without a disk
+  read. Keys are never removed during a game. Size is the number of chunks the
+  player touched.
+- **Writer.** One function, `markEdited(x, y)` (window-local cell), adds the key
+  of that cell's chunk. Only player-action paths call it, next to their cell
+  write:
 
-| Field | Meaning |
-|---|---|
-| `respawning` | a respawn is pending: the player is dead and not yet placed |
-| `spawnTries` | fresh reads started for the spawn area in this respawn; 0 when not respawning |
+  | Path | Where |
+  |---|---|
+  | dig | `Tools/Drill.js` (`setCell` to void, `dropLoose`) |
+  | build, erase | `Buildings/Wall.js` `wallPlace`, `Buildings/Belt.js` `beltPlace`, `Build.js` `eraseCells` |
+  | torch | `Tools/Ignite.js` (the flame it places) |
+  | grab | `takeObject` (cells it lifts) |
+  | object lands | `placeCell` / `swapCell` in `dropObject` (objects exist only by a grab) |
+  | object stored | `saveChunk` marks the owner of every object it stores |
+  | drone pickup | `market.js` (cells taken from the pad) |
+  | spawn pad | `generateWorld` (the pad and its air pocket are not in `buildChunk`) |
 
-The **spawn area** is the rectangle `clearAirlock` clears plus the floor row
-under it: everything `clearAirlock`, `moveToSpawn` and the arrival fall touch.
-Only its window slots count: the shell centres the window on the spawn before
-the first `respawnStep`, and cells outside the window are skipped by
-`clearAirlock` and block `moveToSpawn` like the window edge.
+  `simulate`, `thermoPass`, belt transport, burning and gas never call it.
+- **Reader.** `loadChunk`, `chunkMissing`, `chunkFailed`: regenerate only if
+  the key is not in `editedChunks`. An edited chunk that left the window always
+  has a record (its edit dirtied a tile), so "edited and no copy anywhere" can
+  only be lost data: `FAILED` plus a fault.
+
+### Faults (R1)
+
+A read that keeps failing, a lost copy and a failed write are bugs to
+investigate, not game states. The game recovers where it safely can (an
+unedited chunk is regenerated, an edited one stays a `FAILED` wall) and logs the
+error with its stack. The player is not told.
+
+`js/notice.js` gets a second hook in the existing setter pattern:
 
 ```
-beginRespawn()   respawning = true, spawnTries = 0      (shell then moves the window)
-respawnStep()    called by the shell every frame, paused or not; true exactly once:
-  every window slot touching the spawn area is READY
-      -> clearAirlock, moveToSpawn, respawning = false, return true
-  a slot there is FAILED and spawnTries <  SPAWN_TRIES
-      -> fresh read: FAILED -> LOADING, spawnTries++
-  a slot there is FAILED and spawnTries >= SPAWN_TRIES
-      -> diskFailed(): the disk is dead, diskLost turns FAILED -> QUEUED
-  otherwise (QUEUED, LOADING)   -> wait
-spawnPlayer()    respawning = false, spawnTries = 0      (every new world)
+var onFault = null;
+function setFaultHook(fn) { onFault = fn; }
+function fault(what, err) { if (onFault) onFault(what, err); }
 ```
 
-- The player is never placed over a placeholder: `READY` is the only state in
-  which the spawn area holds real terrain. A `FAILED` slot is not settled for a
-  respawn.
-- No timeout. `LOADING` always ends in one of the three read outcomes (store
-  contract); `QUEUED` slots near the centre are built at once by `jumpWindow`,
-  others by `streamWorld`, nearest first.
-- `SPAWN_TRIES` is 3. A single failed read still never regenerates a chunk:
-  the only way the spawn chunk is regenerated is the disk being declared dead,
-  which is the existing `diskLost` path, and the player is told.
-- `spawnPlayer` runs for every world `enterWorld` makes, so a respawn pending in
-  one world cannot fire in the next. The shell keeps only presentation (death
-  sound, boot screen) and the play timeout; `enterWorld` resets `loop.waitFrom`.
+`what` is a short text with the key; `err` is the `Error` the backend rejected
+with, so `err.stack` is the real one. Where the core finds lost data itself
+(edited chunk, no copy) it passes `new Error(what)`. Callers: `tierReply` after
+`READ_TRIES`, the write-failure path in `store.js`, and `world.js` for a lost
+copy. With no hook the core is silent.
+
+The shell installs `logFault` in `startGame` (`game.js`): one line (time,
+`what`, `err.stack`) to `console.error`, then to the first sink present:
+
+| Runtime | Sink | File |
+|---|---|---|
+| Electron | new `electron/preload.js` exposes `ferit9.fault(line)` (`contextBridge`, `ipcRenderer.send`); `main.js` appends | `app.getPath('logs')/fault.log` |
+| Go launcher | `fetch('_fault', { method: 'POST', body: line })` when the page script the launcher injects sets `FAULT_POST`; the handler appends | `ferit9-fault.log` next to the executable, as `fail()` does |
+| plain web, dev page | none | console only |
+
+### `spawnEntity` (findings 1, 2, 5; R2)
+
+One function places anything with a size, the player and returning objects:
+
+```
+spawnEntity(e, x, y) -> true | false
+  e has w, h and (ox, oy): offset from e.x, e.y to its box centre
+  box(y') = columns spanStart(x+ox, w)..spanEnd(x+ox, w), rows likewise from y'+oy, h
+  for y' = y, y-1, y-2, ...:
+    a box cell is outside the window, or in a QUEUED or LOADING slot -> return false
+    no box cell is BLOCKING -> e.x = x, e.y = y', velocity 0, return true
+```
+
+- Player: `ox = oy = 0` (its x, y is the box centre, as in `boxBlocked`).
+  Object: `ox = w/2`, `oy = h/2`, with `w`, `h` from its cells, set by
+  `makeObject` (its x, y is the top-left anchor). Same code for both.
+- `QUEUED` and `LOADING` change in place and may become terrain under the box,
+  so the scan stops and the caller retries. `FAILED` is different: it stays
+  bedrock for as long as it is in the window (its only exit is leaving), so it
+  is plain blocked terrain and the scan moves up past it. Nothing is ever
+  placed inside or on top of a slot that can still turn into terrain.
+- **Player.** `player.respawning` is the only respawn state. `updatePlayer`
+  sets it on death (and still returns `'respawn'`, so the shell moves the
+  window). `moveToSpawn()` becomes `spawnEntity(player, localX(spawnX),
+  localY(spawnY))`; on success it clears `respawning`, sets `fallFrom` and
+  `arriving`, and returns true. The shell calls it every frame while
+  `respawning` and plays death and boot when it returns true. `loop.respawn`
+  and the respawn use of `windowReady` are deleted. `spawnPlayer` clears
+  `respawning`, so a pending respawn never fires in the next world.
+- A spawn chunk that is `FAILED` (edited, unreadable): the player appears on
+  the first free place above it, typically the sky chunk above, and lands on
+  the bedrock placeholder. If every row up to the window top is blocked,
+  `moveToSpawn` keeps returning false.
+- `clearAirlock`, `arrivalHeight` and `ARRIVAL_DROP` are deleted: a buried
+  spawn no longer erases cells, the player appears on top of what buries it.
+- **Objects.** `unshelveObject` is replaced by
+  `spawnEntity(o, localX(o.x), localY(o.y))`: own position, or the first free
+  place straight above, or wait.
 
 ### Write replies after `storeReset` (finding 3)
 
@@ -329,20 +397,16 @@ live    -> stored   owner slot leaves the window (saveChunk; a hold is dropped)
 waiting -> stored   owner slot leaves the window (saveChunk)
 live    -> waiting  a slot it covers leaves the window, its owner stays
 stored  -> waiting  owner slot becomes READY from a stored record
-waiting -> live     every cell it covers is in a READY slot; same x, y
+waiting -> live     spawnEntity: own x, y, or the first free place above
 live    -> (cells)  dropObject, as today
 ```
 
 - A chunk that owns objects is stored on leave even when clean.
-- A generated chunk owns no objects; a `FAILED` or `LOADING` slot's objects stay
-  in its disk record with its terrain. After `diskLost` the objects of lost
-  records are lost with them, like their terrain, and the player is told.
+- A generated chunk owns no objects; a `FAILED` or `LOADING` slot's objects
+  stay in its disk record with its terrain. Storing an object marks its owner
+  edited, so a chunk holding objects is never regenerated over them.
 - Memory is bounded like chunks: `shelvedObjects` only holds objects whose owner
   is in the window, everything else rides in chunk records.
-- A waiting object whose slots are all `READY` but whose own position is blocked
-  (cells changed around it while it was away) is dropped in place with
-  `dropObject`, exactly like a release: its cells go to the nearest open cells.
-  It is never moved to another position as an object.
 
 ### Toolbelt redraw (finding 7)
 
@@ -360,9 +424,11 @@ shell state.
 
 | Finding | Test |
 |---|---|
-| 1 | `test/chunk-state.test.js`: respawn waits for a `FAILED` spawn slot and retries it; waits for a `LOADING` read with no timeout; a read that keeps failing ends in `diskLost` and a playable spawn |
-| 2 | `test/chunk-state.test.js`: a respawn pending when a new world is made does nothing |
-| 3 | `test/store.test.js`: a write from before `storeReset` that fails does not kill the disk |
-| 4 | `test/chunk-state.test.js`: twelve objects leave the window, spill to disk and all come back with their cells |
-| 5 | `test/chunk-state.test.js`: an object across a chunk border stays waiting while one of its slots is loading, then lands at its own position |
-| 7 | `test/toolbelt.test.js`: every money-neutral toolbelt change changes `toolbeltKey()` |
+| R1 | `store.test.js`: a read that fails once is retried and found; a read that keeps failing is retried `READ_TRIES` times, logged, then failed; a failed write is logged, then reads in flight fail |
+| R1 | `chunk-state.test.js`: one failed read still brings edits back; an unedited chunk that cannot be read is regenerated and logged; an edited one stays `FAILED`, keeps its disk copy and is logged; an edited chunk whose copy is lost with the disk stays `FAILED`; a write fault is logged and never told; player actions mark chunks edited, physics does not |
+| 1, R2 | `chunk-state.test.js`: respawn waits while the spawn read is loading; one failed spawn read lands on the stored terrain; an edited, unreadable spawn chunk is a wall the player lands above; a buried spawn puts the player on top and erases nothing |
+| 2 | `chunk-state.test.js`: a respawn pending when a new world is made is cleared |
+| 3 | `store.test.js`: a write from before `storeReset` that fails does not kill the disk |
+| 4 | `chunk-state.test.js`: twelve objects leave, spill to disk and all come back with their cells |
+| 5, R2 | `chunk-state.test.js`: an object across a chunk border waits while a slot it covers is loading, then lands at its own position; an object whose spot was filled lands right above it |
+| 7 | `toolbelt.test.js`: every money-neutral toolbelt change changes `toolbeltKey()` |

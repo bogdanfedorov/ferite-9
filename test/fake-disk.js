@@ -25,6 +25,7 @@ function makeContext(globals) {
   const reports = [];
   const ctx = vm.createContext({ setTimeout, clearTimeout, reports, ...globals });
   for (const name of REPORTS) ctx[name] = (key) => reports.push([name, key]);
+  ctx.fault = (_what, err) => reports.push(['fault', err?.message]);
   return ctx;
 }
 

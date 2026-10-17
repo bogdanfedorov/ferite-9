@@ -8,7 +8,7 @@ const MARK = C.matId('wall');
 const AWAY = 30;
 
 function makeDisk() {
-  const disk = { tables: new Map(), mode: 'auto', held: [] };
+  const disk = { tables: new Map(), mode: 'auto', held: [], flaked: new Set(), putFails: false };
   const table = (name) => {
     if (!disk.tables.has(name)) disk.tables.set(name, new Map());
     return disk.tables.get(name);
@@ -16,10 +16,16 @@ function makeDisk() {
   disk.backend = {
     get(name, key) {
       if (disk.mode === 'fail') return Promise.reject(new Error('read failed'));
+      if (disk.mode === 'flaky' && !disk.flaked.delete(key)) {
+        disk.flaked.add(key);
+        return Promise.reject(new Error('read failed once'));
+      }
+      if (disk.mode === 'flaky') return Promise.resolve(structuredClone(table(name).get(key)));
       if (disk.mode === 'auto') return Promise.resolve(structuredClone(table(name).get(key)));
       return new Promise((resolve, reject) => disk.held.push({ name, key, resolve, reject }));
     },
     put(name, batch) {
+      if (disk.putFails) return Promise.reject(new Error('write failed'));
       for (const [key, v] of batch) table(name).set(key, structuredClone(v));
       return Promise.resolve();
     },
@@ -41,6 +47,23 @@ function makeDisk() {
   };
   disk.has = (name, key) => table(name).has(key);
   return disk;
+}
+
+function recordFaults() {
+  const faults = [];
+  C.setFaultHook((what, err) => faults.push([what, err.stack]));
+  return faults;
+}
+
+function recordNotices() {
+  const told = [];
+  C.setNoticeHook((sound, text) => told.push([sound, text]));
+  return told;
+}
+
+function unhook() {
+  C.setFaultHook(null);
+  C.setNoticeHook(null);
 }
 
 async function settle() {
@@ -83,6 +106,11 @@ function assertInert(lx, ly, why) {
 function mark(lx, ly) {
   C.setCell(lx + 8, ly + 8, MARK);
   C.setCell(lx + 9, ly + 8, MARK);
+}
+
+function edit(lx, ly) {
+  mark(lx, ly);
+  C.markEdited(lx + 8, ly + 8);
 }
 
 function hasMark(lx, ly) {
@@ -163,9 +191,9 @@ function looseObject(x, y, cells) {
   return objectPrint(o);
 }
 
-function moveWithObjects(dcx) {
-  C.moveWindow(dcx, 0);
-  C.shiftObjects(dcx * S, 0);
+function moveWithObjects(dcx, dcy = 0) {
+  C.moveWindow(dcx, dcy);
+  C.shiftObjects(dcx * S, dcy * S);
 }
 
 test('F3: shelved objects are not placed into a loading chunk', async () => {
@@ -228,56 +256,150 @@ test('F7: placeholder chunks are inert to heat and motion', async () => {
   assertInert(FAR.lx, FAR.ly, 'placeholder');
 });
 
-test('chunkFailed: a failed read never regenerates the chunk or overwrites its disk copy', async () => {
+test('read fault: a read that fails once still brings the stored edits back', async () => {
   const disk = makeDisk();
   await freshWorld(disk, 106);
   mark(NEAR.lx, NEAR.ly);
   mark(FAR.lx, FAR.ly);
+  const faults = recordFaults();
+  await awayAndHome(disk, 'flaky');
+  await settle();
+  unhook();
+  assert.ok(hasMark(FAR.lx, FAR.ly), 'far edits lost after one failed read');
+  assert.ok(hasMark(NEAR.lx, NEAR.ly), 'near edits lost after one failed read');
+  assert.deepStrictEqual(faults, [], 'a retried read was logged as a fault');
+});
+
+test('read fault: an unedited chunk that cannot be read is regenerated and logged', async () => {
+  const disk = makeDisk();
+  await freshWorld(disk, 112);
+  mark(FAR.lx, FAR.ly);
+  const faults = recordFaults();
+  const told = recordNotices();
+  await awayAndHome(disk, 'fail');
+  await settle();
+  C.buildDeferred();
+  unhook();
+  assert.strictEqual(
+    C.chunkStateAt(FAR.lx, FAR.ly),
+    C.CHUNK_READY,
+    'unedited chunk not regenerated'
+  );
+  assert.notStrictEqual(inertCount(FAR.lx, FAR.ly), S * S, 'regenerated from the seed');
+  assert.ok(faults.length > 0, 'no fault logged');
+  assert.ok(
+    faults.every(([, stack]) => /read failed/.test(stack)),
+    'fault without the read stack'
+  );
+  assert.deepStrictEqual(told, [], 'a fault was told to the player');
+});
+
+test('read fault: an edited chunk that cannot be read stays FAILED, keeps its disk copy and is logged', async () => {
+  const disk = makeDisk();
+  await freshWorld(disk, 113);
+  edit(NEAR.lx, NEAR.ly);
+  edit(FAR.lx, FAR.ly);
+  const faults = recordFaults();
   await awayAndHome(disk, 'fail');
   await settle();
   for (let k = 0; k < 40; k++) C.streamWorld();
-  assertInert(FAR.lx, FAR.ly, 'failed far read');
-  assertInert(NEAR.lx, NEAR.ly, 'failed near read');
+  unhook();
   assert.strictEqual(C.chunkStateAt(FAR.lx, FAR.ly), C.CHUNK_FAILED);
   assert.strictEqual(C.chunkStateAt(NEAR.lx, NEAR.ly), C.CHUNK_FAILED);
+  assertInert(FAR.lx, FAR.ly, 'failed far read');
+  assertInert(NEAR.lx, NEAR.ly, 'failed near read');
+  assert.ok(
+    faults.some(([, stack]) => /read failed/.test(stack)),
+    'no fault with the read stack'
+  );
   C.moveWindow(AWAY, 0);
   await settle();
   disk.mode = 'auto';
   C.moveWindow(-AWAY, 0);
   await settle();
-  assert.ok(hasMark(FAR.lx, FAR.ly), 'far disk copy survived');
-  assert.ok(hasMark(NEAR.lx, NEAR.ly), 'near disk copy survived');
+  assert.ok(hasMark(FAR.lx, FAR.ly), 'far disk copy overwritten');
+  assert.ok(hasMark(NEAR.lx, NEAR.ly), 'near disk copy overwritten');
 });
 
-test('diskLost: failed chunks are regenerated and the player is told', async () => {
+test('write fault: an edited chunk whose copy died with the disk stays FAILED and is logged', async () => {
   const disk = makeDisk();
-  await freshWorld(disk, 110);
-  mark(FAR.lx, FAR.ly);
-  await awayAndHome(disk, 'fail');
+  await freshWorld(disk, 114);
+  edit(FAR.lx, FAR.ly);
+  const key = keyAt(FAR.lx, FAR.ly);
+  C.moveWindow(AWAY, 0);
   await settle();
-  const sent = [];
-  C.setNoticeHook((sound, text) => sent.push([sound, text]));
-  C.diskLost();
-  C.setNoticeHook(null);
-  assert.strictEqual(C.chunkStateAt(FAR.lx, FAR.ly), C.CHUNK_QUEUED);
+  assert.ok(disk.has('chunks', key), 'edited chunk spilled to disk');
+  const faults = recordFaults();
+  const told = recordNotices();
+  disk.putFails = true;
+  C.tierPut(C.chunkTier, C.chunkKey(-999, -999), C.copyChunkOut(0, 0));
+  await settle();
+  C.moveWindow(-AWAY, 0);
+  await settle();
   C.buildDeferred();
-  assert.strictEqual(C.chunkStateAt(FAR.lx, FAR.ly), C.CHUNK_READY);
-  assert.notStrictEqual(inertCount(FAR.lx, FAR.ly), S * S, 'regenerated from the seed');
-  assert.deepStrictEqual(sent, [[null, C.t('msg.diskLost')]]);
+  unhook();
+  assert.strictEqual(
+    C.chunkStateAt(FAR.lx, FAR.ly),
+    C.CHUNK_FAILED,
+    'lost edited chunk regenerated'
+  );
+  assertInert(FAR.lx, FAR.ly, 'lost edited chunk');
+  assert.ok(
+    faults.some(([what, stack]) => what === 'disk write failed' && /write failed/.test(stack))
+  );
+  assert.deepStrictEqual(told, [], 'a fault was told to the player');
 });
 
-test('fogFailed: a failed fog read never overwrites the saved slice', async () => {
+test('write fault: a failed write is logged, edits stay in memory, the player is not told', async () => {
+  const disk = makeDisk();
+  await freshWorld(disk, 115);
+  edit(FAR.lx, FAR.ly);
+  const faults = recordFaults();
+  const told = recordNotices();
+  disk.putFails = true;
+  await awayAndHome(disk, 'auto');
+  await settle();
+  unhook();
+  assert.ok(hasMark(FAR.lx, FAR.ly), 'edits lost with the disk');
+  assert.deepStrictEqual(
+    faults.map(([what, stack]) => [what, /write failed/.test(stack)]),
+    [['disk write failed', true]]
+  );
+  assert.deepStrictEqual(told, [], 'a fault was told to the player');
+});
+
+test('edited: player actions mark their chunk, physics and heat do not', () => {
+  const disk = makeDisk();
+  C.setDiskBackend(disk.backend);
+  C.resetObjects();
+  C.generateWorld(116);
+  const air = (x) => C.windowSurf[x] - C.originY - 20;
+  const sandX = 300,
+    hotX = 420,
+    wallX = 520;
+  const before = [...C.editedChunks];
+  C.setCell(sandX, air(sandX), C.SAND_ID);
+  C.setCellHot(hotX, air(hotX) + 25, C.matId('rock'), 900);
+  for (let k = 0; k < 60; k++) C.simulate();
+  assert.deepStrictEqual([...C.editedChunks], before, 'physics or heat marked a chunk edited');
+  C.wallPlace({ cells: [{ x: wallX, y: air(wallX) }] });
+  assert.ok(C.editedChunks.has(keyAt(wallX, air(wallX))), 'building a wall did not mark its chunk');
+  const top = C.floorBelow(sandX, air(sandX));
+  assert.ok(C.takeObject(sandX, top, C.SAND_ID), 'nothing grabbed');
+  assert.ok(C.editedChunks.has(keyAt(sandX, top)), 'a grab did not mark its chunk');
+});
+
+test('fog: a fog read that fails once loses no seen bit', async () => {
   const disk = makeDisk();
   await freshWorld(disk, 107);
   const fx = FAR.lx >> C.FSHIFT,
     fy = FAR.ly >> C.FSHIFT;
   C.revealQuiet(fx, fy);
-  await awayAndHome(disk, 'fail');
+  await awayAndHome(disk, 'flaky');
   await settle();
   C.revealQuiet(fx + 1, fy + 1);
   C.moveWindow(AWAY, 0);
   await settle();
-  disk.mode = 'auto';
   C.moveWindow(-AWAY, 0);
   await settle();
   assert.strictEqual(C.seen[fy * C.FCW + fx], 1, 'bit seen before the failed read lost');
@@ -437,7 +559,7 @@ function column(m, n) {
   return cells;
 }
 
-test('objects: an object across a chunk border waits for every slot it covers and is never lifted', async () => {
+test('objects: an object across a chunk border waits while a slot it covers is loading', async () => {
   const disk = makeDisk();
   await freshWorld(disk, 121);
   carvePocket();
@@ -463,6 +585,31 @@ test('objects: an object across a chunk border waits for every slot it covers an
   assert.ok(liveObject(want), 'object not placed at its own position once every slot is ready');
 });
 
+test('objects: an object whose spot was filled while it was away lands right above it', async () => {
+  const disk = makeDisk();
+  await freshWorld(disk, 122);
+  carvePocket();
+  mark(BORDER.x - (BORDER.x % S), 0);
+  const o = C.makeObject(BORDER.x, BORDER.y, column(C.SAND_ID, 4));
+  o.held = false;
+  const cells = objectPrint(o).split(': ')[1];
+  const wx = C.worldX(BORDER.x);
+  moveWithObjects(0, 1);
+  await settle();
+  const fill = [BORDER.y + 2, BORDER.y + 3];
+  for (const y of fill) C.setCell(BORDER.x, C.localY(y), MARK);
+  moveWithObjects(0, -1);
+  await settle();
+  for (let k = 0; k < 6; k++) C.streamWorld();
+  assert.ok(
+    liveObject(`${wx},${BORDER.y - 2}: ${cells}`),
+    'object not right above the filled spot'
+  );
+  for (const y of fill) {
+    assert.strictEqual(C.mat[C.localY(y) * C.W + BORDER.x], MARK, 'filling cell erased');
+  }
+});
+
 function spawnSlot() {
   const lx = Math.floor(C.localX(C.player.spawnX)),
     ly = Math.floor(C.localY(C.player.spawnY));
@@ -475,16 +622,17 @@ async function spawnAwayAndBack(disk, seed, mode) {
   const slot = spawnSlot();
   const keep = { x: slot.lx + 40, y: slot.ly + 20 };
   C.setCell(keep.x, keep.y, MARK);
+  C.markEdited(keep.x, keep.y);
   C.moveWindow(AWAY, 0);
   await settle();
   disk.mode = mode;
-  C.beginRespawn();
+  C.player.respawning = true;
   C.moveWindow(-AWAY, 0);
-  await settle();
   return { slot, keep };
 }
 
 function assertPlayable(keep) {
+  assert.strictEqual(C.player.respawning, false, 'respawn still pending after placing');
   assert.strictEqual(C.boxBlocked(C.player.x, C.player.y), false, 'player placed inside cells');
   const lx = Math.floor(C.player.x),
     ly = Math.floor(C.player.y);
@@ -492,60 +640,85 @@ function assertPlayable(keep) {
   if (keep) assert.strictEqual(C.mat[keep.y * C.W + keep.x], MARK, 'spawn chunk regenerated');
 }
 
-test('respawn: a failed spawn read is retried, never stood on and never regenerated', async () => {
-  const disk = makeDisk();
-  const { slot, keep } = await spawnAwayAndBack(disk, 130, 'fail');
-  assert.strictEqual(C.chunkStateAt(slot.lx, slot.ly), C.CHUNK_FAILED);
-  assert.strictEqual(C.respawnStep(), false, 'player placed over a failed spawn slot');
-  disk.mode = 'auto';
-  await settle();
-  let placed = C.respawnStep();
-  for (let k = 0; k < 4 && !placed; k++) {
+async function respawnWithin(steps) {
+  for (let k = 0; k < steps; k++) {
+    if (C.moveToSpawn() === true) return true;
+    C.streamWorld();
     await settle();
-    placed = C.respawnStep();
   }
-  assert.strictEqual(placed, true, 'respawn never finished after the read recovered');
-  assertPlayable(keep);
-});
+  return false;
+}
 
 test('respawn: a spawn read still loading after SETTLE_MS is waited for', async () => {
   const disk = makeDisk();
   const { slot, keep } = await spawnAwayAndBack(disk, 131, 'hold');
   assert.strictEqual(C.chunkStateAt(slot.lx, slot.ly), C.CHUNK_LOADING);
   for (let k = 0; k < 5; k++) {
-    assert.strictEqual(C.respawnStep(), false, 'player placed over a loading spawn slot');
+    assert.strictEqual(C.moveToSpawn(), false, 'player placed over a loading spawn slot');
     await settle();
   }
   disk.release();
   await settle();
-  assert.strictEqual(C.respawnStep(), true);
+  assert.strictEqual(C.moveToSpawn(), true);
   assertPlayable(keep);
 });
 
-test('respawn: a spawn read that keeps failing ends as a lost disk and a playable spawn', async () => {
+test('respawn: a spawn read that fails once lands the player on the stored terrain', async () => {
   const disk = makeDisk();
-  await spawnAwayAndBack(disk, 132, 'fail');
-  const sent = [];
-  C.setNoticeHook((sound, text) => sent.push([sound, text]));
-  let placed = false;
-  for (let k = 0; k < 12 && !placed; k++) {
-    placed = C.respawnStep();
-    C.streamWorld();
-    await settle();
-  }
-  C.setNoticeHook(null);
-  assert.strictEqual(placed, true, 'respawn never finished with a failing disk');
-  assert.deepStrictEqual(sent, [[null, C.t('msg.diskLost')]]);
+  const { keep } = await spawnAwayAndBack(disk, 130, 'flaky');
+  assert.strictEqual(await respawnWithin(6), true, 'respawn never finished');
+  assertPlayable(keep);
+});
+
+test('respawn: an edited spawn chunk that cannot be read is a wall the player lands above', async () => {
+  const disk = makeDisk();
+  const faults = recordFaults();
+  const { slot } = await spawnAwayAndBack(disk, 132, 'fail');
+  const placed = await respawnWithin(6);
+  unhook();
+  assert.strictEqual(
+    C.chunkStateAt(slot.lx, slot.ly),
+    C.CHUNK_FAILED,
+    'edited spawn chunk regenerated'
+  );
+  assert.strictEqual(placed, true, 'respawn never finished above a failed spawn chunk');
+  assert.ok(faults.length > 0, 'no fault logged');
   assertPlayable(null);
 });
 
-test('respawn: a respawn pending when a new world is made does nothing there', async () => {
+function sandCount() {
+  let n = 0;
+  for (let i = 0; i < C.mat.length; i++) if (C.mat[i] === C.SAND_ID) n++;
+  return n;
+}
+
+function buryAround(sx, sy) {
+  for (let y = sy - 12; y <= sy + 4; y++) {
+    for (let x = sx - 8; x <= sx + 8; x++) {
+      if (C.mat[y * C.W + x] === C.VOID_ID) C.setCell(x, y, C.SAND_ID);
+    }
+  }
+}
+
+test('respawn: a buried spawn puts the player on top and erases nothing', async () => {
+  const disk = makeDisk();
+  const sp = await freshWorld(disk, 135);
+  C.spawnPlayer(sp.spawnX, sp.spawnY);
+  const sx = Math.round(C.localX(C.player.spawnX)),
+    sy = Math.round(C.localY(C.player.spawnY));
+  buryAround(sx, sy);
+  const sand = sandCount();
+  C.player.respawning = true;
+  assert.strictEqual(C.moveToSpawn(), true);
+  assert.strictEqual(sandCount(), sand, 'respawn erased cells');
+  assert.ok(C.player.y < sy - 12, 'player not placed on top of the pile');
+  assertPlayable(null);
+});
+
+test('respawn: a respawn pending when a new world is made is cleared', async () => {
   const disk = makeDisk();
   await spawnAwayAndBack(disk, 133, 'hold');
   const sp = await freshWorld(disk, 134);
   C.spawnPlayer(sp.spawnX, sp.spawnY);
-  const at = [C.player.x, C.player.y, C.player.arriving];
-  C.player.arriving = false;
-  assert.strictEqual(C.respawnStep(), false, 'old respawn fired in the new world');
-  assert.deepStrictEqual([C.player.x, C.player.y, C.player.arriving], [at[0], at[1], false]);
+  assert.strictEqual(C.player.respawning, false, 'old respawn still pending in the new world');
 });

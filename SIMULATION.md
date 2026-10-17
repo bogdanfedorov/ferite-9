@@ -99,6 +99,14 @@ a sale or a purchase cannot run headless without them:
   so prices behave the same while the game runs and stop while it is paused,
   as they do now.
 
+## Fault hook
+
+A second core-to-shell hook in the same pattern as `notice`: `fault(what, err)`
+in `js/notice.js`, installed with `setFaultHook`. It reports a bug the game
+recovered from or contained (a read that keeps failing, a lost copy, a failed
+write) so the shell can write `what` and `err.stack` to a log file. It is never
+shown to the player. Sinks per runtime: `INFINITE_WORLD.md`, "Faults".
+
 ## Storage
 
 Disk is a shell concern. `js/store.js` is core: the bounded chunk and fog
@@ -127,18 +135,18 @@ Every read ends in exactly one report to `world.js`:
 |---|---|---|---|
 | found | `chunkArrived(key)` | `fogArrived(key)` | key kept |
 | absent | `chunkMissing(key)` | `fogMissing(key)` | key removed |
-| error | `chunkFailed(key)` | `fogFailed(key)` | key kept, next read retries |
+| error (`READ_TRIES` rejections, `fault()` first) | `chunkFailed(key)` | `fogFailed(key)` | key kept, next read retries |
 
-An error is never reported as absent: absent means "regenerate from the seed",
-and a regenerated chunk that is edited and spilled would overwrite the real
-save. A reply is dropped unchanged if `storeReset` ran after the read started
+An error is never reported as absent: absent means "no copy exists". The world
+decides: a chunk the player never edited is regenerated, an edited one stays
+`FAILED` (`INFINITE_WORLD.md`, "Edited chunks"). A reply is dropped unchanged if `storeReset` ran after the read started
 (epoch) or a newer read of the same key replaced it (token).
 
-A failed **write** of the current epoch turns the disk layer off for the rest
-of the session (a write started before `storeReset` is ignored either way):
+A failed **write** of the current epoch is a fault (a write started before
+`storeReset` is ignored either way): `fault('disk write failed', err)`, then
 spilled entries go back to `mem`, reads in flight end as **error**, keys that
-were only on disk are lost (the index is cleared), and then `diskLost()` is
-called once so the world can regenerate those chunks and tell the player.
+were only on disk leave the index, and the disk stays off for the session. The
+player is not told.
 
 ### Ownership
 

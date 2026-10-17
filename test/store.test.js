@@ -37,23 +37,42 @@ test('a chunk the disk does not have is reported missing and forgotten', async (
   assert.strictEqual(store.tierWaiting(store.chunkTier, key), false);
 });
 
-test('a failed chunk read is reported as failed, never as missing', async () => {
+test('a read that fails once is retried and the chunk is found', async () => {
   const { store, fake } = storeWithDisk();
   const [key] = await spill(store, store.chunkTier, 1);
-  fake.failing.add('get');
+  fake.holding = true;
   store.tierRead(store.chunkTier, key);
+  fake.held.shift().fail();
   await settle();
-  assert.deepStrictEqual(store.reports, [['chunkFailed', key]]);
+  assert.deepStrictEqual(store.reports, [], 'one failed read was reported');
+  assert.strictEqual(fake.held.length, 1, 'the read was not retried');
+  fake.held.shift().ok();
+  await settle();
+  assert.deepStrictEqual(store.reports, [['chunkArrived', key]]);
 });
 
-test('a failed fog read is reported as failed, never as missing', async () => {
-  const { store, fake } = storeWithDisk();
-  const [key] = await spill(store, store.fogTier, 1);
-  fake.failing.add('get');
-  store.tierRead(store.fogTier, key);
-  await settle();
-  assert.deepStrictEqual(store.reports, [['fogFailed', key]]);
-});
+for (const [tierName, failed] of [
+  ['chunkTier', 'chunkFailed'],
+  ['fogTier', 'fogFailed']
+]) {
+  test(`a ${tierName} read that keeps failing is tried READ_TRIES times, logged, then failed`, async () => {
+    const { store, fake } = storeWithDisk();
+    const [key] = await spill(store, store[tierName], 1);
+    fake.holding = true;
+    store.tierRead(store[tierName], key);
+    let tries = 0;
+    while (fake.held.length) {
+      fake.held.shift().fail();
+      tries++;
+      await settle();
+    }
+    assert.strictEqual(tries, store.READ_TRIES, 'read not tried READ_TRIES times');
+    assert.deepStrictEqual(store.reports, [
+      ['fault', 'get failed'],
+      [failed, key]
+    ]);
+  });
+}
 
 test('a failed read keeps the saved chunk listed and the next read finds it', async () => {
   const { store, fake } = storeWithDisk();
@@ -69,7 +88,7 @@ test('a failed read keeps the saved chunk listed and the next read finds it', as
   assert.strictEqual(store.tierTake(store.chunkTier, key).mat, 0);
 });
 
-test('a write failure ends reads in flight as failed, then reports the disk lost once', async () => {
+test('a write failure is logged, then ends reads in flight as failed', async () => {
   const { store, fake } = storeWithDisk();
   const [key] = await spill(store, store.chunkTier, 1);
   fake.holding = true;
@@ -81,8 +100,8 @@ test('a write failure ends reads in flight as failed, then reports the disk lost
   for (const op of fake.held) op.ok();
   await settle();
   assert.deepStrictEqual(store.reports, [
-    ['chunkFailed', key],
-    ['diskLost', undefined]
+    ['fault', 'put failed'],
+    ['chunkFailed', key]
   ]);
   assert.strictEqual(store.tierWaiting(store.chunkTier, key), false);
 });
