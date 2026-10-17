@@ -86,59 +86,141 @@ Done:
     Without `indexedDB` the store behaves like before: unbounded, in memory.
 11. **No stalls.** Disk reads are asynchronous. After each shift
     `prefetchAround` requests every on-disk chunk and fog slice in a ring of
-    `PREFETCH_RING` chunks around the window. If a chunk that is only on disk is
-    needed anyway, the window gets the chunk regenerated from the seed
-    immediately (a placeholder, remembered in `pendingChunks`); when the read
-    arrives, `chunkArrived` pastes the stored chunk over it if it is still in the
-    window. Fog slices arrive the same way and are merged into `seen`. A
-    placeholder that leaves the window before the read arrives is not stored
-    unless it was modified in between.
-12. **World save and resume.** `saveWorld()` writes a consistent snapshot: all
-    window chunks and fog slices go to the base object stores and the meta record
-    (seed, origins) is written last. After a snapshot, evictions go to separate
-    `*_live` overlay stores, and the next snapshot migrates the overlay into the
-    base, so a resume (`resumeWorld()` then `generateWorld(seed, w, h, meta)`, which
-    uses the seed from meta) sees exactly the last snapshot and never a mix of
-    versions; the overlay is discarded on resume. Starting a new world wipes the
-    disk store.
+    `PREFETCH_RING` chunks around the window. A chunk that enters the window while
+    its only copy is on disk is held as an inert placeholder until the read
+    resolves; see "Chunk state" below. Fog slices arrive the same way and are
+    OR-merged into `seen`.
+12. **No world save or resume.** `saveWorld`, `resumeWorld`, `worldMeta`,
+    `windowKeysAt`, the resume branch of `generateWorld` and `finishWorld(null)`
+    are deleted (world side), as are `storeSnapshot`, `storeLoadIndex`,
+    `storeWarm`, `tierMigrate` and the `*_live` overlay stores (store side). Nothing
+    called them. The disk is a spill area for one session only. Review finding F6
+    (snapshot not atomic) is moot: there is no snapshot.
 13. **Stable origin.** The Go build serves the game on `127.0.0.1:<random port>/<token>/`
     with a temporary browser profile removed on exit, so its IndexedDB never
-    survives a session. `storeResumable` is false for an http loopback origin with a
-    port; the store then clears the database at startup, spills only within the
-    session, and `resumeWorld()` returns null. Electron (`file://`) and normal
-    origins are resumable.
+    survives a session. Nothing on disk is meant to outlive a session.
 14. **Spread generation.** Chunks that must be generated are built at once only
-    near the window centre (`NEAR_BUILD`); the rest get a cheap placeholder and are
-    queued nearest first, `BUILD_PER_FRAME` per frame (`streamWorld`, called from
-    the frame loop even when paused). A vertical or horizontal shift therefore
-    builds nothing synchronously, a respawn reloads the window once
-    (`jumpWindow`) with about 12 chunks built at once, and the initial world is
-    built fully before play. Placeholders are never stored; shelved objects are
-    retried as chunks are built.
-15. **Missing disk entries.** A read that finds nothing forgets the key and the
-    placeholder is generated. Fog of a chunk that leaves while its slice is still
-    being read is OR-merged with the stored slice when the read arrives.
+    near the window centre (`NEAR_BUILD`); the rest are `QUEUED` and built
+    nearest first, `BUILD_PER_FRAME` per frame (`streamWorld`, called from the
+    frame loop even when paused). A vertical or horizontal shift therefore builds
+    nothing synchronously, a respawn reloads the window once (`jumpWindow`) with
+    about 12 chunks built at once, and the initial world is built fully before
+    play. Shelved objects are retried whenever a chunk becomes `READY`.
+15. **Read outcomes.** Every chunk and fog read ends in exactly one of three
+    calls from the store: found (`chunkArrived` / `fogArrived`), absent
+    (`chunkMissing` / `fogMissing`) or error (`chunkFailed` / `fogFailed`). An
+    error is never treated as absent.
+
+## Chunk state
+
+Review findings F1, F3 and F7 on PR #1 came from one cause: whether a window
+chunk holds real terrain was spread over `pendingChunks`, `deferredKeys`,
+`deferredQueue`, the cached `placeholders` and the store's `reading` map, and
+each operation checked a different subset. They are replaced by one state per
+window chunk slot.
+
+### Data
+
+- `chunkState`: `Uint8Array`, one entry per window chunk slot,
+  `slot = (ly >> CHUNK_SHIFT) * (W >> CHUNK_SHIFT) + (lx >> CHUNK_SHIFT)`.
+  It shifts with the window exactly like `dirtyT`; entering slots get their state
+  from `loadChunk`. It is the only record of which slots hold real terrain.
+- States (top-level `var` constants in `world.js`):
+
+  | State | Cells hold | Copy that is the truth |
+  |---|---|---|
+  | `CHUNK_READY` | real terrain | the window |
+  | `CHUNK_QUEUED` | placeholder | none exists: the seed |
+  | `CHUNK_LOADING` | placeholder | disk; read in flight |
+  | `CHUNK_FAILED` | placeholder | disk; read failed, copy untouched |
+
+- Dirty is not a state. A `READY` chunk is dirty when one of its `dirtyT` tiles
+  is set; tiles stay the single record (the torch and `thermoPass` mark single
+  tiles). A non-`READY` slot never has a dirty tile.
+- Placeholder: every cell is `bedrock` (`EDGE_ID`: hardness -1, conductivity
+  ~0, rigid), `temp` is the row ambient `geothermalGradient[y]`, `life` is
+  `lifeOf(EDGE_ID)`. No cache, written in place by one function. It is inert by
+  material, not by `if`: tools cannot dig it, nothing can be built on or moved
+  into it, powders and liquids rest against it like the window edge, heat does
+  not cross it, and at ambient it never sets `lasting`. It is never stored.
+- `deferredKeys`, `deferredQueue`, `deferredSort`, `pendingChunks` and
+  `placeholders` are deleted. `streamWorld` scans the 100 slots for `QUEUED`
+  ones and builds the nearest first.
+
+### Transitions
+
+```
+enter window:  in store RAM            -> READY    (paste, all tiles dirty, belts in)
+               on disk (read started)   -> LOADING
+               nowhere, near centre     -> READY    (build now, clean)
+               nowhere, far             -> QUEUED
+QUEUED   -> READY    streamWorld builds it
+LOADING  -> READY    chunkArrived: paste stored copy, all tiles dirty, belts in
+LOADING  -> QUEUED   chunkMissing: no copy exists, generating is safe
+LOADING  -> FAILED   chunkFailed: keep placeholder, never generate
+any      -> (gone)   leave window: READY saved if dirty or belts; others save nothing
+FAILED   -> LOADING  only by leaving and re-entering (a fresh read)
+```
+
+No other transition exists. `FAILED -> QUEUED` and `FAILED -> READY` are
+forbidden: the disk copy may hold edits, and generating would either show the
+wrong terrain or, once edited, overwrite that copy on leave. A reply for a key
+whose slot is outside the window, or not `LOADING`, changes nothing in the
+window; a found chunk stays in the store cache for the next entry.
+
+### Operations per state
+
+| Operation | `READY` | `QUEUED` / `LOADING` / `FAILED` |
+|---|---|---|
+| Cell write (tools, build, physics, objects landing) | allowed, marks tiles dirty | cannot happen: placeholder is bedrock |
+| Unshelve an object | placed if every cell it covers is in a `READY` slot | stays shelved |
+| `thermoPass` | normal | cells stay at ambient, no heat crosses, no tile marked |
+| `simulate` movement | normal | rigid, nothing enters |
+| Save on leave | stored if a tile is dirty or it holds belts | nothing stored; a disk copy stays the truth |
+| Belts | `beltsIn` on paste | none |
+| Player step | runs | frozen while `windowSettled()` is false |
+
+`windowSettled()` is true when no slot within `NEAR_BUILD` of the window centre
+is `QUEUED` or `LOADING`. The frame loop skips `step()` until it is true (reads
+usually land within a frame, thanks to the prefetch ring). A respawn
+(`jumpWindow`) clears the airlock and places the player only once settled. A
+near `FAILED` slot counts as settled: it is a wall until it re-enters.
+
+### Fog
+
+Fog keeps its own two-part record: `pendingFog` (slice read in flight for a
+window slot; local bits are partial) and `fogMerge` (bits of a slot that left
+while its read was pending, held until the read resolves). Seen bits only ever
+grow, so every outcome is an OR merge:
+
+- `fogArrived`: OR held bits into the stored slice; OR the slice into `seen` if
+  the slot is still waiting.
+- `fogMissing`: the held bits become the stored slice.
+- `fogFailed`: nothing changes. The key stays pending, held bits stay in
+  `fogMerge`, and the next read after re-entry merges them. A local slice is
+  never put over an unread disk slice.
+
+### Contract with the store (`js/store.js`)
+
+- The store calls exactly one of `chunkArrived` / `chunkMissing` /
+  `chunkFailed` per chunk read, and the same for fog; an error (including the
+  disk layer turning off with reads in flight) is `*Failed`, never `*Missing`.
+- After `chunkFailed(key)` the store keeps `key` in its disk index and no longer
+  counts it as reading, so a later `tierWaiting` / `tierRead` starts a new read.
+- The world never puts a placeholder into a tier, so the store never has to tell
+  a placeholder from real data.
 
 Remaining:
 
-0. **Disk failure loses spilled edits.** If IndexedDB fails (open error, blocked
-   upgrade, write error), the store turns the disk layer off. Entries that were
-   still in memory or waiting to be written stay in memory, but everything that was
-   only on disk is treated as lost: the index is cleared and those chunks are
-   regenerated from the seed. A blocked upgrade fails over the same way instead of
-   hanging, and an older connection closes itself on a version change.
-
-1. **Game-level save is not wired.** The game has no save mechanism (only
-   settings and language in `localStorage`). `saveWorld` / `resumeWorld` store
-   and restore the terrain only; nothing calls them yet, and the Go build could
-   not resume anyway (see 13). Inventory, market,
-   player, loose objects, the cargo pad and belts outside the window are not
-   part of a save, and a resumed world has no spawn shelter.
-2. **Placeholder race.** A placeholder (an unbuilt chunk, or one generated
-   while its disk read is pending) is never written to disk. If a chunk with a
-   pending read leaves the window before the read lands, its edits are dropped and
-   the disk copy wins; edits made to it in that short time are also overwritten
-   when the stored chunk arrives. Fog is merged instead of dropped.
+0. **Disk failure.** If IndexedDB fails (open error, blocked upgrade, write
+   error), the store turns the disk layer off. Entries still in memory or
+   waiting to be written stay in memory. Chunks whose only copy was on disk are
+   now unreachable: their slots stay `FAILED` walls instead of being regenerated,
+   so a failure is visible and never silently replaces edited terrain.
+1. **Game-level save is not planned.** The game has no save mechanism (only
+   settings and language in `localStorage`).
+2. **Placeholders are visible.** A `QUEUED` or `LOADING` slot inside the view
+   shows bedrock until it is built or read; usually for a frame or two.
 3. **Zoom floor.** With a 320-cell window, the minimum integral zoom is raised so
    the view is at most 224 cells tall: about 5 on a 1080p screen, 10 on a 4K
    screen (above the usual maximum of 9). The floor is authoritative.
