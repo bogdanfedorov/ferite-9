@@ -433,7 +433,7 @@ var DEPOSIT_KINDS = [
   { id: matId('coal_seam'), n: 44, y0: 105, y1: 280, r0: 5, rn: 7, mask: [ROCK_ID, HARDPAN_ID] },
   { id: matId('ore_seam'), n: 38, y0: 140, y1: 285, r0: 4, rn: 6, mask: [ROCK_ID, HARDPAN_ID] },
   { id: matId('water'), n: 16, y0: 120, y1: 240, r0: 5, rn: 6, mask: [VOID_ID] },
-  { id: matId('lava'), n: 12, y0: 260, y1: 300, r0: 4, rn: 7, mask: [VOID_ID, ROCK_ID] },
+  { id: matId('lava'), n: 12, y0: 260, y1: 300, r0: 4, rn: 7, mask: [VOID_ID, ROCK_ID] }
 ];
 var BLOB_REACH = 1.3;
 

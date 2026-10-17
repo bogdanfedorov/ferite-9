@@ -201,6 +201,7 @@ function drawBuildPreview() {
   if (!spec.arrows) return;
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
-    if (c.x % ARROW_EVERY === 0) drawFlowArrow(c.x + 0.5, c.y + 0.5, plan.dx, plan.dy, uiRgba(tint, 0.9));
+    if (c.x % ARROW_EVERY === 0)
+      drawFlowArrow(c.x + 0.5, c.y + 0.5, plan.dx, plan.dy, uiRgba(tint, 0.9));
   }
 }

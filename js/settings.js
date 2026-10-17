@@ -1,6 +1,5 @@
 var SETTINGS_KEY = 'ferit9.settings';
 
-
 var VISION_MODES = ['off', 'protan', 'deutan', 'tritan', 'contrast'];
 var VISION_SAMPLE = ['ferrite', 'coal', 'iron', 'glass', 'lava', 'water'];
 
