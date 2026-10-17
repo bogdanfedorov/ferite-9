@@ -1,6 +1,5 @@
 var GRAB_MIN = 1;
 var GRAB_MAX = 8;
-var GRAB_DEFAULT = 4;
 
 function handPress(wpt) {
   if (heldObject) return;
@@ -8,8 +7,8 @@ function handPress(wpt) {
   const gx = Math.floor(g[0]),
     gy = Math.floor(g[1]);
   const only = grabTargetAt(gx, gy);
-  if (only && takeObject(gx, gy, only)) play('grab');
-  else transmit(t('msg.nothingToGrab'), NOTICE);
+  if (only && takeObject(gx, gy, only)) notice('grab', null);
+  else notice(null, t('msg.nothingToGrab'));
 }
 
 function drawGrabHint(mouseWorld) {

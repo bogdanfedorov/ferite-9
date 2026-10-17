@@ -219,14 +219,14 @@ test('diskLost: failed chunks are regenerated and the player is told', async () 
   await awayAndHome(disk, 'fail');
   await settle();
   const sent = [];
-  globalThis.NOTICE = {};
-  globalThis.transmit = (text) => sent.push(text);
+  C.setNoticeHook((sound, text) => sent.push([sound, text]));
   C.diskLost();
+  C.setNoticeHook(null);
   assert.strictEqual(C.chunkStateAt(FAR.lx, FAR.ly), C.CHUNK_QUEUED);
   C.buildDeferred();
   assert.strictEqual(C.chunkStateAt(FAR.lx, FAR.ly), C.CHUNK_READY);
   assert.notStrictEqual(inertCount(FAR.lx, FAR.ly), S * S, 'regenerated from the seed');
-  assert.deepStrictEqual(sent, [C.t('msg.diskLost')]);
+  assert.deepStrictEqual(sent, [[null, C.t('msg.diskLost')]]);
 });
 
 test('fogFailed: a failed fog read never overwrites the saved slice', async () => {

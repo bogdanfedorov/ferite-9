@@ -871,7 +871,7 @@ function diskLost() {
   for (const [key, held] of fogMerge) tierPut(fogTier, key, held);
   fogMerge.clear();
   pendingFog.clear();
-  transmit(t('msg.diskLost'), NOTICE);
+  notice(null, t('msg.diskLost'));
 }
 
 function fogArrived(key) {
@@ -1125,6 +1125,14 @@ function maxShiftMarginY() {
   return (H >> 1) - (CHUNK_SIZE >> 1);
 }
 
+var viewCells = 0;
+var viewRows = 0;
+
+function setViewCells(cols, rows) {
+  viewCells = cols;
+  viewRows = rows;
+}
+
 function maxViewCells() {
   if (!infiniteX) return Infinity;
   return 2 * (maxShiftMargin() - EDGE_FREEZE - CHUNK_SIZE);
@@ -1136,12 +1144,12 @@ function maxViewRows() {
 }
 
 function shiftMargin() {
-  const seenHalf = Math.ceil(view.vw / 2) + EDGE_FREEZE + CHUNK_SIZE;
+  const seenHalf = Math.ceil(viewCells / 2) + EDGE_FREEZE + CHUNK_SIZE;
   return Math.min(maxShiftMargin(), Math.max(SHIFT_MARGIN, seenHalf));
 }
 
 function shiftMarginY() {
-  const seenHalf = Math.ceil(view.vh / 2) + EDGE_FREEZE;
+  const seenHalf = Math.ceil(viewRows / 2) + EDGE_FREEZE;
   return Math.min(maxShiftMarginY(), Math.max(SHIFT_MARGIN_Y, seenHalf));
 }
 

@@ -1,6 +1,7 @@
 var HOTBAR_SIZE = 8;
 
 var toolbelt = { open: {}, level: {}, slots: [], picked: null };
+var toolbeltMoney = -1;
 
 function resetToolbelt(everything) {
   toolbelt.open = {};
@@ -43,8 +44,7 @@ function nextLevelOf(name) {
 
 function spend(cost) {
   if (market.money < cost) {
-    transmit(tf('msg.cantAfford', { cost: cost }), NOTICE);
-    play('denied');
+    notice('denied', tf('msg.cantAfford', { cost: cost }));
     return false;
   }
   market.money -= cost;
@@ -54,9 +54,7 @@ function spend(cost) {
 function buyTool(name) {
   if (!spend(pieceCost(name))) return;
   openTool(name);
-  transmit(tf('msg.bought', { tool: t(PIECES[name].hud.name) }), NOTICE);
-  play('unlock');
-  renderToolbelt();
+  notice('unlock', tf('msg.bought', { tool: t(PIECES[name].hud.name) }));
 }
 
 function upgradePiece(name) {
@@ -64,9 +62,7 @@ function upgradePiece(name) {
   if (!toolOpen(name) || !next || !spend(next.cost)) return;
   toolbelt.level[name]++;
   const vars = { tool: t(PIECES[name].hud.name), level: levelOf(name) + 1 };
-  transmit(tf('msg.upgraded', vars), NOTICE);
-  play('unlock');
-  renderToolbelt();
+  notice('unlock', tf('msg.upgraded', vars));
 }
 
 function slotTool(i) {
@@ -173,6 +169,7 @@ function renderCard(card) {
 }
 
 function renderToolbelt() {
+  toolbeltMoney = market.money;
   el['inv-money'].textContent = `$${market.money}`;
   fillSlotRow(el.hotbar);
   fillSlotRow(el['inv-slots']);

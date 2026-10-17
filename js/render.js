@@ -35,6 +35,7 @@ function resizeCanvas() {
 function allocBuffers() {
   view.vw = Math.min(W, Math.ceil(cv.width / view.zoom) + 2);
   view.vh = Math.min(H, Math.ceil(cv.height / view.zoom) + 2);
+  setViewCells(view.vw, view.vh);
   bmp.width = view.vw;
   bmp.height = view.vh;
   bimg = bctx.createImageData(view.vw, view.vh);

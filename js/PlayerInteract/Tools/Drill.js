@@ -71,7 +71,7 @@ function drillAt(tx, ty) {
 
 function drillHold(wpt) {
   const got = drillAt(wpt[0], wpt[1]);
-  if (got && simFrame % 5 === 0) play('drill');
+  if (got && simFrame % 5 === 0) notice('drill', null);
 }
 
 regTool({
