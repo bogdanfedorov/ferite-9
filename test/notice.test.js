@@ -25,12 +25,24 @@ function groundBelowPlayer() {
   return [x, y];
 }
 
-function fillPad(x, y, w, h, good) {
-  const id = core.CARGO.indexOf(good);
-  core.setCargoPad({ x: x, y: y, w: w, h: h });
-  for (let py = y; py < y + h; py++) {
-    for (let px = x; px < x + w; px++) core.setCell(px, py, id);
+function fill(x0, x1, y0, y1, m) {
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) core.setCell(x, y, m);
   }
+}
+
+function zoneWithCargo(cx, good) {
+  const g = core.H - 2 * core.PILE_MAX - 10;
+  const left = cx - Math.floor((core.PAD_WIDTH - 1) / 2);
+  const right = left + core.PAD_WIDTH - 1;
+  const top = g - core.PAD_THICK;
+  fill(left - 4, right + 4, 0, g - 1, core.VOID_ID);
+  fill(left - 4, right + 4, g, g + 4, core.matId('rock'));
+  core.setBuildId('pad');
+  core.startBuildDrag(cx, g - 1, false);
+  core.finishBuild([cx, g - 1], [cx, g - 1]);
+  core.endBuildDrag();
+  fill(left, left + 3, top - 2, top - 1, core.matId(good));
 }
 
 test('calling the drone without a pad is denied with a message', () => {
@@ -41,7 +53,7 @@ test('calling the drone without a pad is denied with a message', () => {
 
 test('a drone sale pays out and reports launch then sale', () => {
   freshWorld();
-  fillPad(600, 20, 4, 2, 'iron');
+  zoneWithCargo(400, 'iron_scrap');
   core.market.money = 100;
   core.callDrone();
   for (let k = 0; k < core.DRONE_TRIP / 2; k++) core.tickMarket();
