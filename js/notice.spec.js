@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { core } = require('./core.js');
+const { core } = require('../test/core.js');
 
 const FRAMES_PER_MINUTE = 3600;
 const heard = [];
@@ -127,3 +127,27 @@ test('prices decay with market frames, not the wall clock', () => {
   core.resetMarket(false);
   assert.strictEqual(core.priceOf(iron), iron.base);
 });
+
+function freshWorldNoHook() {
+  const spawn = core.generateWorld(42);
+  core.spawnPlayer(spawn.spawnX, spawn.spawnY);
+  core.resetMarket(false);
+  core.resetToolbelt(false);
+  core.market.money = 1000;
+}
+
+const SILENT_ACTIONS = [
+  ['callDrone without a pad', () => core.callDrone()],
+  ['buyTool', () => core.buyTool('ignite')],
+  ['handPress', () => core.handPress([core.player.x, core.player.y])],
+  ['igniteHold', () => core.igniteHold([core.player.x, core.player.y])],
+  ['reportBuild', () => core.reportBuild(core.BUILD_REPORTS.room)],
+  ['priceOf', () => core.priceOf(core.GOOD_OF.iron)]
+];
+
+for (const [name, action] of SILENT_ACTIONS) {
+  test(`${name} runs without a notice hook`, () => {
+    freshWorldNoHook();
+    assert.doesNotThrow(action);
+  });
+}

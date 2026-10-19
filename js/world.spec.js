@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('node:crypto');
-const { core, CORE_FILES } = require('./core.js');
+const { core, CORE_FILES } = require('../test/core.js');
 
 const STEPS = 120;
 

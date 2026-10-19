@@ -110,13 +110,20 @@ sessions.
 
 ## Tests
 
-- `npm test` runs every `test/**/*.test.js`.
-- `test/core.js` loads the core and Mixed files (every script `tools/layers.js` does not
-  tag shell, in page order) into the Node global scope and exports it as `core`.
-  A separate `vm` context is about 30x slower, because every global lookup
-  goes through the context proxy. `node --test` runs each test file in its own
-  process, so files never share state; inside a file, `generateWorld(seed)`
-  resets the world.
+- `npm test` runs every `test/**/*.test.js` plus every `*.spec.js` under `js/`
+  and `tools/`.
+- A test for one file lives next to it as `<file>.spec.js`
+  (`js/notice.js` → `js/notice.spec.js`, `js/PlayerInteract/Buildings/Pad.js` →
+  `js/PlayerInteract/Buildings/Pad.spec.js`). A test spanning several files —
+  nothing it checks belongs to one of them more than another — stays a
+  `.test.js` file directly under `test/`.
+- `test/core.js` is the shared harness, not a test: it loads the core and
+  Mixed files (every script `tools/layers.js` does not tag shell, in page
+  order) into the Node global scope and exports it as `core`. A separate `vm`
+  context is about 30x slower, because every global lookup goes through the
+  context proxy. `node --test` runs each test file in its own process, so
+  files never share state; inside a file, `generateWorld(seed)` resets the
+  world. A spec file reaches it with a relative `require` back to `test/core.js`.
 - Tests check the model: invariants after `simulate()` (cell counts per
   material conserved where physics says so, `beltCells` matches belt
   materials, no object inside solid cells), and scenario outcomes for a fixed
@@ -159,18 +166,18 @@ shell code inside a Mixed file and is not a violation.
 
 ## Tests for this change
 
-- `test/notice.test.js`: each listed core action, run headless with a hook
+- `js/notice.spec.js`: each listed core action, run headless with a hook
   installed, reports the expected `[sound, text]` pairs; a drone sale pays
-  out; prices decay with `tickMarket` frames.
-- `test/silent.test.js`: the same actions run without a hook and do not throw.
-- `test/layers.test.js`: `tools/layers.js` tags every page script once, in
+  out; prices decay with `tickMarket` frames; the same actions run without a
+  hook and do not throw.
+- `tools/layers.spec.js`: `tools/layers.js` tags every page script once, in
   page order; `test/core.js` loads exactly the non-shell scripts; the lint
   rule passes on the repository and rejects a core file that uses `document`
   or `play`.
 
 ## Order of work
 
-1. Done: test harness `test/core.js`, first tests in `test/world.test.js`.
+1. Done: test harness `test/core.js`, first tests in `js/world.spec.js`.
 2. Done: close the boundary: notice hook, market clock, the two setters,
    `tools/layers.js`, lint rule for the core boundary.
 3. Done as part of 2: Mixed files load and run their core paths headless.

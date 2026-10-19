@@ -14,7 +14,7 @@ function pageScripts() {
 }
 
 function layerOf(file) {
-  const { SCRIPTS } = require('../tools/layers.js');
+  const { SCRIPTS } = require('./layers.js');
   return SCRIPTS.find((s) => s.file === file).layer;
 }
 
@@ -26,7 +26,7 @@ function lintSource(source) {
 }
 
 test('layers tag every page script once, in page order', () => {
-  const { SCRIPTS } = require('../tools/layers.js');
+  const { SCRIPTS } = require('./layers.js');
   assert.deepStrictEqual(
     SCRIPTS.map((s) => s.file),
     pageScripts()
@@ -43,8 +43,8 @@ test('layers put sound in the shell, market in the core, i18n in mixed', () => {
 });
 
 test('the harness loads exactly the non-shell scripts', () => {
-  const { SCRIPTS } = require('../tools/layers.js');
-  const { CORE_FILES } = require('./core.js');
+  const { SCRIPTS } = require('./layers.js');
+  const { CORE_FILES } = require('../test/core.js');
   const wanted = SCRIPTS.filter((s) => s.layer !== 'shell').map((s) => s.file);
   assert.deepStrictEqual(CORE_FILES, wanted);
 });

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { core } = require('./core.js');
+const { core } = require('../../../test/core.js');
 
 const SITE = 400;
 const NEAR_EDGE = 120;

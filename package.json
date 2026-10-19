@@ -11,7 +11,7 @@
     "dev": "electron . --dev",
     "build:app": "node tools/build-app.js",
     "fonts": "node tools/fetch-fonts.js",
-    "test": "node --test 'test/**/*.test.js'",
+    "test": "node --test 'test/**/*.test.js' '{js,tools}/**/*.spec.js'",
     "lint": "biome check . && node tools/no-comments.js && node tools/no-dead-functions.js && node tools/no-browser-in-core.js",
     "lint:fix": "biome check --write .",
     "start": "npm run build:app && electron .",
