@@ -20,6 +20,11 @@ Every feature goes in this order, and each step is approved before the next:
 3. **Tests** — unit tests that formally state the wanted behaviour; they fail.
 4. **Code** — make them pass with the fewest new functions; reuse first.
 
+Docs and Model describe behaviour in domain terms — no files, functions or
+language constructs — so the spec stays true across rewrites. Template:
+purpose, terms, parameters, rules, states and transitions, refusals,
+acceptance scenarios, decisions.
+
 `npm run lint` rejects any function without a caller (`tools/no-dead-functions.js`).
 
 ## Core and shell
