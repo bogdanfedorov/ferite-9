@@ -32,7 +32,7 @@ var HOT_T, HOT_INTO, COLD_T, COLD_INTO, LATENT;
 var BREAK_INTO, LIFE_BASE, LIFE_RND, EXPIRE_INTO, EXPIRE_P;
 var BURN_EVERY, BURN_INTO, FLOW_REACH, SHIMMER, CARGO;
 var OPEN, MOVABLE, BLOCKING, RIGID, ISVOID, FLUID, MOLTEN, POROUS;
-var GRIPS, GLOW, FIXED, MINEABLE, REACTIVE;
+var GRIPS, GLOW, FIXED, MINEABLE, REACTIVE, SEALED;
 var REACT_INTO, REACT_T, REACT_GIVES, REACT_GIVES_T;
 
 function camelName(name) {
@@ -131,6 +131,7 @@ function allocMaterialTables(n) {
   FIXED = new Uint8Array(n);
   MINEABLE = new Uint8Array(n);
   REACTIVE = new Uint8Array(n);
+  SEALED = new Uint8Array(n);
 
   REACT_INTO = new Uint8Array(n * n);
   REACT_T = new Float32Array(n * n);
@@ -192,6 +193,7 @@ function fillMaterialCell(rec) {
   POROUS[id] = rec.porous ? 1 : 0;
   GRIPS[id] = rec.grips ? 1 : 0;
   GLOW[id] = rec.glow ? 1 : 0;
+  SEALED[id] = rec.sealed ? 1 : 0;
 }
 
 function fillReactions(rec) {

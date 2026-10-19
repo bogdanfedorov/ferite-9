@@ -180,8 +180,9 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
 - Both generators share a frame in `js/world.js`: `beginWorld(seed, w, h)`
   resizes if needed, reseeds and clears every grid; `finishWorld(tempOf)`
   clears the pickup zone, sets every cell's starting temperature and wakes all
-  thermal chunks. The pickup zone is not generated: the player draws it with
-  the Pickup tool, and `setCargoPad(rect)` stores it. Grid writes go through a handful of primitives there:
+  thermal chunks. The pickup zone is not generated: the player builds it with
+  the Pickup tool, which writes its cells and stores its cargo box with
+  `setCargoBox(box)`. Grid writes go through a handful of primitives there:
   `setCell` / `setCellHot` lay a fresh cell (new shade, damage cleared,
   lifetime set, its thermal chunk woken), `paintCell` swaps only the material
   and lifetime for generation, `moveCell` carries a cell and its temperature
@@ -196,9 +197,9 @@ cost 0.05 ms and run every fourth frame, rendering ~0.5 ms.
 - The market is one plain table, `GOODS` in `js/market.js`: a `cargo` group
   name, a base price, and a half-life in minutes. `priceOf(good)` is a pure
   function of `game.elapsed`, so a price needs no state and a new good is one
-  line plus a `cargo` tag on its materials. The player marks one pickup zone
-  (`cargoPad`); `callDrone()` charges `DRONE_FEE`, and halfway through the trip
-  `deliverPad()` clears the zone and pays at the prices of that moment. `event`
+  line plus a `cargo` tag on its materials. The player builds one pickup zone
+  (`padState()` reads it); `callDrone()` charges `DRONE_FEE`, and halfway through the trip
+  `deliverPad()` clears the cargo box and pays at the prices of that moment. `event`
   on a good names the lore line fired at its first sale.
 - Mission Control lines are plain arrays in `js/lore.js`.
 - Key bindings are a plain list in `KEY_BINDS` (`js/settings.js`): an id, the

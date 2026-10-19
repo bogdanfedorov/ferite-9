@@ -222,8 +222,12 @@ function lifeOf(m) {
   return LIFE_RND[m] ? LIFE_BASE[m] + rndInt(LIFE_RND[m]) : LIFE_BASE[m];
 }
 
+function writable(x, y) {
+  return inBounds(x, y) && SEALED[mat[y * W + x]] === 0;
+}
+
 function setCell(x, y, m) {
-  if (!inBounds(x, y)) return;
+  if (!writable(x, y)) return;
   const i = y * W + x;
   mat[i] = m;
   shade[i] = (rnd() * 256) | 0;
@@ -234,8 +238,9 @@ function setCell(x, y, m) {
 }
 
 function setCellHot(x, y, m, t) {
+  if (!writable(x, y)) return;
   setCell(x, y, m);
-  if (inBounds(x, y)) temp[y * W + x] = t;
+  temp[y * W + x] = t;
 }
 
 function putCell(i, m, t) {
@@ -344,26 +349,36 @@ function decayDamage() {
   dmgList = keep;
 }
 
-var cargoPad = null;
+var cargoBox = null;
 
-function setCargoPad(rect) {
-  cargoPad = { x: worldX(rect.x), y: rect.y, w: rect.w, h: rect.h };
+function setCargoBox(box) {
+  cargoBox = box;
 }
 
-var padScratch = { x: 0, y: 0, w: 0, h: 0 };
+var boxScratch = { x: 0, y: 0, w: 0, h: 0 };
 
-function padLocal() {
-  if (!cargoPad) return null;
-  padScratch.x = localX(cargoPad.x);
-  padScratch.y = cargoPad.y;
-  padScratch.w = cargoPad.w;
-  padScratch.h = cargoPad.h;
-  return padScratch;
+function cargoBoxLocal() {
+  if (!cargoBox) return null;
+  boxScratch.x = localX(cargoBox.x);
+  boxScratch.y = cargoBox.y;
+  boxScratch.w = cargoBox.w;
+  boxScratch.h = cargoBox.h;
+  return boxScratch;
 }
 
-function padInWindow() {
-  const p = padLocal();
-  return p !== null && p.x >= 0 && p.x + p.w <= W;
+function eraseMaterial(m) {
+  for (let i = 0; i < LEN; i++) {
+    if (mat[i] !== m) continue;
+    paintCell(i, VOID_ID);
+    markHot(i % W, (i / W) | 0);
+  }
+  for (const ch of chunkStore.values()) {
+    for (let i = 0; i < CHUNK_AREA; i++) {
+      if (ch.mat[i] !== m) continue;
+      ch.mat[i] = VOID_ID;
+      ch.life[i] = LIFE_BASE[VOID_ID];
+    }
+  }
 }
 
 var surfaceTop = 40;
@@ -393,7 +408,7 @@ function randomizeShade() {
 }
 
 function finishWorld(tempOf) {
-  cargoPad = null;
+  cargoBox = null;
   for (let y = 0; y < H; y++) {
     for (let i = y * W; i < (y + 1) * W; i++) {
       temp[i] = tempOf(mat[i], y);

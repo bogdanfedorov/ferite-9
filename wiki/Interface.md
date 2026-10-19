@@ -6,8 +6,9 @@ The HUD sits in the corners so the middle of the screen stays the game.
   green, yellow, red), the settings and help buttons, and below them — only in
   heat map mode — the temperature scale;
 - **top right, the market**: your money, the price of each good with a bar that
-  shrinks as the price falls, how much of each lies in the pickup zone, and the
-  drone button. The button says what is missing when it is disabled;
+  shrinks as the price falls, how much of each lies in the pickup zone's cargo box,
+  and the drone button. When it is disabled the button says why, in the same
+  words a refused call would use;
 - **bottom left, the Mission Control channel**; bottom centre, the 8-cell
   hotbar (keys 1–8; **E** opens the menu of every tool, where you place them
   into cells);

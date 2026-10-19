@@ -5,8 +5,8 @@ and an underground base. There are no conveyor belts to start with — rock
 crumbles in place under the drill and modules are carried by hand. You dig or
 build the furnace yourself, and iron runs liquid until cold or water sets it.
 
-There is no shift goal, there is a market. Stack resources in a pickup zone you
-mark yourself, call a drone for a fee, and it sells everything at the current
+There is no shift goal, there is a market. Heap resources on a pickup zone you
+build yourself, call a drone for a fee, and it sells everything at the current
 price. Prices fall with time, so raw material stops paying and you move on to
 iron and glass. The money buys tools in the **E** menu.
 

@@ -16,7 +16,7 @@ regBuilding({
   arrows: false,
   erasable: true,
   done: { text: 'msg.wallDone', sound: 'built' },
-  fits: clearOfFixed,
+  verdict: fixedVerdict,
   place: wallPlace,
   owns: (x, y) => mat[y * W + x] === WALL_ID
 });

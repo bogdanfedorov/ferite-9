@@ -323,5 +323,16 @@ var MATERIAL_DATA = [
     thermalConductivity: 10,
     heatCapacity: 800,
     hardness: -1
+  },
+  {
+    name: 'pad',
+    state: 'structure',
+    sealed: true,
+    color: [220, 80, 200],
+    grain: 4,
+    density: 2400,
+    thermalConductivity: 10,
+    heatCapacity: 800,
+    hardness: -1
   }
 ];

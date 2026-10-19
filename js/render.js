@@ -245,7 +245,7 @@ function drawDamage() {
 }
 
 function drawDrone() {
-  const pad = padLocal();
+  const pad = cargoBoxLocal();
   if (market.drone <= 0 || !pad) return;
   const z = view.zoom;
   const lift = Math.abs(1 - (2 * market.drone) / DRONE_TRIP);
@@ -253,12 +253,12 @@ function drawDrone() {
     cy = sy(pad.y - 3 - lift * 36);
   const w = 6 * z,
     h = 2 * z;
-  ctx.fillStyle = uiHex('sand');
+  ctx.fillStyle = uiHex('pad');
   ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
   ctx.fillStyle = '#c2cad6';
   ctx.fillRect(cx - w / 2 - z, cy - h / 2 - z * 0.6, w + 2 * z, Math.max(1, z * 0.4));
   if (lift > 0.12) return;
-  ctx.fillStyle = uiRgba('sand', 0.25);
+  ctx.fillStyle = uiRgba('pad', 0.3);
   ctx.fillRect(sx(pad.x), cy + h / 2, pad.w * z, sy(pad.y + pad.h) - cy - h / 2);
 }
 

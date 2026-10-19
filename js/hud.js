@@ -80,8 +80,8 @@ function setText(node, text) {
 
 function droneLabel(value) {
   if (market.drone > 0) return t('ui.droneBusy');
-  if (!cargoPad) return t('ui.droneNoPad');
-  if (!padInWindow()) return t('ui.droneFar');
+  const refusal = PAD_REFUSAL[padState()];
+  if (refusal) return t(refusal);
   if (market.money < DRONE_FEE) return tf('ui.dronePoor', { fee: DRONE_FEE });
   return tf('ui.drone', { fee: DRONE_FEE, sum: value });
 }
@@ -100,7 +100,7 @@ function updateMarketPanel() {
   const value = payoutOf(counts);
   setVal('money', `$${market.money}`);
   setVal('market-sum', tf('ui.inZone', { sum: value }));
-  const ready = market.drone <= 0 && padInWindow() && market.money >= DRONE_FEE;
+  const ready = market.drone <= 0 && padState() === 'ready' && market.money >= DRONE_FEE;
   el['drone-btn'].disabled = !ready;
   el['drone-btn'].classList.toggle('worth', ready && value > DRONE_FEE);
   setVal('drone-btn', droneLabel(value));

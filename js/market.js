@@ -13,6 +13,8 @@ var ROOM_MONEY = 9999;
 var DRONE_FEE = 10;
 var DRONE_TRIP = 300;
 var FRAMES_PER_MINUTE = 3600;
+var PAD_REFUSAL = { none: 'msg.noPad', away: 'msg.padFar', blocked: 'msg.droneSky' };
+var PAD_ABORT = { none: 'msg.abortGone', away: 'msg.abortFar', blocked: 'msg.abortSky' };
 
 function indexGoods() {
   const out = {};
@@ -41,10 +43,10 @@ function priceOf(good) {
 
 function sweepPad(take) {
   const counts = {};
-  const pad = padLocal();
-  if (!pad) return counts;
-  for (let y = pad.y; y < pad.y + pad.h; y++) {
-    for (let x = pad.x; x < pad.x + pad.w; x++) {
+  const box = cargoBoxLocal();
+  if (!box) return counts;
+  for (let y = box.y; y < box.y + box.h; y++) {
+    for (let x = box.x; x < box.x + box.w; x++) {
       if (!inBounds(x, y)) continue;
       const group = CARGO[mat[y * W + x]];
       if (!GOOD_OF[group]) continue;
@@ -72,35 +74,35 @@ function deliverPad() {
 }
 
 function callDrone() {
-  if (market.drone > 0) return;
-  if (!cargoPad) {
-    notice('denied', t('msg.noPad'));
-    return;
-  }
-  if (!padInWindow()) {
-    notice('denied', t('msg.padFar'));
+  const refusal = PAD_REFUSAL[padState()];
+  if (refusal) {
+    notice('denied', t(refusal));
     return;
   }
   if (market.money < DRONE_FEE) {
     notice('denied', tf('msg.cantAfford', { cost: DRONE_FEE }));
     return;
   }
+  if (market.drone > 0) return;
   market.money -= DRONE_FEE;
   market.drone = DRONE_TRIP;
   notice('launch', t('msg.droneOn'));
 }
 
-function abortDrone() {
+function abortDrone(state) {
   market.money += DRONE_FEE;
   market.drone = 0;
-  notice('denied', t('msg.droneAbort'));
+  notice('denied', t(PAD_ABORT[state]));
 }
 
 function tickMarket() {
   market.age++;
   if (market.drone <= 0) return;
+  const state = market.drone > DRONE_TRIP >> 1 ? padState() : 'ready';
+  if (state !== 'ready') {
+    abortDrone(state);
+    return;
+  }
   market.drone--;
-  if (market.drone !== DRONE_TRIP >> 1) return;
-  if (padInWindow()) deliverPad();
-  else abortDrone();
+  if (market.drone === DRONE_TRIP >> 1) deliverPad();
 }

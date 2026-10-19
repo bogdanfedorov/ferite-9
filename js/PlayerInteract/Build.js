@@ -1,7 +1,10 @@
 var BUILD_REPORTS = {
   removed: { text: 'msg.structRemoved', sound: 'removed' },
   nothing: { text: 'msg.nothingToRemove', sound: null },
-  room: { text: 'msg.beltRoom', sound: 'denied' }
+  room: { text: 'msg.beltRoom', sound: 'denied' },
+  exists: { text: 'msg.padExists', sound: 'denied' },
+  sky: { text: 'msg.padSky', sound: 'denied' },
+  high: { text: 'msg.padHigh', sound: 'denied' }
 };
 
 var buildId = null;
@@ -77,6 +80,7 @@ function buildPlan(fromWorld, toWorld) {
   const from = gridPoint(fromWorld[0], fromWorld[1]);
   const to = cappedPoint(from, gridPoint(toWorld[0], toWorld[1]));
   if (buildErase) return { cells: shapeCells('rect', from, to), dx: 1, dy: 0 };
+  if (activeBuilding().plan) return activeBuilding().plan(from);
   const opt = { vertical: activeBuilding().vertical, even: buildEven };
   const cells = shapeCells(buildShape, from, to, opt);
   const heading = shapeHeading(cells);
@@ -85,18 +89,15 @@ function buildPlan(fromWorld, toWorld) {
 }
 
 function buildVerdict(plan) {
-  const spec = activeBuilding();
-  if (spec.max && plan.cells.length > spec.max) return 'big';
-  if (!spec.fits(plan)) return 'room';
-  return 'ok';
+  return activeBuilding().verdict(plan);
 }
 
-function clearOfFixed(plan) {
+function fixedVerdict(plan) {
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
-    if (!inBounds(c.x, c.y) || FIXED[mat[c.y * W + c.x]]) return false;
+    if (!inBounds(c.x, c.y) || FIXED[mat[c.y * W + c.x]]) return 'room';
   }
-  return true;
+  return 'ok';
 }
 
 function ownerAt(x, y) {
@@ -130,8 +131,7 @@ function finishBuild(fromWorld, toWorld) {
   if (buildErase) return eraseCells(plan.cells) > 0 ? BUILD_REPORTS.removed : BUILD_REPORTS.nothing;
   const spec = activeBuilding();
   const verdict = buildVerdict(plan);
-  if (verdict === 'big') return spec.big;
-  if (verdict === 'room') return BUILD_REPORTS.room;
+  if (verdict !== 'ok') return BUILD_REPORTS[verdict];
   spec.place(plan);
   return spec.done;
 }
@@ -175,32 +175,60 @@ function drawErasePreview(cells) {
   );
 }
 
-function drawBuildPreview() {
-  if (!buildFrom || !buildTo) return;
-  const plan = buildPlan(buildFrom, buildTo);
-  if (!plan.cells.length) return;
-  if (buildErase) {
-    drawErasePreview(plan.cells);
-    return;
-  }
+function previewEnds(mouseWorld) {
+  if (buildFrom) return [buildFrom, buildTo];
+  return activeBuilding().plan ? [mouseWorld, mouseWorld] : null;
+}
 
-  const spec = activeBuilding();
-  const tint = buildVerdict(plan) === 'ok' ? spec.tint.ok : spec.tint.bad;
+function drawPlanCells(plan, tint) {
   const z = view.zoom;
   ctx.fillStyle = uiRgba(tint, 0.22);
   ctx.strokeStyle = uiRgba(tint, 0.85);
   ctx.lineWidth = 1;
-
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
     ctx.fillRect(sx(c.x), sy(c.y), z, z);
     ctx.strokeRect(sx(c.x) + 0.5, sy(c.y) + 0.5, z - 1, z - 1);
   }
+}
 
-  if (!spec.arrows) return;
+function drawPlanArrows(plan, tint) {
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
     if (c.x % ARROW_EVERY === 0)
       drawFlowArrow(c.x + 0.5, c.y + 0.5, plan.dx, plan.dy, uiRgba(tint, 0.9));
   }
+}
+
+function drawRefusal(text, at) {
+  const size = 12;
+  const px = sx(at[0]) + 16,
+    py = sy(at[1]) + 16;
+  ctx.save();
+  ctx.font = `600 ${size}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  const tw = ctx.measureText(text).width;
+  ctx.fillStyle = 'rgba(8,11,16,0.82)';
+  ctx.fillRect(px - 4, py - 3, tw + 8, size + 6);
+  ctx.fillStyle = uiHex('danger');
+  ctx.fillText(text, px, py);
+  ctx.restore();
+}
+
+function drawBuildPreview(mouseWorld) {
+  const ends = previewEnds(mouseWorld);
+  if (!ends || !ends[1]) return;
+  const plan = buildPlan(ends[0], ends[1]);
+  if (!plan.cells.length) return;
+  if (buildErase) {
+    drawErasePreview(plan.cells);
+    return;
+  }
+  const spec = activeBuilding();
+  const verdict = buildVerdict(plan);
+  const tint = verdict === 'ok' ? spec.tint.ok : spec.tint.bad;
+  drawPlanCells(plan, tint);
+  if (spec.arrows) drawPlanArrows(plan, tint);
+  if (verdict !== 'ok') drawRefusal(t(BUILD_REPORTS[verdict].text), ends[1]);
 }

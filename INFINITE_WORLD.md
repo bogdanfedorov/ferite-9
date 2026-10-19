@@ -63,9 +63,11 @@ Done:
 7. **Loose objects.** Objects that leave the window move to `shelvedObjects`
    with world X and come back when their column is in the window again, lifted
    out of solid terrain if needed. At most `SHELF_MAX` are kept; the oldest is dropped when the shelf is full.
-8. **Cargo pad.** `cargoPad` is in world coordinates; `padLocal()` converts.
-   Calling the drone needs the pad inside the window; a drone in flight whose
-   pad has left the window turns back and refunds the fee.
+8. **Pickup zone.** Its cells move with the window like any other cell;
+   `cargoBox` is in world coordinates and `cargoBoxLocal()` converts.
+   `padState()` is `away` while the box is not fully inside the window: a call
+   is refused and a drone on its way in turns back and refunds the fee.
+   Removing the zone also clears its cells in stored chunks.
 9. **Damage.** `dmg` and `dmgT` shift with the window and `dmgList` is rebuilt.
 10. **Hot tiles.** Entering columns are marked hot.
 11. **Surface.** `windowSurf` caches the surface row, shifts with the window

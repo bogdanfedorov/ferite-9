@@ -16,13 +16,13 @@ function beltDy(code) {
   return (code % 3) - 1;
 }
 
-function beltFits(plan) {
+function beltVerdict(plan) {
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
-    if (!inBounds(c.x, c.y) || !OPEN[mat[c.y * W + c.x]]) return false;
-    if (!inBounds(c.x, c.y - 1) || RIGID[mat[(c.y - 1) * W + c.x]]) return false;
+    if (!inBounds(c.x, c.y) || !OPEN[mat[c.y * W + c.x]]) return 'room';
+    if (!inBounds(c.x, c.y - 1) || RIGID[mat[(c.y - 1) * W + c.x]]) return 'room';
   }
-  return true;
+  return 'ok';
 }
 
 function beltPlace(plan) {
@@ -138,7 +138,7 @@ regBuilding({
   arrows: true,
   erasable: true,
   done: { text: 'msg.beltDone', sound: 'built' },
-  fits: beltFits,
+  verdict: beltVerdict,
   place: beltPlace,
   owns: (x, y) => mat[y * W + x] === BELT_DECK,
   remove: (x, y) => {

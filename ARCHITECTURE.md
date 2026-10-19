@@ -95,15 +95,15 @@ js/PlayerInteract/Buildings/*.js   Pad, Belt, Wall
 |---|---|
 | `shapes` | дозволені форми; перша — типова |
 | `vertical` | чи дозволена вертикаль у `line` |
-| `max` | ліміт клітин; перевищення → звіт `big` |
 | `tint` | `{ ok, bad }` — кольори прев'ю |
 | `arrows` | малювати стрілки напряму в прев'ю |
 | `erasable` | ПКМ стирає клітини |
-| `fits(plan)` | чи можна поставити |
+| `plan(from)` | необов'язково: власний план замість форми з перетягування |
+| `verdict(plan)` | `'ok'` або ключ відмови в `BUILD_REPORTS` (`room`, `exists`, `sky`, `high`) |
 | `place(plan)` | поставити; `plan = { cells, dx, dy }` |
-| `done` / `big` | `{ text, sound }` — звіти для HUD |
+| `done` | `{ text, sound }` — звіт для HUD |
 | `owns(x, y)` | чи клітина належить цій будівлі (стирання, прев'ю) |
-| `remove(x, y)` | прибрати побічний стан клітини (напр. напрям стрічки) |
+| `remove(x, y)` | прибрати побічний стан клітини (напр. напрям стрічки) або всю будівлю (зона забору) |
 
 Будівля — це клітини одного матеріалу плюс дані за індексом клітини (див.
 `CLAUDE.md`, «World model»). Складених об'єктів немає.
@@ -117,7 +117,7 @@ js/PlayerInteract/Buildings/*.js   Pad, Belt, Wall
 
 ## Як додати будівлю
 
-1. Створити `js/PlayerInteract/Buildings/Name.js`: `fits`, `place`, за потреби
+1. Створити `js/PlayerInteract/Buildings/Name.js`: `verdict`, `place`, за потреби
    `tick` / `drawWorld` / `owns` / `remove` + `regBuilding({...})`.
 2. Матеріал будівлі — запис у `js/materials.data.js`.
 3. `<script>` у `index.html`.

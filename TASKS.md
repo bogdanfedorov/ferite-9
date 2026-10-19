@@ -13,7 +13,7 @@ Order of work: A1, B1, B2, C1, D3, then the rest. One agent at a time.
 
 | Id | Task | Status | Feedback |
 |---|---|---|---|
-| A1 | Pickup zone becomes a fixed-size building with open sky above | model | 1, 2, 3, 7 |
+| A1 | Pickup zone becomes a fixed-size building with open sky above | done | 1, 2, 3, 7 |
 | B1 | Wall: place only into empty or gas cells, skip existing wall cells | model | 9, 11 |
 | B2 | Belt renders as one belt, not a stack of rows | model | 8 |
 | C1 | Jetpack refuels on the ground at the burn rate | model | 5 |

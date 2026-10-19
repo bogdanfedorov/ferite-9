@@ -5,7 +5,7 @@ var game = {
 };
 
 var MILESTONES = [
-  { event: 'first_pad', when: () => cargoPad !== null },
+  { event: 'first_pad', when: () => padState() !== 'none' },
   { event: 'first_sale', when: () => market.sales > 0 },
   { event: 'first_ember', when: () => producedOf('ember') },
   { event: 'first_melt', when: () => producedOf('melt_iron') },

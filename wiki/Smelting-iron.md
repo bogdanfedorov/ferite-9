@@ -40,8 +40,9 @@ world** and has to be carried by hand from then on. Rock compacts in the
 process — two broken cells give one loose cell — otherwise your own spoil would
 block the drift immediately.
 
-There is no inventory at all. Goods are sold physically: whatever lies inside
-the **pickup zone** you draw yourself is what the drone takes when you call it.
+There is no inventory at all. Goods are sold physically: whatever lies in the
+cargo box above the **pickup zone** you build is what the drone takes when you
+call it.
 Iron and scrap count as the same good, and so do glass and cullet. See
 [[Market]].
 

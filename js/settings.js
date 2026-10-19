@@ -27,7 +27,8 @@ var UI_NAMES = [
   'dangerSoft',
   'ok',
   'flame',
-  'alarm'
+  'alarm',
+  'pad'
 ];
 
 var UI_BASE = {
@@ -40,7 +41,8 @@ var UI_BASE = {
   dangerSoft: [214, 92, 76],
   ok: [111, 191, 140],
   flame: [240, 170, 70],
-  alarm: [160, 40, 26]
+  alarm: [160, 40, 26],
+  pad: MATS[matId('pad')].color
 };
 
 var UI_RGB = {};

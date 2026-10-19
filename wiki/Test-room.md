@@ -31,7 +31,7 @@ out without the shift hanging over you.
   temperature are poured just above their freezing point.
 
 Everything else is the real game: the same simulation, the same drill, hand,
-igniter and build tools. Draw a pickup zone if you want to test selling.
+igniter and build tools. Build a pickup zone if you want to test selling.
 
 ## What is not different
 
