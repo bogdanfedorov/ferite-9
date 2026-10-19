@@ -2,8 +2,6 @@ var objects = [];
 var shelvedObjects = [];
 
 var OBJ_MAX = 16;
-var OBJ_LIFT = 48;
-var SHELF_MAX = 8;
 var IMPACT_STEAM = matId('smoke');
 var OBJ_GRAV = 0.03;
 var OBJ_MAXV = 1.4;
@@ -67,28 +65,41 @@ function grabPick(cx, cy, only) {
   return pick;
 }
 
-function makeObject(bx, by, cells) {
-  if (!cells.length) return null;
+function newObject(bx, by, cells) {
   let sumX = 0,
-    sumY = 0;
+    sumY = 0,
+    w = 1,
+    h = 1;
   for (let k = 0; k < cells.length; k++) {
     sumX += cells[k].dx + 0.5;
     sumY += cells[k].dy + 0.5;
+    w = Math.max(w, cells[k].dx + 1);
+    h = Math.max(h, cells[k].dy + 1);
   }
-  const o = {
+  return {
     x: bx,
     y: by,
     vx: 0,
     vy: 0,
+    w,
+    h,
+    ox: w / 2,
+    oy: h / 2,
     cx: sumX / cells.length,
     cy: sumY / cells.length,
     cells: cells,
-    held: true,
+    held: false,
     rest: 0,
     flash: 0,
     hot: 0,
     icd: 0
   };
+}
+
+function makeObject(bx, by, cells) {
+  if (!cells.length) return null;
+  const o = newObject(bx, by, cells);
+  o.held = true;
   objects.push(o);
   heldObject = o;
   return o;
@@ -113,6 +124,7 @@ function takeObject(cx, cy, only) {
       i = y * W + x;
     cells.push({ dx: x - bx, dy: y - by, mat: mat[i], temp: temp[i] });
     setCell(x, y, VOID_ID);
+    markEdited(x, y);
   }
   return makeObject(bx, by, cells);
 }
@@ -157,6 +169,8 @@ function shoveCell(x, y, dx, dy) {
   const j = shoveTarget(x, y, dx, dy);
   if (j < 0) return false;
   moveCell(i, j);
+  markEdited(x, y);
+  markEdited(j % W, (j / W) | 0);
   return true;
 }
 
@@ -177,12 +191,14 @@ function placeCell(x, y, m, hot) {
     const at = mat[y * W + x];
     if (OPEN[at] || (MOVABLE[at] && shoveCell(x, y, 0, -1))) {
       setCellHot(x, y, m, hot);
+      markEdited(x, y);
       return true;
     }
   }
   const j = openNear(x, y, 1, DROP_R);
   if (j < 0) return false;
   putCell(j, m, hot);
+  markEdited(j % W, (j / W) | 0);
   return true;
 }
 
@@ -193,6 +209,7 @@ function swapCell(x, y, m, hot) {
   if (!MOVABLE[om]) return null;
   const back = { mat: om, temp: temp[i] };
   setCellHot(x, y, m, hot);
+  markEdited(x, y);
   return back;
 }
 
@@ -215,16 +232,6 @@ function dropObject(o) {
   if (idx >= 0) objects.splice(idx, 1);
   if (heldObject === o) heldObject = null;
   return true;
-}
-
-function objSpan(o) {
-  let w = 1,
-    h = 1;
-  for (let k = 0; k < o.cells.length; k++) {
-    if (o.cells[k].dx + 1 > w) w = o.cells[k].dx + 1;
-    if (o.cells[k].dy + 1 > h) h = o.cells[k].dy + 1;
-  }
-  return [w, h];
 }
 
 function objHeat(o) {
@@ -327,40 +334,68 @@ function shelveObject(o) {
   if (o === heldObject) heldObject = null;
   o.held = false;
   o.x = worldX(o.x);
-  if (shelvedObjects.length >= SHELF_MAX) shelvedObjects.shift();
+  o.y = worldY(o.y);
   shelvedObjects.push(o);
 }
 
-function unshelveObject(o, lx) {
-  let y = o.y;
-  const top = Math.max(0, y - OBJ_LIFT);
-  while (y > top && objBlocked(o, lx, y)) y--;
-  if (objBlocked(o, lx, y)) return false;
-  o.x = lx;
-  o.y = y;
-  o.vx = 0;
-  o.vy = 0;
-  o.rest = 0;
-  return true;
+function ownerKey(wx, wy) {
+  return chunkKey(Math.floor(wx) >> CHUNK_SHIFT, Math.floor(wy) >> CHUNK_SHIFT);
 }
 
-function shiftObjects(dx) {
-  const inside = [];
-  for (let k = 0; k < objects.length; k++) {
-    const o = objects[k];
-    o.x -= dx;
-    if (o.x >= 0 && o.x < W) inside.push(o);
-    else shelveObject(o);
+function objectsOut(key) {
+  const live = objects;
+  objects = [];
+  for (let k = 0; k < live.length; k++) {
+    const o = live[k];
+    if (ownerKey(worldX(o.x), worldY(o.y)) === key) shelveObject(o);
+    else objects.push(o);
   }
-  const shelved = [];
+  const out = [],
+    rest = [];
   for (let k = 0; k < shelvedObjects.length; k++) {
     const o = shelvedObjects[k];
-    const lx = localX(o.x);
-    if (lx >= 0 && lx < W && unshelveObject(o, lx)) inside.push(o);
-    else shelved.push(o);
+    if (ownerKey(o.x, o.y) === key) out.push({ x: o.x, y: o.y, cells: o.cells });
+    else rest.push(o);
   }
-  shelvedObjects = shelved;
-  objects = inside;
+  shelvedObjects = rest;
+  return out.length ? out : null;
+}
+
+function objectsIn(records) {
+  for (let k = 0; k < records.length; k++) {
+    const r = records[k];
+    shelvedObjects.push(newObject(r.x, r.y, r.cells));
+  }
+}
+
+function unshelveObjects() {
+  const waiting = shelvedObjects;
+  shelvedObjects = [];
+  for (let k = 0; k < waiting.length; k++) {
+    const o = waiting[k];
+    if (spawnEntity(o, localX(o.x), localY(o.y))) objects.push(o);
+    else shelvedObjects.push(o);
+  }
+}
+
+function objectInWindow(o) {
+  return (
+    inBounds(Math.floor(o.x), Math.floor(o.y)) &&
+    inBounds(Math.ceil(o.x + o.w) - 1, Math.ceil(o.y + o.h) - 1)
+  );
+}
+
+function shiftObjects(dx, dy) {
+  const live = objects;
+  objects = [];
+  for (let k = 0; k < live.length; k++) {
+    const o = live[k];
+    o.x -= dx;
+    o.y -= dy;
+    if (objectInWindow(o)) objects.push(o);
+    else shelveObject(o);
+  }
+  unshelveObjects();
 }
 
 function resetObjects() {

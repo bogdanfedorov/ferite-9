@@ -5,6 +5,9 @@ var player = {
   vy: 0,
   w: SIZE.m(0.13),
   h: SIZE.m(0.3),
+  ox: 0,
+  oy: 0,
+  respawning: false,
   grounded: false,
   inLiquid: false,
   fuel: 100,
@@ -27,7 +30,6 @@ var player = {
 var REACH = 32;
 var JET_EXHAUST = matId('smoke');
 var FALL_SAFE = 30;
-var ARRIVAL_DROP = 60;
 var FUEL_BURN_RATE = 0.5;
 var JETPAK_POWER = 0.062;
 var FOOT_POWER = 0.05;
@@ -41,20 +43,12 @@ function resetVitals() {
   player.buried = 0;
 }
 
-function arrivalHeight() {
-  const sx = localX(player.spawnX);
-  let rise = 0;
-  while (rise < ARRIVAL_DROP && !boxBlocked(sx, player.spawnY - rise - 1)) rise++;
-  return rise;
-}
-
 function moveToSpawn() {
-  player.x = localX(player.spawnX);
-  player.y = player.spawnY - arrivalHeight();
-  player.vx = 0;
-  player.vy = 0;
+  if (!spawnEntity(player, localX(player.spawnX), localY(player.spawnY))) return false;
+  player.respawning = false;
   player.fallFrom = player.y;
   player.arriving = true;
+  return true;
 }
 
 function floorBelow(x, y) {
@@ -63,33 +57,19 @@ function floorBelow(x, y) {
   return fy;
 }
 
-function shiftPlayer(dx) {
+function shiftPlayer(dx, dy) {
   player.x -= dx;
+  player.y -= dy;
+  player.fallFrom -= dy;
 }
 
 function spawnPlayer(x, y) {
   player.spawnX = worldX(x);
-  player.spawnY = floorBelow(Math.round(x), y) - player.h / 2;
-  clearAirlock();
+  player.spawnY = worldY(floorBelow(Math.round(x), y) - player.h / 2);
+  player.respawning = false;
   moveToSpawn();
   resetVitals();
   player.fallDrop = 0;
-}
-
-function clearAirlock() {
-  const sx = localX(player.spawnX);
-  const x0 = spanStart(sx, player.w) - 2,
-    x1 = spanEnd(sx, player.w) + 2;
-  const y0 = spanStart(player.spawnY, player.h) - ARRIVAL_DROP,
-    y1 = spanEnd(player.spawnY, player.h);
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
-      if (!inBounds(x, y)) continue;
-      const m = mat[y * W + x];
-      if (STATE[m] === MT.LIQUID) displaceCell(x, y);
-      else if (m !== VOID_ID && !FIXED[m]) setCellHot(x, y, VOID_ID, 22);
-    }
-  }
 }
 
 function spanStart(c, size) {
@@ -257,6 +237,7 @@ function updatePlayer(keys) {
   if (player.hp > 100) player.hp = 100;
   if (player.hp <= 0) {
     resetVitals();
+    player.respawning = true;
     return 'respawn';
   }
   return null;

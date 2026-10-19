@@ -23,7 +23,9 @@ var MILESTONES = [
 
 var OVERLAYS = ['intro', 'pause', 'help', 'settings', 'inventory'];
 
-var loop = { acc: 0, last: 0, hudTick: 0 };
+var SETTLE_MS = 3000;
+
+var loop = { acc: 0, last: 0, hudTick: 0, waitFrom: 0 };
 
 function selectTool(name) {
   if (!toolOpen(name)) {
@@ -45,7 +47,6 @@ function selectSlot(i) {
 
 function invSlot(i) {
   if (placePicked(i)) play('pickTool');
-  renderToolbelt();
 }
 
 function invUpgrade(name) {
@@ -58,13 +59,11 @@ function invTool(name) {
     return;
   }
   pickForSlot(name);
-  renderToolbelt();
 }
 
 function toggleInventory() {
   if (game.paused && el.inventory.classList.contains('hidden')) return;
   pickForSlot(null);
-  renderToolbelt();
   toggleScreen('inventory');
 }
 
@@ -86,13 +85,20 @@ function clickRoomButton(bin) {
 }
 
 function respawn() {
-  followWindow(localX(player.spawnX), Infinity);
-  clearAirlock();
-  moveToSpawn();
+  game.paused = true;
+  followWindow(localX(player.spawnX), localY(player.spawnY), Infinity);
+}
+
+function windowReady(now) {
+  if (windowSettled()) loop.waitFrom = 0;
+  else if (!loop.waitFrom) loop.waitFrom = now;
+  return !loop.waitFrom || now - loop.waitFrom > SETTLE_MS;
+}
+
+function finishRespawn() {
   releaseObject();
   moduleDeath(player.deathCause, { drop: player.fallDrop, temp: player.lastTemp });
   play('death');
-  game.paused = true;
   setTimeout(() => {
     play('reboot');
     startBoot(() => {
@@ -113,21 +119,26 @@ function checkMilestones() {
   }
 }
 
-function followWindow(lx, maxChunks) {
-  const dc = Math.max(-maxChunks, Math.min(maxChunks, windowShiftFor(lx)));
-  if (!dc) return;
-  const dx = dc * CHUNK_SIZE;
-  shiftWindow(dc);
-  shiftPlayer(dx);
-  shiftObjects(dx);
-  shiftCamera(dx);
+function followWindow(lx, ly, maxChunks) {
+  const dcx = Math.max(-maxChunks, Math.min(maxChunks, windowShiftFor(lx)));
+  const dcy = Math.max(-maxChunks, Math.min(maxChunks, windowShiftForY(ly)));
+  if (!dcx && !dcy) return;
+  const dx = dcx * CHUNK_SIZE,
+    dy = dcy * CHUNK_SIZE;
+  moveWindow(dcx, dcy);
+  shiftPlayer(dx, dy);
+  shiftObjects(dx, dy);
+  shiftCamera(dx, dy);
   endBuildDrag();
 }
 
 function step() {
   const mouse = input.mouse;
-  if (updatePlayer(input.keys) === 'respawn') respawn();
-  followWindow(player.x, 1);
+  if (updatePlayer(input.keys) === 'respawn') {
+    respawn();
+    return;
+  }
+  followWindow(player.x, player.y, 1);
   checkMilestones();
 
   const wpt = screenToWorld(mouse.x, mouse.y);
@@ -159,17 +170,20 @@ function frame(now) {
   const dt = Math.min(100, now - loop.last);
   loop.last = now;
 
-  if (!game.paused) {
+  const ready = windowReady(now);
+  if (player.respawning && moveToSpawn()) finishRespawn();
+  if (!game.paused && ready) {
     loop.acc += dt;
     let steps = 0;
-    while (loop.acc >= 16.6667 && steps < 3) {
+    while (loop.acc >= 16.6667 && steps < 3 && !game.paused) {
       step();
       loop.acc -= 16.6667;
       steps++;
     }
   } else loop.acc = 0;
 
-  if (market.money !== toolbeltMoney) renderToolbelt();
+  streamWorld();
+  if (toolbeltKey() !== toolbeltDrawn) renderToolbelt();
   const wpt = screenToWorld(input.mouse.x, input.mouse.y);
   render(game.tool, wpt);
   if (++loop.hudTick % 6 === 0) updateHud(wpt);
@@ -260,6 +274,13 @@ function refreshLang() {
   updateHud(screenToWorld(input.mouse.x, input.mouse.y));
 }
 
+function logFault(what, err) {
+  const line = `${new Date().toISOString()} ${what}\n${err?.stack || err}\n`;
+  console.error(line);
+  if (window.ferit9) window.ferit9.fault(line);
+  else if (window.FAULT_POST) fetch('_fault', { method: 'POST', body: line }).catch(() => {});
+}
+
 function showNotice(sound, text) {
   if (sound) play(sound);
   if (text) transmit(text, NOTICE);
@@ -273,6 +294,7 @@ function applySettings(what) {
 }
 
 function enterWorld(room) {
+  loop.waitFrom = 0;
   sandbox.on = room;
   sandbox.bins.length = 0;
   resetMarket(room);
@@ -300,6 +322,7 @@ function startGame() {
   setGrabSize(settings.grabSize);
   setSettingsHook(applySettings);
   setNoticeHook(showNotice);
+  setFaultHook(logFault);
   initLore();
   initRender();
   enterWorld(false);

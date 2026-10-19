@@ -17,6 +17,7 @@ function igniteAt(tx, ty) {
     const i = y * W + x;
     const m = mat[i];
     const point = HOT_T[m];
+    markEdited(x, y);
     if (ISVOID[m]) {
       setCellHot(x, y, TORCH_FLAME, EMITS[TORCH_FLAME]);
       lit++;

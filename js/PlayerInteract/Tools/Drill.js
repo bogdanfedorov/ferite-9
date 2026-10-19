@@ -50,6 +50,7 @@ function drillAt(tx, ty) {
     const need = HARD[m] - dmg[i];
     if (portion >= need) {
       setCell(x, y, VOID_ID);
+      markEdited(x, y);
       const loose = BREAK_INTO[m];
       if (loose) {
         drillSpoil[loose] = (drillSpoil[loose] || 0) + 1;

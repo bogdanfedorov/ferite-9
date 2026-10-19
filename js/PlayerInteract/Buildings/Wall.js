@@ -1,7 +1,10 @@
 var WALL_ID = matId('wall');
 
 function wallPlace(plan) {
-  for (let k = 0; k < plan.cells.length; k++) setCell(plan.cells[k].x, plan.cells[k].y, WALL_ID);
+  for (let k = 0; k < plan.cells.length; k++) {
+    setCell(plan.cells[k].x, plan.cells[k].y, WALL_ID);
+    markEdited(plan.cells[k].x, plan.cells[k].y);
+  }
 }
 
 regBuilding({

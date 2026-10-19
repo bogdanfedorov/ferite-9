@@ -4,6 +4,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const SHELL = [
   'js/settings.js',
+  'js/disk.js',
   'js/lore.js',
   'js/sound.js',
   'js/render.js',

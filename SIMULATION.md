@@ -34,9 +34,9 @@ below mirrors that file; the file wins.
 
 | Layer | Files |
 |---|---|
-| Core | `lang/*.js`, `sizes.js`, `materials.data.js`, `materials.js`, `notice.js`, `world.js`, `objects.js`, `sandbox.js`, `market.js`, `player.js`, `lib/Shape.js`, `PlayerInteract/Registry.js` |
+| Core | `lang/*.js`, `sizes.js`, `materials.data.js`, `materials.js`, `notice.js`, `world.js`, `store.js`, `objects.js`, `sandbox.js`, `market.js`, `player.js`, `lib/Shape.js`, `PlayerInteract/Registry.js` |
 | Mixed | `i18n.js`, `PlayerInteract/Build.js`, `Toolbelt.js`, `Tools/*.js`, `Buildings/*.js` |
-| Shell | `settings.js`, `lore.js`, `sound.js`, `render.js`, `hud.js`, `input.js`, `game.js` |
+| Shell | `settings.js`, `lore.js`, `disk.js`, `sound.js`, `render.js`, `hud.js`, `input.js`, `game.js` |
 
 **Mixed** files hold core behaviour (what a piece does to cells, what a tool
 costs, translation lookup) next to shell code (previews, HUD cards, the
@@ -89,9 +89,9 @@ Two more run-time calls from core into the shell go with this change, because
 a sale or a purchase cannot run headless without them:
 
 - `renderToolbelt()` in `deliverPad`, `buyTool`, `upgradePiece`. The core stops
-  asking for a redraw. The shell redraws the toolbelt when `market.money`
-  differs from the value it last drew; every one of those calls changes money,
-  and so does `callDrone`, which today leaves the display stale.
+  asking for a redraw. The shell redraws the toolbelt when `toolbeltKey()`
+  (money and every toolbelt field it draws) differs from the key it last drew,
+  so a change that leaves money equal (a free unlock, a level) is drawn too.
 - `game.elapsed` in `priceOf`. Prices decay with wall-clock milliseconds kept
   by the shell, which makes the market non-deterministic. The market gets its
   own clock: `market.age` in simulation frames, reset by `resetMarket`,
@@ -99,14 +99,81 @@ a sale or a purchase cannot run headless without them:
   so prices behave the same while the game runs and stop while it is paused,
   as they do now.
 
+## Fault hook
+
+A second core-to-shell hook in the same pattern as `notice`: `fault(what, err)`
+in `js/notice.js`, installed with `setFaultHook`. It reports a bug the game
+recovered from or contained (a read that keeps failing, a lost copy, a failed
+write) so the shell can write `what` and `err.stack` to a log file. It is never
+shown to the player. Sinks per runtime: `INFINITE_WORLD.md`, "Faults".
+
 ## Storage
 
-Disk is a shell concern. The core talks to storage through one backend object
-with `get`, `put`, `clear`. Each call has one of three outcomes:
-`found | absent | error`. The browser installs the IndexedDB backend. Tests
-install a fake backend that can delay, reorder and fail replies. This is how
-review findings 1-4 on PR #1 become reproducible tests instead of browser
-sessions.
+Disk is a shell concern. `js/store.js` is core: the bounded chunk and fog
+tiers, the spill policy and the read outcomes. It never touches a browser API.
+`js/disk.js` is shell: it builds the IndexedDB backend and installs it with
+`setDiskBackend`. Without a backend the store keeps everything in memory.
+
+### Backend
+
+One object, three calls, nothing else:
+
+| Call | Resolves | Rejects |
+|---|---|---|
+| `get(store, key)` | value (**found**) or `undefined` (**absent**) | **error** |
+| `put(store, pairs)` | all pairs written | **error** |
+| `clear()` | the owner's stores are empty | **error** |
+
+`store` is `'chunks'` or `'fog'`. A backend belongs to exactly one owner (one
+running game) and `clear()` empties only that owner's data.
+
+### Read outcome
+
+Every read ends in exactly one report to `world.js`:
+
+| Outcome | Chunk | Fog | Disk index after |
+|---|---|---|---|
+| found | `chunkArrived(key)` | `fogArrived(key)` | key kept |
+| absent | `chunkMissing(key)` | `fogMissing(key)` | key removed |
+| error (`READ_TRIES` rejections, `fault()` first) | `chunkFailed(key)` | `fogFailed(key)` | key kept, next read retries |
+
+An error is never reported as absent: absent means "no copy exists". The world
+decides: a chunk the player never edited is regenerated, an edited one stays
+`FAILED` (`INFINITE_WORLD.md`, "Edited chunks"). A reply is dropped unchanged if `storeReset` ran after the read started
+(epoch) or a newer read of the same key replaced it (token).
+
+A failed **write** of the current epoch is a fault (a write started before
+`storeReset` is ignored either way): `fault('disk write failed', err)`, then
+spilled entries go back to `mem`, reads in flight end as **error**, keys that
+were only on disk leave the index, and the disk stays off for the session. The
+player is not told.
+
+### Ownership
+
+Each running game owns one database, `ferit9.spill.<random id>`, with the
+stores `chunks` and `fog`. Nothing else is stored: there is no save, resume,
+meta record or overlay (removed, they had no caller). So `storeReset` clears
+only its own database, and another tab never sees or wipes it.
+
+Before it opens its database, the owner takes a Web Lock with the database
+name and holds it until the page closes. At startup `js/disk.js` lists
+`ferit9.spill.*` databases, and the old shared `ferit9.world`, and deletes each
+one whose lock it can take: its owner is gone. Without `navigator.locks` or
+`indexedDB.databases` the sweep is skipped; the game still uses its own
+database. A live owner holds its lock before its database exists, so a
+sweep never deletes it.
+
+`open` handles every event of the request: on `blocked` the call fails with
+**error**, and a connection that still arrives later is closed at once.
+
+### Tests
+
+`test/store.test.js` loads `js/store.js` alone into a `vm` context with
+recorders for the six report functions, so each test is a fresh store.
+`test/fake-disk.js` is a backend whose replies can be held, released in any
+order, or failed. `test/disk.test.js` loads what `index.html` loads of
+`store.js` and `disk.js` into one context per tab, over one shared fake
+`indexedDB` and lock manager, so two tabs run side by side.
 
 ## Tests
 
@@ -171,9 +238,6 @@ shell code inside a Mixed file and is not a violation.
 ## Order of work
 
 1. Done: test harness `test/core.js`, first tests in `test/world.test.js`.
-2. Done: close the boundary: notice hook, market clock, the two setters,
-   `tools/layers.js`, lint rule for the core boundary.
-3. Done as part of 2: Mixed files load and run their core paths headless.
-4. Split Mixed files so the lint rule can check their core halves.
-5. Storage backend interface with the fake backend; then fix PR #1 findings
-   test-first.
+| Core | `lang/*.js`, `sizes.js`, `materials.data.js`, `materials.js`, `notice.js`, `world.js`, `store.js`, `objects.js`, `sandbox.js`, `market.js`, `player.js`, `lib/Shape.js`, `PlayerInteract/Registry.js` |
+| Mixed | `i18n.js`, `PlayerInteract/Build.js`, `Toolbelt.js`, `Tools/*.js`, `Buildings/*.js` |
+| Shell | `settings.js`, `lore.js`, `disk.js`, `sound.js`, `render.js`, `hud.js`, `input.js`, `game.js` |

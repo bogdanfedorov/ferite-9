@@ -30,6 +30,7 @@ function beltPlace(plan) {
   for (let k = 0; k < plan.cells.length; k++) {
     const c = plan.cells[k];
     setCell(c.x, c.y, BELT_DECK);
+    markEdited(c.x, c.y);
     beltCells.set(c.y * W + c.x, code);
   }
 }
@@ -75,11 +76,12 @@ function tickBelts(frame) {
   applyBeltMoves();
 }
 
-function shiftBelts(dx) {
+function shiftBelts(dx, dy) {
   const moved = new Map();
   for (const [i, code] of beltCells) {
-    const x = (i % W) - dx;
-    if (x >= 0 && x < W) moved.set(((i / W) | 0) * W + x, code);
+    const x = (i % W) - dx,
+      y = ((i / W) | 0) - dy;
+    if (x >= 0 && x < W && y >= 0 && y < H) moved.set(y * W + x, code);
   }
   beltCells = moved;
 }
@@ -94,6 +96,21 @@ function beltsOutColumn(lx) {
     const row = y >> CHUNK_SHIFT;
     if (!out.has(row)) out.set(row, new Map());
     out.get(row).set((y - row * S) * S + x, code);
+    beltCells.delete(i);
+  }
+  return out;
+}
+
+function beltsOutRow(ly) {
+  const S = CHUNK_SIZE;
+  const out = new Map();
+  for (const [i, code] of beltCells) {
+    const x = i % W,
+      y = ((i / W) | 0) - ly;
+    if (y < 0 || y >= S) continue;
+    const col = x >> CHUNK_SHIFT;
+    if (!out.has(col)) out.set(col, new Map());
+    out.get(col).set(y * S + (x - col * S), code);
     beltCells.delete(i);
   }
   return out;

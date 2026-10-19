@@ -120,6 +120,7 @@ function eraseCells(cells) {
     if (!owner) continue;
     if (owner.remove) owner.remove(c.x, c.y);
     setCell(c.x, c.y, VOID_ID);
+    markEdited(c.x, c.y);
     gone++;
   }
   return gone;

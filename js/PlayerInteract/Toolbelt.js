@@ -1,7 +1,7 @@
 var HOTBAR_SIZE = 8;
 
 var toolbelt = { open: {}, level: {}, slots: [], picked: null };
-var toolbeltMoney = -1;
+var toolbeltDrawn = '';
 
 function resetToolbelt(everything) {
   toolbelt.open = {};
@@ -63,6 +63,16 @@ function upgradePiece(name) {
   toolbelt.level[name]++;
   const vars = { tool: t(PIECES[name].hud.name), level: levelOf(name) + 1 };
   notice('unlock', tf('msg.upgraded', vars));
+}
+
+function toolbeltKey() {
+  return JSON.stringify([
+    market.money,
+    toolbelt.open,
+    toolbelt.level,
+    toolbelt.slots,
+    toolbelt.picked
+  ]);
 }
 
 function slotTool(i) {
@@ -169,7 +179,7 @@ function renderCard(card) {
 }
 
 function renderToolbelt() {
-  toolbeltMoney = market.money;
+  toolbeltDrawn = toolbeltKey();
   el['inv-money'].textContent = `$${market.money}`;
   fillSlotRow(el.hotbar);
   fillSlotRow(el['inv-slots']);
